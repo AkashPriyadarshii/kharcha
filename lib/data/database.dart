@@ -60,7 +60,8 @@ class Budgets extends Table {
 
 @DriftDatabase(tables: [Categories, Merchants, Rules, Transactions, Budgets])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
+  /// [executor] override lets tests inject `NativeDatabase.memory()`.
+  AppDatabase({QueryExecutor? executor}) : super(executor ?? _openConnection());
 
   @override
   int get schemaVersion => 1;
