@@ -62,7 +62,7 @@ flutter test           # MUST pass before any PR
 flutter build apk      # sanity check before merge to main
 ```
 
-**CI (GitHub Actions, free tier).** `.github/workflows/ci.yml` runs `flutter analyze` + `flutter test` on `ubuntu-latest` for every push to `main` and every PR. Treat CI as the gate: a PR that fails CI is not mergeable, and must stay green on every push. Write code that passes CI on Linux — don't rely on machine-specific workarounds. Note: `flutter test` is blocked on Windows hosts by a sqlite3 native-assets Flutter tool bug (see `docs/troubleshooting.md`), so CI on Linux is the reliable test gate.
+**CI:** none (removed 2026-08-06 — free-tier Actions not reliable). Test gate = local `flutter analyze` + `flutter test`. Note: `flutter test` is blocked on Windows hosts by a sqlite3 native-assets Flutter tool bug (see `docs/troubleshooting.md`).
 
 ## Data & privacy stance (product decision)
 
