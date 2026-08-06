@@ -51,6 +51,7 @@ Rules: no unrequested abstractions, no boilerplate, no scaffolding "for later", 
 - Functions < 50 lines, files < 800 lines.
 - Errors handled explicitly, never swallowed.
 - Input validated at every trust boundary.
+- **Tests with every change. MANDATORY.** Every feature, bug fix, or non-trivial logic change ships test file(s) in the same commit. No exceptions. A change without tests is not done. `flutter test` is the gate.
 
 ## Git workflow
 
@@ -63,6 +64,7 @@ Rules: no unrequested abstractions, no boilerplate, no scaffolding "for later", 
 ## Definition of done
 
 - [ ] Matches ponytail + standards + anti-slop
+- [ ] Test file(s) written for the change, covering the new logic
 - [ ] `flutter analyze` passes
 - [ ] `flutter test` passes
 - [ ] Smoke test on Android 12+ device/emulator
