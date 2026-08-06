@@ -4,7 +4,7 @@
 
 ## Current status
 
-**Phase: Pre-scaffold.** Repo created, design/PRD/plan/docs written. No Flutter code yet.
+**Phase: Scaffold done.** Flutter app created (Android only, minSdk 32, package `com.kharcha.app`), deps installed, `flutter analyze` clean. Phase 1 (foundation) starting.
 
 ## Completed
 
@@ -12,16 +12,15 @@
 - [x] Design approved (`docs/design.md`)
 - [x] PRD (`docs/prd.md`)
 - [x] Implementation plan (`docs/implementation-plan.md`)
-- [x] Team docs (`docs/contributors.md`), state (`docs/state.md`), handoff (`docs/handoff.md`), changelog (`docs/changelog.md`), CLAUDE.md
+- [x] Team docs: contributors, state, handoff, changelog, ponytail, agents.md
+- [x] CLAUDE.md (contract + anti-slop + ponytail required)
+- [x] Flutter scaffold: `com.kharcha.app`, minSdk 32, deps installed, analyze clean
 
 ## In progress
 
-- None — waiting on scaffold approval
-
-## Blocked / decisions pending
-
-- Flutter scaffold → then Phase 1
+- Phase 1 foundation (next steps below)
 
 ## Next up
 
-1. `feat/scaffold` — flutter create, deps, lint, base app shell
+1. Step 1.1 done (scaffold). Step 1.2: Google sign-in (Supabase Auth)
+2. Step 1.3: Drift local schema
