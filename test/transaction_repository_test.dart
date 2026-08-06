@@ -108,6 +108,25 @@ void main() {
     expect(row.categoryId, travel.id);
   });
 
+  test('insertCaptured dedupes by upiRef', () async {
+    final first = await repo.insertCaptured(
+      amount: 250, merchant: 'Swiggy', upiRef: 'REF123', txnDate: DateTime.now());
+    expect(first, isNotNull);
+
+    final dup = await repo.insertCaptured(
+      amount: 250, merchant: 'Swiggy', upiRef: 'REF123', txnDate: DateTime.now());
+    expect(dup, isNull);
+
+    expect(await db.select(db.transactions).get(), hasLength(1));
+  });
+
+  test('insertCaptured auto-categorizes from seeded rules', () async {
+    final food = await (db.select(db.categories)..where((c) => c.name.equals('Food'))).getSingle();
+    final row = await repo.insertCaptured(
+      amount: 150, merchant: 'Zomato', upiRef: 'REF456', txnDate: DateTime.now());
+    expect(row!.categoryId, food.id);
+  });
+
   test('watchAll emits inserted rows newest-first', () async {
     await repo.insertManual(amount: 100, merchant: 'A', paymentMethod: 'upi', txnDate: DateTime(2026, 8, 1));
     await repo.insertManual(amount: 200, merchant: 'B', paymentMethod: 'upi', txnDate: DateTime(2026, 8, 2));
