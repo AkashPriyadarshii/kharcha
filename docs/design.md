@@ -17,6 +17,7 @@ India-first UPI expense tracker. Every UPI payment auto-appears as an expense �
 - **Rule-based automation, zero AI** — categorization, normalization, dedupe all local dictionaries + user-learned rules.
 - **No ads in finance screens.** No AI slop. No bank API dependency.
 - **Never depend on a risky permission** — notification capture is the primary path; SMS is a later opt-in toggle (P2).
+- **Notifications: value-only, capped.** Never random, never marketing. Cap **5/day max**. The 9PM daily + Sunday weekly summaries and budget alerts are *targeted and user-opted-in* — they self-limit, and users never disable them, which keeps auto-capture alive. This is a hard rule: random/irrelevant push to a finance app violates Play policy and kills the capture feature. See `docs/handoff.md` log.
 
 ## Design direction (UI) — NOT generic
 
@@ -52,15 +53,18 @@ No AI slop, no generic anything. UI is a deliberate product of the brief above.
 5. **Self-learning rules** — user corrects a category once → saved as rule → auto-applied next time.
 6. **Merchant name normalization** — fuzzy match (`zomato / ZOMATO / Zomato-UB` → one merchant). Rule-based.
 7. **Duplicate detection** — `upi_ref` unique; notification + manual + (later) SMS can never double-add.
+7b. **Edit transactions + notes** — every transaction can be edited (amount, merchant, category, note, date, payment method) and carries an optional free-text note ("what I bought"). Notes also let users tag auto-captured spends.
 8. **9PM Hinglish daily summary push** — "Aaj ₹540 kharcha hue." Tap-through to add notes / where. Also nudges: "3 transactions bina category ke. Add karo?" → tag screen.
 9. **Weekly Sunday recap** — "Is week ₹3,200 kharcha. Top 3: Food, Travel, Shopping."
+10. **Rule-based behavioral nudges (Swiggy/Zomato-style, zero AI)** — targeted, context-aware pushes driven by deterministic local rules, capped 5/day, user-opted-in. Examples: "Aaj kharcha add nahi kiya, bhai" (no expense logged that day by 9PM); "Swiggy ka order aaya? Category add karo" (uncategorized spend). These are NOT random — they react to the user's actual behavior, like food-app order-tracking nudges. Cap enforced per-device.
 10. **Home dashboard** — today ₹, this month ₹, budget left, category bars.
-11. **Transactions tab** — list, search, filters (category/date/merchant/payment method).
-12. **Reports tab** — category pie, monthly trend, merchant ranking.
-13. **Budget tab** — per-category limits, progress, 50/80/100% alerts.
-14. **Profile tab** — Google account, payment methods, export CSV/JSON, backup status, settings.
-15. **Offline-first + Supabase sync** from day one.
-16. **App lock** — biometric/PIN (local_auth).
+11. **Home dashboard** — today ₹, this month ₹, budget left, category bars.
+12. **Transactions tab** — list, search, filters (category/date/merchant/payment method).
+13. **Reports tab** — category pie, monthly trend, merchant ranking.
+14. **Budget tab** — per-category limits, progress, 50/80/100% alerts.
+15. **Profile tab** — Google account, payment methods, export CSV/JSON, backup status, settings.
+16. **Offline-first + Supabase sync** from day one.
+17. **App lock** — biometric/PIN (local_auth).
 
 ### P2 (after v0.1.0 stable)
 

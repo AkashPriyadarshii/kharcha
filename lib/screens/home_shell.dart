@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../data/capture_inbox.dart';
 import '../data/database.dart';
 import '../data/transaction_repository.dart';
 import 'quick_add_dialog.dart';
@@ -12,8 +13,29 @@ final _currency = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
 final _dateFormat = DateFormat('d MMM');
 
 /// Main shell: transactions list + FAB (quick-add) + full-form entry.
-class HomeShell extends ConsumerWidget {
+/// Drains the UPI inbox on startup (captures expenses added while closed).
+class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
+
+  @override
+  ConsumerState<HomeShell> createState() => _HomeShellState();
+}
+
+class _HomeShellState extends ConsumerState<HomeShell> {
+  @override
+  void initState() {
+    super.initState();
+    _drainInbox();
+  }
+
+  Future<void> _drainInbox() async {
+    try {
+      final repo = ref.read(transactionRepositoryProvider);
+      await drainCaptureInbox(inbox: await captureInboxFile(), repo: repo);
+    } catch (_) {
+      // Opportunistic; never block the shell on a capture failure.
+    }
+  }
 
   Future<void> _signOut(BuildContext context) async {
     await Supabase.instance.client.auth.signOut();
@@ -24,7 +46,7 @@ class HomeShell extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final transactions = ref.watch(transactionsProvider);
     final categories = ref.watch(categoriesProvider).value ?? const <Category>[];
 
@@ -36,6 +58,11 @@ class HomeShell extends ConsumerWidget {
             icon: const Icon(Icons.add_box_outlined),
             tooltip: 'Add expense',
             onPressed: () => context.push('/add'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.notifications_active_outlined),
+            tooltip: 'Auto-capture UPI payments',
+            onPressed: () => context.push('/enable-capture'),
           ),
           IconButton(
             icon: const Icon(Icons.logout),
