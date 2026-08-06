@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/categorizer.dart';
 import 'database.dart';
 
 /// Provider for the single shared [AppDatabase].
@@ -66,11 +67,18 @@ class TransactionRepository {
     );
     if (validation != null) throw TransactionValidationException(validation);
 
+    // Auto-categorize when the caller left it blank: known merchant → rule.
+    var resolvedCategory = categoryId;
+    resolvedCategory ??= categorize(
+      merchant: merchant,
+      rules: await _db.select(_db.rules).get(),
+    );
+
     final id = await _db.into(_db.transactions).insert(
           TransactionsCompanion.insert(
             amount: amount,
             merchant: merchant.trim(),
-            categoryId: Value(categoryId),
+            categoryId: Value(resolvedCategory),
             note: Value(note.trim().isEmpty ? null : note.trim()),
             paymentMethod: paymentMethod,
             upiRef: const Value(null),

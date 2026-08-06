@@ -69,6 +69,45 @@ void main() {
     );
   });
 
+  test('insertManual auto-categorizes known merchant from seeded rules', () async {
+    // Seed includes 'zomato' → Food; fetch that category's id.
+    final food = await (db.select(db.categories)..where((c) => c.name.equals('Food'))).getSingle();
+
+    final row = await repo.insertManual(
+      amount: 300,
+      merchant: 'ZOMATO-UB',
+      paymentMethod: 'upi',
+      txnDate: DateTime.now(),
+    );
+
+    expect(row.categoryId, food.id);
+  });
+
+  test('insertManual leaves unknown merchant uncategorized', () async {
+    final row = await repo.insertManual(
+      amount: 40,
+      merchant: 'Ravi Kirana Store',
+      paymentMethod: 'cash',
+      txnDate: DateTime.now(),
+    );
+
+    expect(row.categoryId, isNull);
+  });
+
+  test('explicit categoryId beats auto-categorize', () async {
+    final travel = await (db.select(db.categories)..where((c) => c.name.equals('Travel'))).getSingle();
+
+    final row = await repo.insertManual(
+      amount: 200,
+      merchant: 'Zomato',
+      categoryId: travel.id,
+      paymentMethod: 'upi',
+      txnDate: DateTime.now(),
+    );
+
+    expect(row.categoryId, travel.id);
+  });
+
   test('watchAll emits inserted rows newest-first', () async {
     await repo.insertManual(amount: 100, merchant: 'A', paymentMethod: 'upi', txnDate: DateTime(2026, 8, 1));
     await repo.insertManual(amount: 200, merchant: 'B', paymentMethod: 'upi', txnDate: DateTime(2026, 8, 2));
