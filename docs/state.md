@@ -23,7 +23,7 @@
 - [x] **Step 2.1** Manual entry + quick-add: full form (amount, merchant, category, note, payment method, date), quick-add dialog, transactions list + FAB, go_router wired.
 - [x] **Step 2.2** Rule-based categorization: `Categorizer` (normalize + fuzzy word-boundary match, learned > builtin), auto-categorize on insert. Pure Dart, tested.
 - [x] **Step 2.3** Notification capture: Kotlin `UpiNotificationListener` → JSONL inbox, Dart parser + dedupe by upi_ref, drain on startup, disclosure screen. Tests written.
-- [x] **CI** GitHub Actions (analyze + test on ubuntu-latest). Notification policy + edit/notes scope in design.md.
+- [x] **CI** GitHub Actions (analyze + test on ubuntu-latest). **Note:** repo has zero Actions runs (`total_count: 0`) — likely free-tier account needs payment method for Actions, or Actions blocked. Owner must check GitHub → Settings → Actions. `workflow_dispatch` added so a manual run is possible once enabled. Notification policy + edit/notes scope in design.md.
 
 ## In progress
 
@@ -33,3 +33,4 @@
 
 1. Step 3.1: Supabase sync (dirty-row queue, background upsert, pull on login, LWW by updated_at)
 2. Step 3.2: 9PM daily + Sunday weekly Hinglish notifications
+3. **Owner:** enable GitHub Actions (free tier may need payment method) so CI runs
