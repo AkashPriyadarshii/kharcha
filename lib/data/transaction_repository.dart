@@ -90,6 +90,49 @@ class TransactionRepository {
     return row;
   }
 
+  /// Returns true when a row already exists for [upiRef]. UPI refs are unique
+  /// per payment — the dedupe that keeps notification + manual (and later SMS)
+  /// from double-adding.
+  Future<bool> existsUpiRef(String upiRef) async {
+    final row = await (_db.select(_db.transactions)..where((t) => t.upiRef.equals(upiRef)))
+        .getSingleOrNull();
+    return row != null;
+  }
+
+  /// Inserts a notification-captured payment (source = notification).
+  /// Skips when [upiRef] is already stored — dedupe. Returns null when skipped.
+  Future<Transaction?> insertCaptured({
+    required double amount,
+    required String merchant,
+    String? upiRef,
+    required DateTime txnDate,
+  }) async {
+    final trimmedRef = upiRef?.trim();
+    if (trimmedRef != null && trimmedRef.isNotEmpty && await existsUpiRef(trimmedRef)) {
+      return null;
+    }
+
+    var categoryId = categorize(
+      merchant: merchant,
+      rules: await _db.select(_db.rules).get(),
+    );
+
+    final id = await _db.into(_db.transactions).insert(
+          TransactionsCompanion.insert(
+            amount: amount,
+            merchant: merchant.trim(),
+            categoryId: Value(categoryId),
+            note: const Value(null),
+            paymentMethod: 'upi',
+            upiRef: Value(trimmedRef),
+            source: 'notification',
+            txnDate: txnDate,
+          ),
+        );
+    final row = await (_db.select(_db.transactions)..where((t) => t.id.equals(id))).getSingle();
+    return row;
+  }
+
   static const paymentMethods = ['cash', 'upi', 'card', 'wallet'];
 }
 

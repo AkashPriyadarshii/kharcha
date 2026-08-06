@@ -4,7 +4,7 @@
 
 ## Current status
 
-**Phase: Phase 1 done, Phase 2 started.** 2.1 (manual entry) code merged. Test files written; `flutter test` blocked on Windows host by a Flutter tool bug (see `docs/troubleshooting.md`). Next: 2.2 rule-based categorization.
+**Phase: Phase 2 almost done.** 2.1 manual entry + 2.2 categorization + 2.3 notification capture code merged. `flutter analyze` clean; `flutter test` gated by CI (Linux) — blocked on Windows host by Flutter tool bug (see `docs/troubleshooting.md`). Next: 2.3 verify on device, then Phase 3 sync.
 
 ## Completed
 
@@ -20,13 +20,16 @@
 
 ## Completed
 
-- [x] **Step 2.1** Manual entry + quick-add: full form (amount, merchant, category, note, payment method, date), quick-add dialog, transactions list + FAB, go_router wired. Tests written. `flutter analyze` clean. Test run blocked on Windows by tool bug (docs/troubleshooting.md #1).
+- [x] **Step 2.1** Manual entry + quick-add: full form (amount, merchant, category, note, payment method, date), quick-add dialog, transactions list + FAB, go_router wired.
+- [x] **Step 2.2** Rule-based categorization: `Categorizer` (normalize + fuzzy word-boundary match, learned > builtin), auto-categorize on insert. Pure Dart, tested.
+- [x] **Step 2.3** Notification capture: Kotlin `UpiNotificationListener` → JSONL inbox, Dart parser + dedupe by upi_ref, drain on startup, disclosure screen. Tests written.
+- [x] **CI** GitHub Actions (analyze + test on ubuntu-latest). Notification policy + edit/notes scope in design.md.
 
 ## In progress
 
-- **Step 2.2** Rule-based categorization + merchant normalization
+- **Step 2.3** on-device verify (adb fake UPI notification → auto-add once; dup not re-added)
 
 ## Next up
 
-1. Step 2.2: `Categorizer` service — merchant string → normalize → rule match → category; learned rules override builtin
-2. Step 2.3: NotificationListenerService (Kotlin capture)
+1. Step 3.1: Supabase sync (dirty-row queue, background upsert, pull on login, LWW by updated_at)
+2. Step 3.2: 9PM daily + Sunday weekly Hinglish notifications

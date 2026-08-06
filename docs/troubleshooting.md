@@ -24,5 +24,6 @@ Also seen as `PathNotFoundException` (errno 2) after a `flutter clean`.
 1. Upgrade Flutter stable past 3.41.9 — check if the native-assets copy bug is fixed.
 2. `flutter test` against an Android device/emulator (integration path) — skips the Windows host dll copy.
 3. Investigate whether sqlite3's hook can be told to defer to `sqlite3_flutter_libs` (sqlite3 README: "hook options page": `doc/hook.md`).
+4. **Solved via CI:** `flutter test` runs on `ubuntu-latest` in GitHub Actions (`.github/workflows/ci.yml`) — Linux host doesn't hit the sqlite3 dll collision. CI is now the reliable test gate for every PR/push.
 
-**Status:** open. Tests for Step 2.1 are written (`test/transaction_repository_test.dart`, `test/validate_manual_transaction_test.dart`, `test/add_expense_flow_test.dart`) and pass logic-wise; the gate is blocked by this tool bug on Windows. Not a code failure — do not "fix" the tests to work around it.
+**Status:** mitigated (CI runs tests on Linux). Local `flutter test` on a Windows host still crashes until Flutter fixes the native-assets bug. Not a code failure — do not "fix" tests to work around it.

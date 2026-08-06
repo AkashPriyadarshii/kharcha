@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/config.dart';
 import 'screens/add_expense_screen.dart';
 import 'screens/auth_screen.dart';
+import 'screens/enable_capture_screen.dart';
 import 'screens/home_shell.dart';
 
 Future<void> main() async {
@@ -47,6 +48,7 @@ final _router = GoRouter(
     GoRoute(path: '/auth', builder: (context, state) => const AuthScreen()),
     GoRoute(path: '/', builder: (context, state) => const HomeShell()),
     GoRoute(path: '/add', builder: (context, state) => const AddExpenseScreen()),
+    GoRoute(path: '/enable-capture', builder: (context, state) => const EnableCaptureScreen()),
   ],
 );
 
