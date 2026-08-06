@@ -89,6 +89,7 @@ Apply to every line of code. These exist because this repo has a 2-person team a
 - **Naming.** camelCase functions/vars, PascalCase types/widgets, `is`/`has`/`can` for booleans, `UPPER_SNAKE_CASE` constants. Match surrounding code.
 - **Error handling.** No swallowed errors. No silent `catch {}`. Show a user-friendly message; log detail.
 - **File limits.** Functions < 50 lines, files < 800 lines. Split if exceeded.
+- **Tests with every change. MANDATORY.** Every feature, bug fix, or non-trivial logic change ships test file(s) in the same commit. No exceptions, no "tested manually." A change without tests is not done. `flutter test` is the gate.
 - **Readability first.** Descriptive names, self-documenting code over comments. Comments explain WHY, not WHAT.
 - **Immutability.** Never mutate existing objects/arrays — spread/copy then update. In Dart this means `copyWith` patterns, immutable models.
 - **No `any` / dynamic where avoidable.** Type everything. Prefer sealed classes / unions over stringly-typed values.
@@ -136,6 +137,7 @@ These are explicit product decisions. Do not "improve" them, do not "help" by ad
 ## Definition of done
 
 - [ ] Code matches the standards + ponytail method above
+- [ ] Test file(s) written for the change, covering the new logic
 - [ ] `flutter analyze` passes
 - [ ] `flutter test` passes
 - [ ] Manual smoke test on Android device/emulator
