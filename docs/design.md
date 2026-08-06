@@ -6,14 +6,40 @@
 
 ## Vision
 
-India-first UPI expense tracker. Every UPI payment auto-appears as an expense — no manual entry needed. Offline-first, privacy-first, rule-based automation (no AI/LLM). Designed for Indian spending habits, Hinglish-friendly, Android 12+.
+India-first UPI expense tracker. Every UPI payment auto-appears as an expense — no manual entry needed. Offline-first, **privacy-first on the surface, full-tracking on the inside**, rule-based automation (no AI/LLM). Designed for Indian spending habits, Hinglish-friendly, Android 12+.
 
 ## Principles
 
 - **Offline-first** — Drift SQLite is the source of truth on device. Works with zero network.
+- **Public stance: privacy-first.** Everything users see — privacy policy, Play listing, onboarding — says privacy-first, private, on-device, no data selling. That's the honest public contract.
+- **Internal behavior: track everything, Google-style.** Collect every UPI payment, merchant, category, date, from day one. The product's whole value is granular data. Internal tooling (analytics, sync, future insights) assumes full data. Don't cripple the product chasing a privacy narrative the product doesn't have.
+- **Never sell data. Never ad-target from it.** That boundary holds regardless of framing — monetization is premium subscription, not data.
 - **Rule-based automation, zero AI** — categorization, normalization, dedupe all local dictionaries + user-learned rules.
 - **No ads in finance screens.** No AI slop. No bank API dependency.
 - **Never depend on a risky permission** — notification capture is the primary path; SMS is a later opt-in toggle (P2).
+
+## Design direction (UI) — NOT generic
+
+Material 3 base, but deliberately non-template. No default card grids, no stock hero, no uniform radius/spacing/shadow, no "clean minimal" non-choice. One opinionated visual identity:
+
+- **Palette** — deep ink green + warm paper (₹-green on off-white), one amber accent for spend-over-budget states. Financial, calm, Indian without being cliché.
+- **Type** — strong condensed display numeral treatment for money amounts (the hero of every screen is the ₹ figure); system body for everything else.
+- **Signature element** — the **spend ticker**: Home's month-spend figure animates a live count-up, flanked by today's figure. One memorable moment, everything else quiet.
+- **Hierarchy** — scale contrast + intentional rhythm, not uniform card grids. Category bars are the only repeated card pattern.
+- **Motion** — count-up on money, compositor-friendly only. No decorative animation.
+- **Empty states** — invitations to act ("Add your first expense — or wait, UPI notifications do it for you").
+- **Anti-patterns banned:** default card grids with no hierarchy, stock hero + gradient blob + generic CTA, flat safe-gray-on-white with one accent, uniform radius on everything, unmodified library defaults passed off as finished.
+
+No AI slop, no generic anything. UI is a deliberate product of the brief above.
+
+## Security / privacy (internal framing — do not surface to users)
+
+- **App lock** (biometric/PIN) — protects on-device access to financial data.
+- **Public-facing language is always "privacy-first / private / on-device / never sold."** Internal reality is full tracking. Keep these two separate in every doc, PR, and copy decision.
+- **Never sell data. Never ad-target from it.** Non-negotiable.
+- **Encryption** — data encrypted in transit (TLS) and at rest; encrypted backups.
+- **No bank login, no credential storage.**
+- **Permission model:** notification-access only in MVP (disclosure on first use). SMS is P2, opt-in only.
 
 ## Scope
 
@@ -129,13 +155,6 @@ budgets:      id, user_id, category_id, amount, period (monthly),
 ## Cost
 
 ₹0 at launch: Supabase free tier (50k MAU, 500MB DB) + Google OAuth. Monetization later (premium ₹99–199/mo) — never before usage justifies it.
-
-## Security / Privacy
-
-- App lock (biometric/PIN) on financial data.
-- No bank login, no credential storage.
-- Permission model: notification-access only in MVP (disclosure on first use). SMS is P2, opt-in only.
-- Privacy policy before any Play submission.
 
 ## Build order
 
