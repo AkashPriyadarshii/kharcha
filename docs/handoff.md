@@ -24,3 +24,5 @@
 ## Log
 
 - **2026-08-06** — Repo created, docs written. No code. (Akash)
+- **2026-08-06** — Rule added: every commit updates necessary md files (state/prd/design/plan/handoff/changelog). Fresh sessions reload everything from md. (Akash)
+- **2026-08-06** — Google OAuth set up: Android client `com.kharcha.app` SHA1 `81:C9:...:44:AE`, Web client `kharcha-web` (ID `820021611320-...3sd`), Google provider enabled in Supabase. Pending: redirect URI `.../auth/v1/callback` in Web client's Authorized redirect URIs. Steps 1.1-1.3 done (scaffold, auth code, drift schema + seed + migration). Next: 2.1 manual entry. (Akash)

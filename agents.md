@@ -69,6 +69,20 @@ Rules: no unrequested abstractions, no boilerplate, no scaffolding "for later", 
 - [ ] PR reviewed + approved by other dev
 - [ ] `docs/state.md` updated
 
+## Docs must stay current — every commit
+
+**Every PR/commit that changes behavior updates the necessary md files in the same commit.** If an agent runs out of context, a fresh session reloads everything from the md files alone. Never skip doc updates for "small changes."
+
+- Behavior/feature/step done → `docs/state.md`
+- Scope/personas/features changed → `docs/prd.md`
+- Architecture/schema/stack/UI changed → `docs/design.md`
+- Build order changed → `docs/implementation-plan.md`
+- Gotchas/decisions → `docs/handoff.md`
+- Version change → `docs/changelog.md`
+- Team/rules changed → `CLAUDE.md` + `agents.md`
+
+If no md needs updating, say why in the PR. The md files are the source of truth for the next session.
+
 ## Stack (don't change without approval)
 
 Flutter · Riverpod · go_router · Drift (SQLite) · Supabase (Google Auth + Postgres) · fl_chart · flutter_local_notifications · local_auth · csv · intl

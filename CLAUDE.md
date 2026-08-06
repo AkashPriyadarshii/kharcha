@@ -142,6 +142,22 @@ These are explicit product decisions. Do not "improve" them, do not "help" by ad
 - [ ] PR reviewed and approved by the other dev
 - [ ] `docs/state.md` updated
 
+## Docs must stay current — every commit
+
+**Rule: every PR/commit that changes behavior updates the necessary md files in the same commit.** If an agent or dev gets context-exhausted mid-task, a fresh session must be able to reload everything from the md files alone.
+
+Required md updates per change:
+- **Behavior/feature/step complete** → `docs/state.md` (status, completed, next up)
+- **Scope, personas, features change** → `docs/prd.md`
+- **Architecture, schema, stack, UI direction change** → `docs/design.md`
+- **Build order / steps change** → `docs/implementation-plan.md`
+- **Handover context, gotchas, decisions** → `docs/handoff.md`
+- **Version-level change** → `docs/changelog.md`
+- **Team/roles/rules change** → `CLAUDE.md` + `agents.md`
+- **Any decision the next session must know** → `docs/handoff.md` log
+
+If a commit changes code but none of these md files need an update, say why in the PR description. Do not skip doc updates "because it's a small change." Small changes accumulate and the md files are the source of truth for the next session.
+
 ## Rule priority
 
 CLAUDE.md > user request > skill instructions. If a skill or agent says something different, this file wins. When in doubt, ask the other dev in the PR.
