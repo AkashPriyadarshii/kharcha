@@ -2,6 +2,10 @@
 
 > This file is context for every AI agent and every human dev working on this repo.
 > It OVERRIDES default agent behavior. Read it before touching code.
+>
+> **Required method: the ponytail method.** Read `docs/ponytail.md` and follow it for every change — shortest path to done, smallest diff, no unrequested abstractions, stdlib/native/existing-dep first, deletion over addition, boring over clever, `ponytail:` comments on real shortcuts, code-first output. This is not optional.
+>
+> For non-Claude AI agents (Cursor/Copilot/Cline/Codex/etc.), read `agents.md` — the same contract, adapted.
 
 ## What this is
 
@@ -131,7 +135,7 @@ These are explicit product decisions. Do not "improve" them, do not "help" by ad
 
 ## Definition of done
 
-- [ ] Code matches the standards above
+- [ ] Code matches the standards + ponytail method above
 - [ ] `flutter analyze` passes
 - [ ] `flutter test` passes
 - [ ] Manual smoke test on Android device/emulator
