@@ -45,6 +45,10 @@ class Transactions extends Table {
   TextColumn get source => text().withLength(min: 1, max: 16)(); // notification | manual | sms
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  /// True until the row is pushed to Supabase.
+  BoolColumn get dirty => boolean().withDefault(const Constant(true))();
+  /// Supabase row id once pushed; null while unsynced.
+  IntColumn get remoteId => integer().nullable()();
 }
 
 /// Budgets: per-category monthly limits + alert thresholds.
@@ -64,13 +68,20 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase({QueryExecutor? executor}) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
           await _seed();
+        },
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            // Existing rows default dirty = true → they push on first sync.
+            await m.addColumn(transactions, transactions.dirty);
+            await m.addColumn(transactions, transactions.remoteId);
+          }
         },
       );
 

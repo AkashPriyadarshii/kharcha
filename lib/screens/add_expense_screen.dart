@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../data/database.dart';
+import '../data/sync_engine.dart';
 import '../data/transaction_repository.dart';
 
 /// Full manual expense entry. Launched from the transactions list.
@@ -38,6 +41,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _saving = true);
+    final container = ProviderScope.containerOf(context);
     try {
       await ref.read(transactionRepositoryProvider).insertManual(
             amount: double.parse(_amount.text),
@@ -47,6 +51,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             paymentMethod: _paymentMethod,
             txnDate: _date,
           );
+      unawaited(syncIfSignedIn(container));
       if (!mounted) return;
       context.pop();
     } catch (e) {
