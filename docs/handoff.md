@@ -23,6 +23,7 @@
 
 ## Log
 
+- **2026-08-07** — **Step 3.1 + 3.2 merged (feat/supabase-sync).** Sync: dirty/remoteId on transactions (schema v2), SyncEngine push/pull, LWW by updated_at, 23505 conflict recovery, triggers on auth login + inbox drain + manual adds. Notifications: 9PM daily + Sunday weekly Hinglish summaries, channel + permission + device tz, re-scheduled each app open. **Known simplification:** summary push body is as-of-last-app-open, not fire-time — a background fill needs a foreground service/headless task (add when 9PM accuracy matters, `ponytail:` noted in `lib/data/notifications.dart`). `flutter analyze` clean; sync + notification tests pass; full `flutter test` still blocked on Windows host (sqlite3 native-assets, `docs/troubleshooting.md`). Next: on-device verify (2.3 + 3.1), then Phase 4. (Akash)
 - **2026-08-06** — Repo created, docs written. No code. (Akash)
 - **2026-08-06** — Rule added: every commit updates necessary md files (state/prd/design/plan/handoff/changelog). Fresh sessions reload everything from md. (Akash)
 - **2026-08-06** — Google OAuth set up: Android client `com.kharcha.app` SHA1 `81:C9:...:44:AE`, Web client `kharcha-web` (ID `820021611320-...3sd`), Google provider enabled in Supabase. Pending: redirect URI `.../auth/v1/callback` in Web client's Authorized redirect URIs. Steps 1.1-1.3 done (scaffold, auth code, drift schema + seed + migration). Next: 2.1 manual entry. (Akash)

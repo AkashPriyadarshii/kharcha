@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/categorizer.dart';
 import 'database.dart';
+import 'remote_transaction.dart';
 
 /// Provider for the single shared [AppDatabase].
 final databaseProvider = Provider<AppDatabase>((ref) => AppDatabase());
@@ -131,6 +132,154 @@ class TransactionRepository {
         );
     final row = await (_db.select(_db.transactions)..where((t) => t.id.equals(id))).getSingle();
     return row;
+  }
+
+  /// Total spent on [day] (local calendar day). 0 when none.
+  Future<double> dayTotal(DateTime day) {
+    final start = DateTime(day.year, day.month, day.day);
+    final end = start.add(const Duration(days: 1));
+    final sum = _db.transactions.amount.sum();
+    final query = _db.selectOnly(_db.transactions)
+      ..addColumns([sum])
+      ..where(_db.transactions.txnDate.isBiggerOrEqualValue(start) &
+          _db.transactions.txnDate.isSmallerThanValue(end));
+    return query.getSingle().then((row) => row.read(sum) ?? 0);
+  }
+
+  /// Number of uncategorized transactions on [day].
+  Future<int> dayUncategorizedCount(DateTime day) async {
+    final start = DateTime(day.year, day.month, day.day);
+    final end = start.add(const Duration(days: 1));
+    final rows = await (_db.select(_db.transactions)
+          ..where((t) =>
+              t.txnDate.isBiggerOrEqualValue(start) &
+              t.txnDate.isSmallerThanValue(end) &
+              t.categoryId.isNull()))
+        .get();
+    return rows.length;
+  }
+
+  /// Total spent in the 7 days up to and including [end]. 0 when none.
+  Future<double> weekTotal(DateTime end) {
+    final start = DateTime(end.year, end.month, end.day).subtract(const Duration(days: 6));
+    final endExclusive = start.add(const Duration(days: 7));
+    final sum = _db.transactions.amount.sum();
+    final query = _db.selectOnly(_db.transactions)
+      ..addColumns([sum])
+      ..where(_db.transactions.txnDate.isBiggerOrEqualValue(start) &
+          _db.transactions.txnDate.isSmallerThanValue(endExclusive));
+    return query.getSingle().then((row) => row.read(sum) ?? 0);
+  }
+
+  /// Top [n] categories by spend in the 7 days up to and including [end].
+  /// Uncategorized transactions are excluded (no category to name).
+  Future<List<(String name, double amount)>> topCategories(DateTime end, {int n = 3}) async {
+    final start = DateTime(end.year, end.month, end.day).subtract(const Duration(days: 6));
+    final endExclusive = start.add(const Duration(days: 7));
+    final rows = _db.select(_db.transactions).join([
+      innerJoin(_db.categories, _db.categories.id.equalsExp(_db.transactions.categoryId)),
+    ])
+      ..where(_db.transactions.txnDate.isBiggerOrEqualValue(start) &
+          _db.transactions.txnDate.isSmallerThanValue(endExclusive));
+    final perCategory = <String, double>{};
+    for (final r in await rows.get()) {
+      final name = r.readTable(_db.categories).name;
+      perCategory[name] = (perCategory[name] ?? 0) + r.readTable(_db.transactions).amount;
+    }
+    final ranked = perCategory.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    return ranked.take(n).map((e) => (e.key, e.value)).toList();
+  }
+
+  /// Rows waiting to be pushed to Supabase.
+  Future<List<Transaction>> dirtyRows() {
+    return (_db.select(_db.transactions)..where((t) => t.dirty.equals(true))).get();
+  }
+
+  /// Records that [id] now lives remotely as [remoteId]. [dirty] stays true
+  /// when the local row is newer than what's on the remote — the next push
+  /// overwrites it (update by id) and converges.
+  Future<void> markSynced(int id, int remoteId, {bool dirty = false}) {
+    return (_db.update(_db.transactions)..where((t) => t.id.equals(id))).write(
+      TransactionsCompanion(remoteId: Value(remoteId), dirty: Value(dirty)),
+    );
+  }
+
+  Future<Transaction?> findByRemoteId(int remoteId) {
+    return (_db.select(_db.transactions)..where((t) => t.remoteId.equals(remoteId)))
+        .getSingleOrNull();
+  }
+
+  Future<Transaction?> findByUpiRef(String upiRef) {
+    return (_db.select(_db.transactions)..where((t) => t.upiRef.equals(upiRef)))
+        .getSingleOrNull();
+  }
+
+  /// Pull-side merge. Returns the winning local row.
+  ///
+  /// Identity: remote row id first, else same upi_ref. Then LWW by
+  /// [localWins] — local newer stays dirty (next push converges the remote),
+  /// remote newer overwrites local and clears dirty.
+  Future<Transaction> applyRemote(RemoteTransaction r) async {
+    final byRemoteId = await findByRemoteId(r.id!);
+    if (byRemoteId != null) return _merge(byRemoteId, r);
+
+    if (r.upiRef != null) {
+      final byUpi = await findByUpiRef(r.upiRef!);
+      if (byUpi != null) return _merge(byUpi, r);
+    }
+
+    return _insertFromRemote(r);
+  }
+
+  Future<Transaction> _merge(Transaction local, RemoteTransaction r) async {
+    if (localWins(local.updatedAt, r.updatedAt)) {
+      // Local is newer/equal. Claim the remote id so a duplicate is never
+      // inserted, but stay dirty so the next push overwrites the remote copy.
+      await markSynced(local.id, r.id!, dirty: true);
+      return local;
+    }
+    // Remote is newer → local copy is stale; overwrite and sync clean.
+    await (_db.update(_db.transactions)..where((t) => t.id.equals(local.id))).write(
+      TransactionsCompanion(
+        amount: Value(r.amount),
+        merchant: Value(r.merchant),
+        txnDate: Value(r.txnDate),
+        note: Value(r.note),
+        paymentMethod: Value(r.paymentMethod),
+        upiRef: Value(r.upiRef),
+        source: Value(r.source),
+        updatedAt: Value(r.updatedAt),
+        remoteId: Value(r.id),
+        dirty: const Value(false),
+      ),
+    );
+    return (_db.select(_db.transactions)..where((t) => t.id.equals(local.id))).getSingle();
+  }
+
+  /// A remote row we've never seen → insert a local copy. Categorization is
+  /// derived locally from rules (the remote stores no per-user category id).
+  Future<Transaction> _insertFromRemote(RemoteTransaction r) async {
+    final categoryId = categorize(
+      merchant: r.merchant,
+      rules: await _db.select(_db.rules).get(),
+    );
+    final id = await _db.into(_db.transactions).insert(
+          TransactionsCompanion.insert(
+            amount: r.amount,
+            merchant: r.merchant,
+            categoryId: Value(categoryId),
+            note: Value(r.note),
+            paymentMethod: r.paymentMethod,
+            upiRef: Value(r.upiRef),
+            source: r.source,
+            txnDate: r.txnDate,
+            updatedAt: Value(r.updatedAt),
+            dirty: const Value(false),
+            remoteId: Value(r.id),
+          ),
+        );
+    return (_db.select(_db.transactions)..where((t) => t.id.equals(id))).getSingle();
   }
 
   static const paymentMethods = ['cash', 'upi', 'card', 'wallet'];

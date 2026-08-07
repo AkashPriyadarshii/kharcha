@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/sync_engine.dart';
 import '../data/transaction_repository.dart';
 
 /// Minimal expense entry — amount + optional merchant. < 2s. Same insert path
@@ -30,6 +33,7 @@ class _QuickAddDialogState extends ConsumerState<QuickAddDialog> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _saving = true);
+    final container = ProviderScope.containerOf(context);
     try {
       await ref.read(transactionRepositoryProvider).insertManual(
             amount: double.parse(_amount.text),
@@ -37,6 +41,7 @@ class _QuickAddDialogState extends ConsumerState<QuickAddDialog> {
             paymentMethod: 'upi',
             txnDate: DateTime.now(),
           );
+      unawaited(syncIfSignedIn(container));
       if (!mounted) return;
       Navigator.of(context).pop();
     } catch (e) {

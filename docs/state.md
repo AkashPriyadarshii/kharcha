@@ -4,7 +4,7 @@
 
 ## Current status
 
-**Phase: Phase 2 almost done.** 2.1 manual entry + 2.2 categorization + 2.3 notification capture code merged. `flutter analyze` clean; `flutter test` gated by CI (Linux) — blocked on Windows host by Flutter tool bug (see `docs/troubleshooting.md`). Next: 2.3 verify on device, then Phase 3 sync.
+**Phase: Phase 3 in progress.** 3.1 Supabase sync + 3.2 notifications code merged. `flutter analyze` clean; `flutter test` blocked on Windows host by sqlite3 native-assets bug (see `docs/troubleshooting.md`), targeted suites pass. Next: 2.3/3.1 on-device verify, then Phase 4 screens.
 
 ## Completed
 
@@ -24,12 +24,15 @@
 - [x] **Step 2.2** Rule-based categorization: `Categorizer` (normalize + fuzzy word-boundary match, learned > builtin), auto-categorize on insert. Pure Dart, tested.
 - [x] **Step 2.3** Notification capture: Kotlin `UpiNotificationListener` → JSONL inbox, Dart parser + dedupe by upi_ref, drain on startup, disclosure screen. Tests written.
 - [x] Notification policy + edit/notes scope recorded in design.md.
+- [x] **Step 3.1** Supabase sync: `dirty` + `remoteId` columns (schema v2), SyncEngine (push dirty → upsert, pull on login, LWW by updated_at), 23505 upi_ref conflict handling, triggers on auth + drain + manual adds. Tests.
+- [x] **Step 3.2** Daily 9PM + Sunday weekly Hinglish summaries: `Notifications` service, channel + permission + tz, re-scheduled each app open with as-of-last-open data (see `docs/handoff.md`). Tests.
 
 ## In progress
 
-- **Step 2.3** on-device verify (adb fake UPI notification → auto-add once; dup not re-added)
+- **Step 3.1/3.2** on-device verify (add offline → sync when online; daily 9PM + Sunday weekly push)
 
 ## Next up
 
-1. Step 3.1: Supabase sync (dirty-row queue, background upsert, pull on login, LWW by updated_at)
-2. Step 3.2: 9PM daily + Sunday weekly Hinglish notifications
+1. Step 2.3 verify on device (adb fake UPI notification → auto-add once; dup not re-added)
+2. Step 4.1: Home dashboard — today ₹, this month ₹, budget left, category bars
+3. Step 4.2: Transactions tab — list, search, filters

@@ -1168,6 +1168,30 @@ class $TransactionsTable extends Transactions
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _dirtyMeta = const VerificationMeta('dirty');
+  @override
+  late final GeneratedColumn<bool> dirty = GeneratedColumn<bool>(
+    'dirty',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("dirty" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _remoteIdMeta = const VerificationMeta(
+    'remoteId',
+  );
+  @override
+  late final GeneratedColumn<int> remoteId = GeneratedColumn<int>(
+    'remote_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1181,6 +1205,8 @@ class $TransactionsTable extends Transactions
     source,
     createdAt,
     updatedAt,
+    dirty,
+    remoteId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1270,6 +1296,18 @@ class $TransactionsTable extends Transactions
         updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
       );
     }
+    if (data.containsKey('dirty')) {
+      context.handle(
+        _dirtyMeta,
+        dirty.isAcceptableOrUnknown(data['dirty']!, _dirtyMeta),
+      );
+    }
+    if (data.containsKey('remote_id')) {
+      context.handle(
+        _remoteIdMeta,
+        remoteId.isAcceptableOrUnknown(data['remote_id']!, _remoteIdMeta),
+      );
+    }
     return context;
   }
 
@@ -1323,6 +1361,14 @@ class $TransactionsTable extends Transactions
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
       )!,
+      dirty: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}dirty'],
+      )!,
+      remoteId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}remote_id'],
+      ),
     );
   }
 
@@ -1344,6 +1390,12 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   final String source;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  /// True until the row is pushed to Supabase.
+  final bool dirty;
+
+  /// Supabase row id once pushed; null while unsynced.
+  final int? remoteId;
   const Transaction({
     required this.id,
     required this.amount,
@@ -1356,6 +1408,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     required this.source,
     required this.createdAt,
     required this.updatedAt,
+    required this.dirty,
+    this.remoteId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1377,6 +1431,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     map['source'] = Variable<String>(source);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['dirty'] = Variable<bool>(dirty);
+    if (!nullToAbsent || remoteId != null) {
+      map['remote_id'] = Variable<int>(remoteId);
+    }
     return map;
   }
 
@@ -1397,6 +1455,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       source: Value(source),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
+      dirty: Value(dirty),
+      remoteId: remoteId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remoteId),
     );
   }
 
@@ -1417,6 +1479,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       source: serializer.fromJson<String>(json['source']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      dirty: serializer.fromJson<bool>(json['dirty']),
+      remoteId: serializer.fromJson<int?>(json['remoteId']),
     );
   }
   @override
@@ -1434,6 +1498,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       'source': serializer.toJson<String>(source),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'dirty': serializer.toJson<bool>(dirty),
+      'remoteId': serializer.toJson<int?>(remoteId),
     };
   }
 
@@ -1449,6 +1515,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     String? source,
     DateTime? createdAt,
     DateTime? updatedAt,
+    bool? dirty,
+    Value<int?> remoteId = const Value.absent(),
   }) => Transaction(
     id: id ?? this.id,
     amount: amount ?? this.amount,
@@ -1461,6 +1529,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     source: source ?? this.source,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
+    dirty: dirty ?? this.dirty,
+    remoteId: remoteId.present ? remoteId.value : this.remoteId,
   );
   Transaction copyWithCompanion(TransactionsCompanion data) {
     return Transaction(
@@ -1479,6 +1549,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       source: data.source.present ? data.source.value : this.source,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      dirty: data.dirty.present ? data.dirty.value : this.dirty,
+      remoteId: data.remoteId.present ? data.remoteId.value : this.remoteId,
     );
   }
 
@@ -1495,7 +1567,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ..write('upiRef: $upiRef, ')
           ..write('source: $source, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('dirty: $dirty, ')
+          ..write('remoteId: $remoteId')
           ..write(')'))
         .toString();
   }
@@ -1513,6 +1587,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     source,
     createdAt,
     updatedAt,
+    dirty,
+    remoteId,
   );
   @override
   bool operator ==(Object other) =>
@@ -1528,7 +1604,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           other.upiRef == this.upiRef &&
           other.source == this.source &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.dirty == this.dirty &&
+          other.remoteId == this.remoteId);
 }
 
 class TransactionsCompanion extends UpdateCompanion<Transaction> {
@@ -1543,6 +1621,8 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<String> source;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<bool> dirty;
+  final Value<int?> remoteId;
   const TransactionsCompanion({
     this.id = const Value.absent(),
     this.amount = const Value.absent(),
@@ -1555,6 +1635,8 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.source = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.dirty = const Value.absent(),
+    this.remoteId = const Value.absent(),
   });
   TransactionsCompanion.insert({
     this.id = const Value.absent(),
@@ -1568,6 +1650,8 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     required String source,
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.dirty = const Value.absent(),
+    this.remoteId = const Value.absent(),
   }) : amount = Value(amount),
        merchant = Value(merchant),
        txnDate = Value(txnDate),
@@ -1585,6 +1669,8 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Expression<String>? source,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<bool>? dirty,
+    Expression<int>? remoteId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1598,6 +1684,8 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       if (source != null) 'source': source,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (dirty != null) 'dirty': dirty,
+      if (remoteId != null) 'remote_id': remoteId,
     });
   }
 
@@ -1613,6 +1701,8 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Value<String>? source,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
+    Value<bool>? dirty,
+    Value<int?>? remoteId,
   }) {
     return TransactionsCompanion(
       id: id ?? this.id,
@@ -1626,6 +1716,8 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       source: source ?? this.source,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      dirty: dirty ?? this.dirty,
+      remoteId: remoteId ?? this.remoteId,
     );
   }
 
@@ -1665,6 +1757,12 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (dirty.present) {
+      map['dirty'] = Variable<bool>(dirty.value);
+    }
+    if (remoteId.present) {
+      map['remote_id'] = Variable<int>(remoteId.value);
+    }
     return map;
   }
 
@@ -1681,7 +1779,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           ..write('upiRef: $upiRef, ')
           ..write('source: $source, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('dirty: $dirty, ')
+          ..write('remoteId: $remoteId')
           ..write(')'))
         .toString();
   }
@@ -3369,6 +3469,8 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       required String source,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<bool> dirty,
+      Value<int?> remoteId,
     });
 typedef $$TransactionsTableUpdateCompanionBuilder =
     TransactionsCompanion Function({
@@ -3383,6 +3485,8 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<String> source,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<bool> dirty,
+      Value<int?> remoteId,
     });
 
 final class $$TransactionsTableReferences
@@ -3463,6 +3567,16 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get dirty => $composableBuilder(
+    column: $table.dirty,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get remoteId => $composableBuilder(
+    column: $table.remoteId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3549,6 +3663,16 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get dirty => $composableBuilder(
+    column: $table.dirty,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get remoteId => $composableBuilder(
+    column: $table.remoteId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$CategoriesTableOrderingComposer get categoryId {
     final $$CategoriesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -3614,6 +3738,12 @@ class $$TransactionsTableAnnotationComposer
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 
+  GeneratedColumn<bool> get dirty =>
+      $composableBuilder(column: $table.dirty, builder: (column) => column);
+
+  GeneratedColumn<int> get remoteId =>
+      $composableBuilder(column: $table.remoteId, builder: (column) => column);
+
   $$CategoriesTableAnnotationComposer get categoryId {
     final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -3677,6 +3807,8 @@ class $$TransactionsTableTableManager
                 Value<String> source = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> dirty = const Value.absent(),
+                Value<int?> remoteId = const Value.absent(),
               }) => TransactionsCompanion(
                 id: id,
                 amount: amount,
@@ -3689,6 +3821,8 @@ class $$TransactionsTableTableManager
                 source: source,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                dirty: dirty,
+                remoteId: remoteId,
               ),
           createCompanionCallback:
               ({
@@ -3703,6 +3837,8 @@ class $$TransactionsTableTableManager
                 required String source,
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> dirty = const Value.absent(),
+                Value<int?> remoteId = const Value.absent(),
               }) => TransactionsCompanion.insert(
                 id: id,
                 amount: amount,
@@ -3715,6 +3851,8 @@ class $$TransactionsTableTableManager
                 source: source,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                dirty: dirty,
+                remoteId: remoteId,
               ),
           withReferenceMapper: (p0) => p0
               .map(

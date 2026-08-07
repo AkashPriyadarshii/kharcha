@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../data/capture_inbox.dart';
 import '../data/database.dart';
+import '../data/sync_engine.dart';
 import '../data/transaction_repository.dart';
 import 'quick_add_dialog.dart';
 
@@ -15,7 +16,11 @@ final _dateFormat = DateFormat('d MMM');
 /// Main shell: transactions list + FAB (quick-add) + full-form entry.
 /// Drains the UPI inbox on startup (captures expenses added while closed).
 class HomeShell extends ConsumerStatefulWidget {
-  const HomeShell({super.key});
+  const HomeShell({super.key, required this.container});
+
+  /// The app-level Riverpod container (the shell is not under a default
+  /// ProviderScope, so sync uses this one to read providers).
+  final ProviderContainer container;
 
   @override
   ConsumerState<HomeShell> createState() => _HomeShellState();
@@ -32,6 +37,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     try {
       final repo = ref.read(transactionRepositoryProvider);
       await drainCaptureInbox(inbox: await captureInboxFile(), repo: repo);
+      // Newly captured expenses are dirty → flush them to Supabase.
+      await syncIfSignedIn(widget.container);
     } catch (_) {
       // Opportunistic; never block the shell on a capture failure.
     }
