@@ -1,20 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../data/capture_inbox.dart';
-import '../data/database.dart';
 import '../data/sync_engine.dart';
 import '../data/transaction_repository.dart';
 import 'quick_add_dialog.dart';
+import 'tabs/budget_tab.dart';
+import 'tabs/home_tab.dart';
+import 'tabs/transactions_tab.dart';
 
-final _currency = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
-final _dateFormat = DateFormat('d MMM');
-
-/// Main shell: transactions list + FAB (quick-add) + full-form entry.
-/// Drains the UPI inbox on startup (captures expenses added while closed).
+/// Main shell: tabbed navigation (Home / Transactions / Budget). Drains the
+/// UPI inbox on startup (captures expenses added while closed) and syncs.
+/// Reports (4.3) and Profile (4.5) land in later steps — no placeholder tabs.
 class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key, required this.container});
 
@@ -27,6 +26,8 @@ class HomeShell extends ConsumerStatefulWidget {
 }
 
 class _HomeShellState extends ConsumerState<HomeShell> {
+  int _index = 0;
+
   @override
   void initState() {
     super.initState();
@@ -54,9 +55,6 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    final transactions = ref.watch(transactionsProvider);
-    final categories = ref.watch(categoriesProvider).value ?? const <Category>[];
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Kharcha'),
@@ -83,97 +81,22 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         icon: const Icon(Icons.add),
         label: const Text('Quick add'),
       ),
-      body: transactions.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Could not load expenses.\n$e')),
-        data: (list) => list.isEmpty ? _EmptyState(onAdd: () => _quickAdd(context)) : _TransactionList(
-              transactions: list,
-              categories: categories,
-            ),
+      body: IndexedStack(
+        index: _index,
+        children: const [
+          HomeTab(),
+          TransactionsTab(),
+          BudgetTab(),
+        ],
       ),
-    );
-  }
-}
-
-class _TransactionList extends StatelessWidget {
-  const _TransactionList({required this.transactions, required this.categories});
-
-  final List<Transaction> transactions;
-  final List<Category> categories;
-
-  Category? _categoryFor(int? id) {
-    for (final c in categories) {
-      if (c.id == id) return c;
-    }
-    return null;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.only(bottom: 96),
-      itemCount: transactions.length,
-      itemBuilder: (context, i) {
-        final t = transactions[i];
-        final cat = _categoryFor(t.categoryId);
-        return ListTile(
-          leading: CircleAvatar(
-            backgroundColor: Color(int.parse('FF${cat?.color ?? '8D99AE'}', radix: 16)),
-            child: Text(cat?.emoji ?? '📦'),
-          ),
-          title: Text(t.merchant),
-          subtitle: Text(
-            [
-              if (cat != null) cat.name,
-              t.note ?? '',
-              _dateFormat.format(t.txnDate),
-            ].where((s) => s.isNotEmpty).join(' · '),
-          ),
-          trailing: Text(
-            _currency.format(t.amount),
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                  fontWeight: FontWeight.w600,
-                ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.onAdd});
-
-  final VoidCallback onAdd;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('💸', style: TextStyle(fontSize: 48)),
-            const SizedBox(height: 16),
-            Text(
-              'No expenses yet.',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Add your first one — or wait, UPI notifications will do it for you.',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: onAdd,
-              icon: const Icon(Icons.add),
-              label: const Text('Add expense'),
-            ),
-          ],
-        ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _index,
+        onDestinationSelected: (i) => setState(() => _index = i),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
+          NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Transactions'),
+          NavigationDestination(icon: Icon(Icons.savings_outlined), selectedIcon: Icon(Icons.savings), label: 'Budget'),
+        ],
       ),
     );
   }
