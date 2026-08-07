@@ -23,6 +23,16 @@ final categoriesProvider = StreamProvider<List<Category>>(
   (ref) => ref.watch(transactionRepositoryProvider).watchCategories(),
 );
 
+/// This month's spend per category, largest first.
+final monthSpendProvider = FutureProvider<List<(Category, double)>>(
+  (ref) => ref.watch(transactionRepositoryProvider).monthSpendByCategory(DateTime.now()),
+);
+
+/// Budgets joined with their categories.
+final budgetsProvider = StreamProvider<List<(Budget, Category)>>(
+  (ref) => ref.watch(transactionRepositoryProvider).watchBudgets(),
+);
+
 /// Throws when a manual transaction is invalid. Message is user-facing.
 class TransactionValidationException implements Exception {
   TransactionValidationException(this.message);
@@ -189,6 +199,80 @@ class TransactionRepository {
     final ranked = perCategory.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
     return ranked.take(n).map((e) => (e.key, e.value)).toList();
+  }
+
+  /// Total spent in [month] (local).
+  Future<double> monthTotal(DateTime month) {
+    final start = DateTime(month.year, month.month, 1);
+    final end = DateTime(month.year, month.month + 1, 1);
+    final sum = _db.transactions.amount.sum();
+    final q = _db.selectOnly(_db.transactions)
+      ..addColumns([sum])
+      ..where(_db.transactions.txnDate.isBiggerOrEqualValue(start) &
+          _db.transactions.txnDate.isSmallerThanValue(end));
+    return q.getSingle().then((row) => row.read(sum) ?? 0);
+  }
+
+  /// Spend per category in [month], largest first. Uncategorized excluded.
+  Future<List<(Category, double)>> monthSpendByCategory(DateTime month) async {
+    final start = DateTime(month.year, month.month, 1);
+    final end = DateTime(month.year, month.month + 1, 1);
+    final rows = _db.select(_db.transactions).join([
+      innerJoin(_db.categories, _db.categories.id.equalsExp(_db.transactions.categoryId)),
+    ])
+      ..where(_db.transactions.txnDate.isBiggerOrEqualValue(start) &
+          _db.transactions.txnDate.isSmallerThanValue(end));
+    final per = <int, (Category, double)>{};
+    for (final r in await rows.get()) {
+      final cat = r.readTable(_db.categories);
+      final amount = r.readTable(_db.transactions).amount;
+      per.update(cat.id, (v) => (v.$1, v.$2 + amount), ifAbsent: () => (cat, amount));
+    }
+    final list = per.values.toList()..sort((a, b) => b.$2.compareTo(a.$2));
+    return list;
+  }
+
+  /// Budgets joined with their category.
+  Stream<List<(Budget, Category)>> watchBudgets() {
+    final q = _db.select(_db.budgets).join([
+      innerJoin(_db.categories, _db.categories.id.equalsExp(_db.budgets.categoryId)),
+    ]);
+    return q.watch().map((rows) => [
+          for (final r in rows) (r.readTable(_db.budgets), r.readTable(_db.categories)),
+        ]);
+  }
+
+  /// Creates or updates the monthly budget for [categoryId].
+  Future<void> upsertBudget({required int categoryId, required double amount}) async {
+    final existing = await (_db.select(_db.budgets)..where((b) => b.categoryId.equals(categoryId)))
+        .getSingleOrNull();
+    if (existing == null) {
+      await _db.into(_db.budgets).insert(BudgetsCompanion.insert(
+        categoryId: categoryId,
+        amount: amount,
+        period: 'monthly',
+      ));
+    } else {
+      await (_db.update(_db.budgets)..where((b) => b.id.equals(existing.id)))
+          .write(BudgetsCompanion(amount: Value(amount)));
+    }
+  }
+
+  Future<void> deleteBudget(int id) {
+    return (_db.delete(_db.budgets)..where((b) => b.id.equals(id))).go();
+  }
+
+  /// All transactions newest-first, with their category name (null when
+  /// uncategorized) — for exports.
+  Future<List<(Transaction, String?)>> allTransactions() async {
+    final rows = _db.select(_db.transactions).join([
+      leftOuterJoin(_db.categories, _db.categories.id.equalsExp(_db.transactions.categoryId)),
+    ])
+      ..orderBy([OrderingTerm.desc(_db.transactions.txnDate), OrderingTerm.desc(_db.transactions.id)]);
+    return (await rows.get()).map((r) {
+      final cat = r.readTableOrNull(_db.categories);
+      return (r.readTable(_db.transactions), cat?.name);
+    }).toList();
   }
 
   /// Rows waiting to be pushed to Supabase.
