@@ -2,6 +2,17 @@
 
 All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
 
+## [unreleased]
+
+- **Transactions edit/delete (v0.2.1)** — every transaction now has edit (reuses the add form, prefilled) and delete (confirm dialog) via the transactions tab. Deletes are sync-correct: a new `deleted_transactions` tombstone table (schema v8) records remote rows for deletion, pushed as a DELETE before pulls, so a deleted expense never resurrects from Supabase. Update marks the row dirty and overwrites on push.
+- **UX audit pass** — categories grouped into expense/income sections; wallets tap no longer silently deletes (rename-only via edit); subscriptions gain delete-with-confirm + actionable empty state; debts/objectives deletes confirmed; transactions list shows income with a glyph badge (not color-only).
+
+## [unreleased] — Windows debug support
+
+- **Windows desktop scaffold** — `flutter create --platforms=windows .` (new `windows/` platform dir; no Android files touched).
+- **Android-only calls degrade safely on Windows** — capture MethodChannel / notification channel invokes already wrapped in try/catch (snackbar on failure); onboarding is skipped on non-Android (it is Android capture setup only); the home AppBar capture icon hides on non-Android. App lock (`local_auth_windows`, Windows Hello) and local notifications still init on Windows.
+- **CI: Windows exe release** — on push to main, build `flutter build windows --release` and create/overwrite a `v<pubspec version>` GitHub release with the exe (replaces the arm64-APK CI, matching the release pipeline to the Windows debug target).
+
 ## [v0.2.0] — 2026-08-08
 
 - **Income support** (Cashew port) — transactions + categories carry `is_income`; income/expense toggle on quick-add + full add forms (green income, red expense); built-in income categories (Salary, Bonus, Gift, Other income); home hero shows green "Income this month" + red spend, recent tiles colored; transactions tab income/expense filter; spend/budget/trend aggregates exclude income; sync + export (`type` column) + import round-trip. Schema v6 → v7, Supabase `is_income` columns.
