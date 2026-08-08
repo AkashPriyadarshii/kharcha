@@ -25,6 +25,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   final _note = TextEditingController();
 
   int? _categoryId;
+  int? _walletId;
   String _paymentMethod = 'upi';
   DateTime _date = DateTime.now();
   bool _saving = false;
@@ -47,6 +48,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             amount: double.parse(_amount.text),
             merchant: _merchant.text,
             categoryId: _categoryId,
+            walletId: _walletId,
             note: _note.text,
             paymentMethod: _paymentMethod,
             txnDate: _date,
@@ -65,6 +67,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   @override
   Widget build(BuildContext context) {
     final categories = ref.watch(categoriesProvider).value ?? const <Category>[];
+    final wallets = ref.watch(walletsProvider).value ?? const <Wallet>[];
 
     return Scaffold(
       appBar: AppBar(
@@ -120,6 +123,17 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                   DropdownMenuItem(value: c.id, child: Text('${c.emoji}  ${c.name}')),
               ],
               onChanged: (value) => setState(() => _categoryId = value),
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<int?>(
+              decoration: const InputDecoration(labelText: 'Wallet'),
+              hint: const Text('No wallet'),
+              initialValue: _walletId,
+              items: [
+                for (final w in wallets)
+                  DropdownMenuItem(value: w.id, child: Text(w.name)),
+              ],
+              onChanged: (value) => setState(() => _walletId = value),
             ),
             const SizedBox(height: 16),
             SegmentedButton<String>(

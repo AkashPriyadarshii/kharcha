@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/theme.dart';
 import '../../data/database.dart';
 import '../../data/transaction_repository.dart';
 import 'home_tab.dart' show categoryColor;
@@ -19,9 +20,9 @@ class ReportsTab extends ConsumerWidget {
     final trend = ref.watch(monthlyTrendProvider);
     final merchants = ref.watch(merchantRankingProvider);
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       children: [
-        Text('This month by category', style: Theme.of(context).textTheme.titleMedium),
+        const SectionTitle('This month by category'),
         const SizedBox(height: 8),
         if (month.value == null)
           const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()))
@@ -30,14 +31,14 @@ class ReportsTab extends ConsumerWidget {
         else
           _CategoryPie(categories: month.value!),
         const SizedBox(height: 24),
-        Text('Monthly trend', style: Theme.of(context).textTheme.titleMedium),
+        const SectionTitle('Monthly trend'),
         const SizedBox(height: 8),
         if (trend.value == null)
           const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()))
         else
           _MonthlyTrendLine(trend: trend.value!),
         const SizedBox(height: 24),
-        Text('Top merchants', style: Theme.of(context).textTheme.titleMedium),
+        const SectionTitle('Top merchants'),
         const SizedBox(height: 8),
         if (merchants.value == null)
           const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()))
