@@ -9,6 +9,7 @@ import '../data/transaction_repository.dart';
 import 'quick_add_dialog.dart';
 import 'tabs/budget_tab.dart';
 import 'tabs/home_tab.dart';
+import 'tabs/profile_tab.dart';
 import 'tabs/reports_tab.dart';
 import 'tabs/transactions_tab.dart';
 
@@ -89,6 +90,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           TransactionsTab(),
           BudgetTab(),
           ReportsTab(),
+          ProfileTab(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -99,6 +101,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Transactions'),
           NavigationDestination(icon: Icon(Icons.savings_outlined), selectedIcon: Icon(Icons.savings), label: 'Budget'),
           NavigationDestination(icon: Icon(Icons.pie_chart_outline), selectedIcon: Icon(Icons.pie_chart), label: 'Reports'),
+          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
     );
