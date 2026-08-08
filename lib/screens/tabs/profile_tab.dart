@@ -132,7 +132,10 @@ class ProfileTab extends ConsumerWidget {
 
   Future<void> _export(BuildContext context, WidgetRef ref, {required bool csv}) async {
     try {
-      final dir = await getApplicationDocumentsDirectory();
+      // Always land in the user's Downloads folder (Android scoped storage
+      // gives it without any permission on API 29+).
+      final dir = await getDownloadsDirectory() ??
+          await getApplicationDocumentsDirectory();
       final stamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
       final file = await (csv
           ? Exporter(ref.read(transactionRepositoryProvider)).exportCsv(dir, 'kharcha_$stamp.csv')
