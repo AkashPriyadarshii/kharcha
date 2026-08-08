@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +11,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'core/app_lock.dart';
 import 'core/config.dart';
 import 'core/theme.dart';
+import 'data/database.dart';
 import 'data/notifications.dart';
 import 'data/sync_engine.dart';
 import 'data/transaction_repository.dart';
@@ -31,6 +33,9 @@ Future<void> main() async {
   await Supabase.initialize(url: SupabaseConfig.url, publishableKey: SupabaseConfig.anonKey);
   await _container.read(appLockControllerProvider.notifier).load();
   onboardingDone.value = await (await OnboardingStore.create()).isDone();
+  // Onboarding is the Android capture setup (notification access, battery
+  // exemption). Nothing to set up on desktop — skip straight to the shell.
+  if (!Platform.isAndroid) onboardingDone.value = true;
   // Pull + push whenever a session appears (login / app resume with a session).
   Supabase.instance.client.auth.onAuthStateChange.listen((state) {
     if (state.session != null) {
@@ -160,7 +165,11 @@ final _router = GoRouter(
     GoRoute(path: '/terms', builder: (context, state) => const TermsScreen()),
     GoRoute(path: '/onboarding', builder: (context, state) => const OnboardingScreen()),
     GoRoute(path: '/', builder: (context, state) => HomeShell(container: _container)),
-    GoRoute(path: '/add', builder: (context, state) => const AddExpenseScreen()),
+    GoRoute(
+      path: '/add',
+      builder: (context, state) =>
+          AddExpenseScreen(transaction: state.extra as Transaction?),
+    ),
     GoRoute(path: '/enable-capture', builder: (context, state) => const EnableCaptureScreen()),
     GoRoute(path: '/wallets', builder: (context, state) => const WalletsScreen()),
     GoRoute(path: '/subscriptions', builder: (context, state) => const SubscriptionsScreen()),
