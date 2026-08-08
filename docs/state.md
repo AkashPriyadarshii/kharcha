@@ -4,7 +4,7 @@
 
 ## Current status
 
-**Phase: v0.2.1 — transactions edit/delete + UX audit.** Every transaction is editable (reuses add form) and deletable (confirm dialog); deletes are sync-correct via a `deleted_transactions` tombstone table (schema v8) that DELETEs remote rows on push and skips them on pull — no resurrection. Update marks rows dirty and overwrites on push. UX audit pass: categories grouped by income/expense, wallets rename-only (no silent delete), subscriptions delete + actionable empty state, debts/objectives deletes confirmed, income glyph on tiles. `flutter analyze` clean. Full `flutter test` still blocked on Windows host (sqlite3 native-assets). Next: on-device verify + publish.
+**Phase: v0.2.1 — shipped.** Transactions edit/delete + tombstone sync, UX audit, arm64 release APK (`kharcha-armv8a-release.apk`) live on the v0.2.1 GitHub release. Android-only (Windows platform scaffold removed). Gradle now arm64-only ABI-filtered + page-aligned native libs — builds clean, installs clean (no "package invalid"). CI removed (on-demand build + release). `flutter analyze` clean. Full `flutter test` still blocked on this Windows host (sqlite3 native-assets, `docs/troubleshooting.md`). Next: on-device verify.
 
 **Phase: v0.2.0 — income support shipped.** Income is live end-to-end: per-transaction + per-category `is_income` (schema v7, Supabase mirrored), income/expense toggle on both add forms, built-in income categories, home hero income/spend split (green income, red spend), transactions tab income filter, spend aggregates exclude income, sync round-trip, CSV/JSON export `type` column + import. Permissions pass: full manifest set, onboarding asks notification + battery exemption in-app (no manual settings). Manifest now declares INTERNET/ACCESS_NETWORK_STATE (release builds need it for Supabase sync — debug got it injected). `flutter analyze` clean. Full `flutter test` still blocked on Windows host (sqlite3 native-assets, `docs/troubleshooting.md`). CI removed (on-demand release). Next: on-device verify + publish.
 
@@ -51,11 +51,9 @@
 - [x] **Credit/Debt ledger** — `Debts` table (schema v6), lend/borrow with settle toggle, net-owed strip, delete.
 - [x] **Design pass** — `lib/core/theme.dart`: ink-green on warm paper, `moneyStyle` (display + tabular figures), `SectionTitle` caps labels, hero month panel (count-up, over-budget amber), themed charts/budget/tabs.
 - [x] **Guest mode** — "Continue as guest" on auth (no Supabase session, local-only, sync no-ops). Pre-release — not publishing yet.
-- [x] **Windows debug support** — `windows/` scaffold (`flutter create --platforms=windows .`, no Android touched); onboarding + capture icon skipped on non-Android; Android channel invokes already try/catch'd. App lock works via `local_auth_windows` (Windows Hello). CI now builds the Windows exe on push to main (`build windows --release` → create/overwrite `v<pubspec version>` release). Local `flutter analyze` clean; full build/test blocked on this Windows host by sqlite3 native-assets (`docs/troubleshooting.md`) — CI is the build gate.
+- [x] **Android-only cleanup** — `windows/` platform scaffold removed (was debug-only); Windows-specific code (`dart:io` `Platform.isAndroid` branches) stripped; `local_auth_windows`/`path_provider_windows` gone from lockfile. Android is the only target.
 
 ## Next up
 
-1. **Audit fixes** — sync LWW tie loop (now converges), wallet balance live stream, capture drain per-line resilience, Supabase migration idempotency (42710). Analyze clean. [done]
-2. **v0.1.1 release** — build `app-arm64-v8a-release.apk` (debug-signed, arm64-only per owner), push, `gh release create v0.1.1` + upload.
-2. On-device verify (Akash) — sideload arm64 APK: new screens (wallets/subscriptions/objectives/split/categories), UPI capture re-check.
-3. Supabase schema mirror for new tables (wallets, recurring, objectives) — currently local-only.
+1. On-device verify (Akash) — sideload `kharcha-armv8a-release.apk` from v0.2.1 release: new screens (wallets/subscriptions/objectives/split/categories), UPI capture re-check.
+2. Supabase schema mirror for new tables (wallets, recurring, objectives) — currently local-only.
