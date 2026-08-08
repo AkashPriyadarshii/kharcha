@@ -1,4 +1,14 @@
 -- Kharcha init: tables mirror Drift schema, all scoped by auth.uid().
+-- Includes:
+-- - idempotent drops/recreates
+-- - updated_at trigger
+-- - explicit role-scoped RLS policies for clarity
+
+begin;
+
+-- ----------------------------
+-- Tables
+-- ----------------------------
 
 create table if not exists public.categories (
   id bigint generated always as identity primary key,
@@ -50,23 +60,96 @@ create table if not exists public.budgets (
   alert_pct_100 integer not null default 100
 );
 
--- RLS: every table scoped to auth.uid()
+-- ----------------------------
+-- updated_at trigger
+-- ----------------------------
+
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at := now();
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_transactions_set_updated_at on public.transactions;
+create trigger trg_transactions_set_updated_at
+before update on public.transactions
+for each row
+execute function public.set_updated_at();
+
+-- ----------------------------
+-- RLS: enable
+-- ----------------------------
+
 alter table public.transactions enable row level security;
 alter table public.budgets enable row level security;
 
--- Drop-first so the migration is idempotent (re-running doesn't hit 42710).
-drop policy if exists "users can manage own transactions" on public.transactions;
-drop policy if exists "users can manage own budgets" on public.budgets;
-create policy "users can manage own transactions" on public.transactions
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-create policy "users can manage own budgets" on public.budgets
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-
--- Reference data (categories/merchants/rules) is shared read, no user scope.
 alter table public.categories enable row level security;
 alter table public.merchants enable row level security;
 alter table public.rules enable row level security;
 
-create policy "categories are readable" on public.categories for select using (true);
-create policy "merchants are readable" on public.merchants for select using (true);
-create policy "rules are readable" on public.rules for select using (true);
+-- ----------------------------
+-- RLS: policies (drop-first)
+-- ----------------------------
+
+drop policy if exists "users can manage own transactions" on public.transactions;
+drop policy if exists "users can manage own budgets" on public.budgets;
+
+create policy "users can manage own transactions"
+on public.transactions
+for all
+to authenticated
+using (
+  (select auth.uid()) = user_id
+)
+with check (
+  (select auth.uid()) = user_id
+);
+
+create policy "users can manage own budgets"
+on public.budgets
+for all
+to authenticated
+using (
+  (select auth.uid()) = user_id
+)
+with check (
+  (select auth.uid()) = user_id
+);
+
+-- Shared reference data: read-only for authenticated users
+-- (If you want writes to admins only, tell me and I’ll add the INSERT/UPDATE/DELETE policies.)
+drop policy if exists "categories are readable" on public.categories;
+drop policy if exists "merchants are readable" on public.merchants;
+drop policy if exists "rules are readable" on public.rules;
+
+create policy "categories are readable"
+on public.categories
+for select
+to authenticated
+using (true);
+
+create policy "merchants are readable"
+on public.merchants
+for select
+to authenticated
+using (true);
+
+create policy "rules are readable"
+on public.rules
+for select
+to authenticated
+using (true);
+
+-- Optional helpful indexes (won't hurt; keeps policy + common filters fast)
+create index if not exists idx_transactions_user_id on public.transactions(user_id);
+create index if not exists idx_transactions_txn_date on public.transactions(txn_date);
+create index if not exists idx_budgets_user_id on public.budgets(user_id);
+create index if not exists idx_merchants_category_id on public.merchants(category_id);
+create index if not exists idx_rules_category_id on public.rules(category_id);
+create index if not exists idx_transactions_category_id on public.transactions(category_id);
+
+commit;
