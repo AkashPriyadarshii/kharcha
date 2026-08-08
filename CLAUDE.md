@@ -136,6 +136,31 @@ These are explicit product decisions. Do not "improve" them, do not "help" by ad
 - **NO golden-gate UI experiments.** Follow the app's existing Material 3 pattern; don't rebuild a screen in a different style because you like it.
 - **NO dead code commits.** If your change makes something unused, delete it — but don't delete pre-existing dead code either.
 
+## Build APK (learned from past errors)
+
+Proven recipe — do NOT deviate:
+
+```bash
+# 1. Clear the Windows native-assets lock first (a leftover sqlite3.dll blocks
+#    the build tool from cleaning — "Flutter failed to delete ... sqlite3.dll").
+rm -rf build/native_assets/windows .dart_tool/hooks_runner
+# 2. Build split-per-abi (NOT --target-platform android-arm64).
+flutter build apk --release --split-per-abi
+# 3. Arm64 APK → build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+```
+
+- **Always `--split-per-abi`.** `--target-platform android-arm64` produced a
+  broken universal APK ("package is invalid" on install).
+- **`packaging { jniLibs { useLegacyPackaging = false } }`** in
+  `android/app/build.gradle.kts` is REQUIRED — page-aligned (uncompressed)
+  native libs are the real fix for the install error. Keep it.
+- **Do NOT add an `ndk { abiFilters }` block** — it conflicts with
+  `--split-per-abi` ("Conflicting configuration: 'arm64-v8a' in ndk abiFilters
+  cannot be present when splits abi filters are set").
+- Release upload: replace `kharcha-armv8a-release.apk` on the latest GitHub
+  release (delete-asset + upload --clobber). Size sanity: ~24-26MB. Debug-signed
+  (buildTypes.release uses debug signingConfig) — fine for sideload.
+
 ## Git workflow
 
 - Branch off `main`: `feat/<short-name>` or `fix/<short-name>`.
