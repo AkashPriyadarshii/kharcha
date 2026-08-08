@@ -16,12 +16,14 @@ import 'screens/add_expense_screen.dart';
 import 'screens/auth_screen.dart';
 import 'screens/enable_capture_screen.dart';
 import 'screens/home_shell.dart';
+import 'screens/onboarding_screen.dart';
 import 'screens/terms_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Supabase.initialize(url: SupabaseConfig.url, publishableKey: SupabaseConfig.anonKey);
   await _container.read(appLockControllerProvider.notifier).load();
+  onboardingDone.value = await (await OnboardingStore.create()).isDone();
   // Pull + push whenever a session appears (login / app resume with a session).
   Supabase.instance.client.auth.onAuthStateChange.listen((state) {
     if (state.session != null) {
@@ -134,20 +136,31 @@ class _LockGateState extends ConsumerState<LockGate> with WidgetsBindingObserver
 final _container = ProviderContainer();
 
 final _router = GoRouter(
-  refreshListenable: _AuthRefresh(Supabase.instance.client.auth.onAuthStateChange),
+  refreshListenable: Listenable.merge([
+    _AuthRefresh(Supabase.instance.client.auth.onAuthStateChange),
+    authBypass,
+    onboardingDone,
+  ]),
   redirect: (context, state) {
-    final loggedIn = Supabase.instance.client.auth.currentSession != null;
+    final loggedIn = authBypass.value ||
+        Supabase.instance.client.auth.currentSession != null;
     final atAuth = state.matchedLocation == '/auth';
     if (!loggedIn && !atAuth) return '/auth';
     if (loggedIn && atAuth) return '/';
+    // Signed in → run onboarding once, before the home shell.
+    if (loggedIn && state.matchedLocation == '/' && !onboardingDone.value) {
+      return '/onboarding';
+    }
     return null;
   },
   routes: [
     GoRoute(path: '/auth', builder: (context, state) => const AuthScreen()),
     GoRoute(path: '/terms', builder: (context, state) => const TermsScreen()),
+    GoRoute(path: '/onboarding', builder: (context, state) => const OnboardingScreen()),
     GoRoute(path: '/', builder: (context, state) => HomeShell(container: _container)),
     GoRoute(path: '/add', builder: (context, state) => const AddExpenseScreen()),
     GoRoute(path: '/enable-capture', builder: (context, state) => const EnableCaptureScreen()),
+
   ],
 );
 
