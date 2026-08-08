@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import 'core/app_lock.dart';
 import 'core/config.dart';
 import 'data/notifications.dart';
 import 'data/sync_engine.dart';
@@ -19,6 +20,7 @@ import 'screens/home_shell.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Supabase.initialize(url: SupabaseConfig.url, publishableKey: SupabaseConfig.anonKey);
+  await _container.read(appLockControllerProvider.notifier).load();
   // Pull + push whenever a session appears (login / app resume with a session).
   Supabase.instance.client.auth.onAuthStateChange.listen((state) {
     if (state.session != null) {
@@ -43,11 +45,11 @@ Future<void> _initNotifications() async {
   }
 }
 
-class KharchaApp extends StatelessWidget {
+class KharchaApp extends ConsumerWidget {
   const KharchaApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
       title: 'Kharcha',
       theme: ThemeData(
@@ -57,6 +59,73 @@ class KharchaApp extends StatelessWidget {
         useMaterial3: true,
       ),
       routerConfig: _router,
+      // LockGate overlays everything while the app is locked.
+      builder: (context, child) => LockGate(child: child ?? const SizedBox.shrink()),
+    );
+  }
+}
+
+/// Shows a full-screen lock when app lock is enabled and the app is
+/// foregrounded; unlocks via OS biometric/PIN prompt on demand.
+class LockGate extends ConsumerStatefulWidget {
+  const LockGate({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  ConsumerState<LockGate> createState() => _LockGateState();
+}
+
+class _LockGateState extends ConsumerState<LockGate> with WidgetsBindingObserver {
+  bool _unlocked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Re-lock on every foreground — returning to the app re-prompts.
+    if (state == AppLifecycleState.resumed) setState(() => _unlocked = false);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  Future<void> _unlock() async {
+    final ok = await ref.read(appLockControllerProvider.notifier).unlock();
+    if (ok && mounted) setState(() => _unlocked = true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = ref.watch(appLockControllerProvider);
+    if (!enabled || _unlocked) return widget.child;
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.lock_outline, size: 48),
+              const SizedBox(height: 16),
+              Text('Kharcha is locked', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: _unlock,
+                icon: const Icon(Icons.fingerprint),
+                label: const Text('Unlock'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

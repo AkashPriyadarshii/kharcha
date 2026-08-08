@@ -44,6 +44,16 @@ final merchantRankingProvider = FutureProvider<List<(String, double, int)>>(
   (ref) => ref.watch(transactionRepositoryProvider).merchantRanking(),
 );
 
+/// Spend per payment method, for the profile tab.
+final paymentMethodTotalsProvider = FutureProvider<List<(String, double, int)>>(
+  (ref) => ref.watch(transactionRepositoryProvider).paymentMethodTotals(),
+);
+
+/// Backup status: (on Supabase, pending push), for the profile tab.
+final syncStatusProvider = FutureProvider<(int, int)>(
+  (ref) => ref.watch(transactionRepositoryProvider).syncStatus(),
+);
+
 /// Throws when a manual transaction is invalid. Message is user-facing.
 class TransactionValidationException implements Exception {
   TransactionValidationException(this.message);
@@ -272,6 +282,24 @@ class TransactionRepository {
     }
     final ranked = per.entries.toList()..sort((a, b) => b.value.$1.compareTo(a.value.$1));
     return ranked.take(n).map((e) => (e.key, e.value.$1, e.value.$2)).toList();
+  }
+
+  /// Total spent per payment method, largest first.
+  Future<List<(String, double, int)>> paymentMethodTotals() async {
+    final per = <String, (double, int)>{};
+    for (final (t, _) in await allTransactions()) {
+      final v = per[t.paymentMethod] ?? (0, 0);
+      per[t.paymentMethod] = (v.$1 + t.amount, v.$2 + 1);
+    }
+    final ranked = per.entries.toList()..sort((a, b) => b.value.$1.compareTo(a.value.$1));
+    return ranked.map((e) => (e.key, e.value.$1, e.value.$2)).toList();
+  }
+
+  /// (rows pushed to Supabase, rows pending push).
+  Future<(int, int)> syncStatus() async {
+    final all = await _db.select(_db.transactions).get();
+    final pending = all.where((t) => t.dirty).length;
+    return (all.length - pending, pending);
   }
 
   /// Budgets joined with their category.

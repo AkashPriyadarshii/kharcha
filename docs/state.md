@@ -4,7 +4,7 @@
 
 ## Current status
 
-**Phase: Phase 4 core + Phase 5 code in progress.** 4.1 Home dashboard + 4.2 Transactions search/filter + 4.4 Budget tab shipped (tabbed shell: Home/Transactions/Budget). 5.1 export + 5.2 app lock code landed. `flutter analyze` clean; targeted test suites pass; full `flutter test` flaky on Windows host (sqlite3 native-assets — recoverable with proc-kill + `flutter clean`, `docs/troubleshooting.md`). Next: 4.3 Reports, 4.5 Profile, on-device verify, 5.3-5.5 release.
+**Phase: Phase 4 core done, Phase 5 code in progress.** 4.1-4.5 all shipped (tabbed shell: Home/Transactions/Budget/Reports/Profile). 5.1 export + 5.2 app lock landed (app lock now real: toggle in Profile + resume gate). `flutter analyze` clean; targeted test suites pass; full `flutter test` flaky on Windows host (sqlite3 native-assets — recoverable with proc-kill + `flutter clean`, `docs/troubleshooting.md`). Next: on-device verify, 5.3 Play assets, 5.4/5.5 release (deferred until Akash tests).
 
 ## Completed
 
@@ -28,17 +28,17 @@
 - [x] **Step 3.2** Daily 9PM + Sunday weekly Hinglish summaries: `Notifications` service, channel + permission + tz, re-scheduled each app open with as-of-last-open data (see `docs/handoff.md`). Tests.
 - [x] **Step 4.1** Home dashboard: today/month/budget-left stats + this-month-by-category bars. Tabbed shell (Home/Transactions/Budget).
 - [x] **Step 4.2** Transactions tab: search (merchant/note) + filters (category/merchant/payment method/date preset incl. custom range), clear-filters, empty-state. Pure client-side filter over the watched list.
+- [x] **Step 4.3** Reports tab: category pie, monthly trend line, top merchants (fl_chart). Repository: `monthlyTrend()`, `merchantRanking()` + tests.
 - [x] **Step 4.4** Budget tab: per-category monthly limits, progress bars, 50/80/100 alerts, add/edit/delete.
+- [x] **Step 4.5** Profile tab: account, payment methods, export CSV/JSON UI, backup status, app lock toggle.
 - [x] **Step 5.1** Export: CSV + JSON (category names, newest first).
-- [x] **Step 5.2** App lock: `AppLock` (biometric/PIN via local_auth). UI toggle deferred to Profile (4.5).
+- [x] **Step 5.2** App lock: real now — `AppLockStore` (JSON file) + `AppLockController` provider, toggle in Profile, `LockGate` overlays + re-locks on resume. Tests.
 
 ## Next up
 
-1. Step 4.3: Reports tab — category pie, monthly trend, merchant ranking (fl_chart)
-2. Step 4.5: Profile tab — account, payment methods, export UI, backup status, settings, app lock toggle
-3. On-device verify (2.3, 3.1, 4.1/4.2/4.4)
-4. Step 5.3: Privacy policy + Play listing assets
-5. Step 5.4/5.5: Final regression + release v0.1.0
+1. On-device verify (2.3, 3.1, 4.1-4.5)
+2. Step 5.3: Privacy policy + Play listing assets
+3. Step 5.4/5.5: Final regression + release v0.1.0 (deferred until Akash tests)
 
 ## In progress
 
