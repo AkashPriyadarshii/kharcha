@@ -30,6 +30,14 @@ android {
         versionName = flutter.versionName
     }
 
+    // Store native libs page-aligned (uncompressed). Some Android 12+ installers
+    // reject APKs with compressed .so files ("package is invalid").
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
+    }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.
