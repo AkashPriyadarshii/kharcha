@@ -7,7 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
 
-import '../core/config.dart';
+import '../core/config.dart' show onboardingDone;
 
 /// Marks first-launch onboarding done. Persisted — shown once, after login.
 class OnboardingStore {
@@ -32,11 +32,13 @@ class OnboardingStore {
   Future<void> markDone() => file.writeAsString(jsonEncode(true), flush: true);
 }
 
-/// One-time setup flow shown after first login:
-///  1. Value prop
-///  2. Enable UPI capture (notification access)
-///  3. Allow summaries + ignore battery optimization
-/// Every step is skippable — onboarding never traps the user.
+/// One-time setup flow after login. 4 steps, one at a time:
+///  0. Value prop — why Kharcha (no permissions asked yet)
+///  1. Enable UPI capture (notification access) — live status
+///  2. Allow daily summaries (notification permission) — live status
+///  3. Keep capture awake (battery exemption) — live status, then finish
+/// Every step skippable — onboarding never traps. Live status from
+/// `getCaptureStatus` so granted/denied is visible and auto-advances.
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -47,10 +49,41 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   static const _channel = MethodChannel('com.kharcha.app/capture');
 
+  static const _titles = [
+    'Track every UPI payment. Automatically.',
+    'Auto-capture UPI payments',
+    'Daily summaries',
+    'Keep capture awake',
+  ];
+  static const _bodies = [
+    'Kharcha reads your UPI payment notifications — GPay, PhonePe, Paytm — and saves each expense itself. No manual entry. All on-device.',
+    'Allow notification access so payments save themselves.',
+    'Allow notifications for your 9PM recap and budget alerts.',
+    'Let Kharcha ignore battery optimization so auto-capture never sleeps.',
+  ];
+  static const _icons = [
+    Icons.auto_awesome,
+    Icons.notifications_active_outlined,
+    Icons.notifications_outlined,
+    Icons.battery_charging_full,
+  ];
+  static const _actions = [
+    null, // intro step has no permission action
+    'Enable capture',
+    'Allow notifications',
+    'Allow battery exemption',
+  ];
+
+  int _step = 0;
+  bool _capture = false;
+  bool _notifications = false;
+  bool _battery = false;
+
   /// Best-effort platform call; failures show a snackbar, never block setup.
   Future<void> _invoke(String method, {String fallback = 'Could not complete that step.'}) async {
     try {
       await _channel.invokeMethod<void>(method);
+      await _refreshStatus(); // reflect the result of the permission prompt
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
@@ -58,9 +91,56 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
   }
 
-  Future<void> _openCaptureSettings() => _invoke('openNotificationListenerSettings');
-  Future<void> _askNotifications() => _invoke('requestNotificationPermission');
-  Future<void> _askBattery() => _invoke('requestBatteryOptimizationExemption');
+  Future<void> _refreshStatus() async {
+    try {
+      final status = await _channel.invokeMethod<Map>('getCaptureStatus');
+      if (!mounted || status == null) return;
+      setState(() {
+        _capture = status['capture'] == true;
+        _notifications = status['notifications'] == true;
+        _battery = status['battery'] == true;
+      });
+    } catch (_) {
+      // Non-Android / unsupported — no status; keep current values.
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshStatus();
+  }
+
+  bool get _stepDone {
+    switch (_step) {
+      case 1:
+        return _capture;
+      case 2:
+        return _notifications;
+      case 3:
+        return _battery;
+      default:
+        return false;
+    }
+  }
+
+  void _next() {
+    if (_step < 3) {
+      setState(() => _step++);
+      _refreshStatus();
+    } else {
+      _finish();
+    }
+  }
+
+  void _skip() {
+    if (_step < 3) {
+      setState(() => _step++);
+      _refreshStatus();
+    } else {
+      _finish();
+    }
+  }
 
   Future<void> _finish() async {
     await (await OnboardingStore.create()).markDone();
@@ -72,118 +152,175 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isIntro = _step == 0;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Get started'),
         automaticallyImplyLeading: false,
         actions: [
           TextButton(
-            onPressed: () => _finish(),
-            child: const Text('Skip'),
+            onPressed: isIntro ? _skip : _finish,
+            child: Text(isIntro ? 'Skip' : 'Skip all'),
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          Text(
-            'Kharcha is set up.',
-            style: theme.textTheme.headlineSmall,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (!isIntro) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: (_step) / 3,
+                    minHeight: 6,
+                    backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Step $_step of 3',
+                  style: theme.textTheme.labelMedium
+                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ),
+                const SizedBox(height: 24),
+              ],
+              Expanded(
+                child: isIntro
+                    ? _IntroStep(
+                        icon: _icons[0],
+                        title: _titles[0],
+                        body: _bodies[0],
+                      )
+                    : _PermissionStep(
+                        step: _step,
+                        title: _titles[_step],
+                        body: _bodies[_step],
+                        icon: _icons[_step],
+                        actionLabel: _actions[_step]!,
+                        isDone: _stepDone,
+                        onAction: () => _invoke(
+                          switch (_step) {
+                            1 => 'openNotificationListenerSettings',
+                            2 => 'requestNotificationPermission',
+                            _ => 'requestBatteryOptimizationExemption',
+                          },
+                        ),
+                      ),
+              ),
+              const SizedBox(height: 24),
+              if (isIntro)
+                FilledButton.icon(
+                  onPressed: () => _next(),
+                  icon: const Icon(Icons.arrow_forward),
+                  label: const Text('Let\'s set up'),
+                )
+              else
+                FilledButton.icon(
+                  onPressed: _next,
+                  icon: Icon(_stepDone ? Icons.check : Icons.arrow_forward),
+                  label: Text(_stepDone ? 'Continue' : 'I\'ll do this later'),
+                ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Two quick steps and every UPI payment is tracked automatically.',
-            style: theme.textTheme.bodyLarge,
-          ),
-          const SizedBox(height: 32),
-          _StepCard(
-            step: '1',
-            title: 'Auto-capture UPI payments',
-            body: 'Allow notification access so GPay, PhonePe and Paytm payments save themselves. All on-device.',
-            icon: Icons.notifications_active_outlined,
-            actionLabel: 'Enable capture',
-            onAction: () => _openCaptureSettings(),
-          ),
-          const SizedBox(height: 16),
-          _StepCard(
-            step: '2',
-            title: 'Daily summaries',
-            body: 'Allow notifications for your 9PM recap and budget alerts.',
-            icon: Icons.notifications_outlined,
-            actionLabel: 'Allow notifications',
-            onAction: () => _askNotifications(),
-          ),
-          const SizedBox(height: 16),
-          _StepCard(
-            step: '3',
-            title: 'Keep capture awake',
-            body: 'Let Kharcha ignore battery optimization so auto-capture never sleeps.',
-            icon: Icons.battery_charging_full,
-            actionLabel: 'Allow battery exemption',
-            onAction: () => _askBattery(),
-          ),
-          const SizedBox(height: 32),
-          FilledButton.icon(
-            onPressed: () => _finish(),
-            icon: const Icon(Icons.check),
-            label: const Text('Done'),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
-class _StepCard extends StatelessWidget {
-  const _StepCard({
+class _IntroStep extends StatelessWidget {
+  const _IntroStep({
+    required this.icon,
+    required this.title,
+    required this.body,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Icon(icon, size: 72, color: theme.colorScheme.primary),
+        const SizedBox(height: 24),
+        Text(
+          title,
+          style: theme.textTheme.headlineMedium
+              ?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -0.5),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          body,
+          style: theme.textTheme.bodyLarge
+              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+      ],
+    );
+  }
+}
+
+class _PermissionStep extends StatelessWidget {
+  const _PermissionStep({
     required this.step,
     required this.title,
     required this.body,
     required this.icon,
     required this.actionLabel,
+    required this.isDone,
     required this.onAction,
   });
 
-  final String step;
+  final int step;
   final String title;
   final String body;
   final IconData icon;
   final String actionLabel;
+  final bool isDone;
   final VoidCallback onAction;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Icon(icon, size: 56, color: theme.colorScheme.primary),
+        const SizedBox(height: 20),
+        Text(title, style: theme.textTheme.headlineSmall),
+        const SizedBox(height: 8),
+        Text(
+          body,
+          style: theme.textTheme.bodyLarge
+              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: 28),
+        FilledButton.tonal(onPressed: onAction, child: Text(actionLabel)),
+        const SizedBox(height: 12),
+        Row(
           children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: theme.colorScheme.primaryContainer,
-                  child: Text(
-                    step,
-                    style: TextStyle(color: theme.colorScheme.onPrimaryContainer),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Icon(icon),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(title, style: theme.textTheme.titleMedium),
-                ),
-              ],
+            Icon(
+              isDone ? Icons.check_circle : Icons.radio_button_unchecked,
+              size: 20,
+              color: isDone
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurfaceVariant,
             ),
-            const SizedBox(height: 12),
-            Text(body, style: theme.textTheme.bodyMedium),
-            const SizedBox(height: 16),
-            FilledButton.tonal(onPressed: onAction, child: Text(actionLabel)),
+            const SizedBox(width: 8),
+            Text(
+              isDone ? 'Done' : 'Not done yet',
+              style: theme.textTheme.bodyMedium,
+            ),
           ],
         ),
-      ),
+      ],
     );
   }
 }

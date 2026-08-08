@@ -63,6 +63,22 @@ class MainActivity : FlutterActivity() {
                         )
                         result.success(null)
                     }
+                    "getCaptureStatus" -> {
+                        val pm = getSystemService(POWER_SERVICE) as PowerManager
+                        val enabledListeners = Settings.Secure.getString(
+                            contentResolver, "enabled_notification_listeners"
+                        ) ?: ""
+                        result.success(
+                            mapOf(
+                                "capture" to enabledListeners.contains(packageName),
+                                "notifications" to (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                                    ContextCompat.checkSelfPermission(
+                                        this, Manifest.permission.POST_NOTIFICATIONS
+                                    ) == PackageManager.PERMISSION_GRANTED),
+                                "battery" to pm.isIgnoringBatteryOptimizations(packageName),
+                            )
+                        )
+                    }
                     else -> result.notImplemented()
                 }
             }
