@@ -180,11 +180,16 @@ class ProfileTab extends ConsumerWidget {
   }
 }
 
-class _AccountHeader extends ConsumerWidget {
+class _AccountHeader extends ConsumerStatefulWidget {
   const _AccountHeader();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_AccountHeader> createState() => _AccountHeaderState();
+}
+
+class _AccountHeaderState extends ConsumerState<_AccountHeader> {
+  @override
+  Widget build(BuildContext context) {
     final user = Supabase.instance.client.auth.currentUser;
     final email = user?.email ?? 'Signed in';
     return Card(
@@ -203,9 +208,22 @@ class _AccountHeader extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    user?.userMetadata?['name'] as String? ?? 'Kharcha user',
-                    style: Theme.of(context).textTheme.titleMedium,
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          user?.userMetadata?['name'] as String? ?? 'Kharcha user',
+                          style: Theme.of(context).textTheme.titleMedium,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        tooltip: 'Edit name',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => _editName(context),
+                      ),
+                    ],
                   ),
                   Text(email, style: Theme.of(context).textTheme.bodySmall),
                 ],
@@ -215,6 +233,42 @@ class _AccountHeader extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  /// Inline name editor — persists to Supabase so it syncs across devices.
+  Future<void> _editName(BuildContext context) async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    final controller = TextEditingController(
+      text: user.userMetadata?['name'] as String? ?? '',
+    );
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Your name'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(labelText: 'Name'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (newName == null || newName.isEmpty) return;
+    await Supabase.instance.client.auth.updateUser(UserAttributes(
+      data: {...user.userMetadata ?? const {}, 'name': newName},
+    ));
+    if (context.mounted) setState(() {});
   }
 }
 

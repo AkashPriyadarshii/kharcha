@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/database.dart';
 import '../data/transaction_repository.dart';
+import '../widgets/category_icon.dart';
 
 const _palette = <String>[
   '#E86A17', '#2E86AB', '#9B5DE5', '#F4B942', '#06D6A0',
@@ -190,7 +191,12 @@ class _CategoryTile extends StatelessWidget {
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: Color(int.parse(c.color.replaceFirst('#', '0xFF'))),
-        child: Text(c.emoji),
+        child: CategoryIcon(
+          categoryName: c.name,
+          emojiFallback: c.emoji,
+          size: 20,
+          color: Colors.white,
+        ),
       ),
       title: Text(c.name),
       subtitle: c.isCustom ? null : const Text('Built-in'),
