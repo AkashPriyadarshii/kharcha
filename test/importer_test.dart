@@ -73,13 +73,29 @@ void main() {
   });
 
   test('headerless file with known column count is imported positionally', () async {
+    // Positional order matches _headers: date, amount, type, merchant, …
     final f = await writeCsv(
-      '2026-08-01T10:00:00.000,100,Rapido,Travel,,cash,,manual\n',
+      '2026-08-01T10:00:00.000,100,expense,Rapido,Travel,,cash,,manual\n',
     );
 
     final result = await importCsv(f, repo);
     expect(result.added, 1);
     expect((await db.select(db.transactions).get()).single.merchant, 'Rapido');
+  });
+
+  test('type=income column imports as income', () async {
+    final f = await writeCsv(
+      'date,amount,type,merchant,category,note,payment_method,upi_ref,source\n'
+      '2026-08-01T10:00:00.000,1000,income,Acme Corp,,,upi,,manual\n'
+      '2026-08-01T10:00:00.000,450,expense,Zomato,Food,lunch,upi,REF1,manual\n',
+    );
+
+    final result = await importCsv(f, repo);
+    expect(result.added, 2);
+
+    final rows = await db.select(db.transactions).get();
+    expect(rows.firstWhere((r) => r.merchant == 'Acme Corp').isIncome, true);
+    expect(rows.firstWhere((r) => r.merchant == 'Zomato').isIncome, false);
   });
 
   test('empty file reports error, not crash', () async {

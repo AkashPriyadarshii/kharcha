@@ -32,7 +32,7 @@ void main() {
     final file = await Exporter(repo).exportCsv(dir, 'kharcha.csv');
 
     final lines = await file.readAsLines();
-    expect(lines.first, 'date,amount,merchant,category,note,payment_method,upi_ref,source');
+    expect(lines.first, 'date,amount,type,merchant,category,note,payment_method,upi_ref,source');
     expect(lines, hasLength(2));
     expect(lines.last, contains('Zomato'));
     expect(lines.last, contains('Food'));
@@ -50,5 +50,19 @@ void main() {
     expect(json, contains('"merchant": "Zomato"'));
     expect(json, contains('"category": "Food"'));
     expect(json, contains('"amount": 450.0'));
+    expect(json, contains('"type": "expense"'));
+  });
+
+  test('income row exports type=income in csv + json', () async {
+    await repo.insertManual(
+      amount: 1000, merchant: 'Acme Corp', paymentMethod: 'upi',
+      txnDate: DateTime(2026, 8, 6), isIncome: true,
+    );
+
+    final csv = await Exporter(repo).exportCsv(dir, 'inc.csv');
+    expect(await csv.readAsString(), contains('income'));
+
+    final json = await Exporter(repo).exportJson(dir, 'inc.json');
+    expect(await json.readAsString(), contains('"type": "income"'));
   });
 }
