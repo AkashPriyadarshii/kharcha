@@ -50,8 +50,25 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen> {
               ),
             ),
           if (shown.isEmpty)
-            Text('No subscriptions yet. Add a recurring payment to track it.',
-                style: Theme.of(context).textTheme.bodyMedium)
+            Padding(
+              padding: const EdgeInsets.only(top: 40),
+              child: Column(
+                children: [
+                  const Text('🔁', style: TextStyle(fontSize: 44)),
+                  const SizedBox(height: 12),
+                  Text('No subscriptions yet.', style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 4),
+                  Text('Track Netflix, gym, rent — anything that recurs.',
+                      style: Theme.of(context).textTheme.bodySmall),
+                  const SizedBox(height: 24),
+                  FilledButton.icon(
+                    onPressed: () => _add(context),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add subscription'),
+                  ),
+                ],
+              ),
+            )
           else
             for (final r in shown)
               _RecurringTile(recurring: r, due: r.active && !r.nextDue.isAfter(now)),
@@ -177,6 +194,29 @@ class _RecurringTile extends ConsumerWidget {
                   recurring.id,
                   !recurring.active,
                 ),
+          ),
+          IconButton(
+            tooltip: 'Delete',
+            icon: const Icon(Icons.delete_outline),
+            onPressed: () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: Text('Delete "${recurring.merchant}"?'),
+                  content: const Text('This permanently removes the subscription.'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+                    FilledButton(
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                    ),
+                  ],
+                ),
+              );
+              if (confirmed == true) {
+                await ref.read(transactionRepositoryProvider).deleteRecurring(recurring.id);
+              }
+            },
           ),
         ],
       ),

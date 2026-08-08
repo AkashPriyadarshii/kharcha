@@ -26,8 +26,26 @@ class _ObjectivesScreenState extends ConsumerState<ObjectivesScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           if (goals.isEmpty)
-            Text('No goals yet. Set a savings target to track progress.',
-                style: Theme.of(context).textTheme.bodyMedium)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 48),
+                child: Column(
+                  children: [
+                    const Text('🎯', style: TextStyle(fontSize: 44)),
+                    const SizedBox(height: 12),
+                    Text('No goals yet.', style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 8),
+                    const Text('Set a savings target to watch it grow.'),
+                    const SizedBox(height: 24),
+                    FilledButton.icon(
+                      onPressed: () => _add(context),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add goal'),
+                    ),
+                  ],
+                ),
+              ),
+            )
           else
             for (final g in goals) _GoalCard(goal: g),
         ],
@@ -98,7 +116,25 @@ class _GoalCard extends ConsumerWidget {
                 IconButton(
                   icon: const Icon(Icons.delete_outline),
                   tooltip: 'Delete',
-                  onPressed: () => ref.read(transactionRepositoryProvider).deleteObjective(goal.id),
+                  onPressed: () async {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: Text('Delete "${goal.name}"?'),
+                        content: const Text('This permanently removes the goal and its saved amount.'),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+                          FilledButton(
+                            onPressed: () => Navigator.of(ctx).pop(true),
+                            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirmed == true) {
+                      await ref.read(transactionRepositoryProvider).deleteObjective(goal.id);
+                    }
+                  },
                 ),
               ],
             ),

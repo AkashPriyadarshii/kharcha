@@ -29,6 +29,15 @@ class SyncEngine {
   }
 
   Future<void> _push() async {
+    // Deletes first: removes remote rows before anything could re-pull them.
+    // A tombstone survives any failure (offline, transient) and retries next
+    // sync; it clears only when the DELETE succeeded (a no-op on an already-
+    // gone row also succeeds). Keeps a stale pull from resurrecting the row.
+    final tombstones = await _repo.deletedRemoteIds();
+    for (final remoteId in tombstones) {
+      await _client.from('transactions').delete().eq('id', remoteId);
+      await _repo.clearDeletedRow(remoteId);
+    }
     final dirty = await _repo.dirtyRows();
     for (final t in dirty) {
       final json = localToRemoteJson(t, _userId);
@@ -71,8 +80,13 @@ class SyncEngine {
         .select()
         .order('updated_at', ascending: false)
         .limit(1000);
+    final tombstones = await _repo.deletedRemoteIds().then((ids) => ids.toSet());
     for (final r in rows) {
-      await _repo.applyRemote(RemoteTransaction.fromRemoteJson(r));
+      final remote = RemoteTransaction.fromRemoteJson(r);
+      // Skip rows the user deleted locally — the DELETE may not have reached
+      // the server yet, but the row must not come back.
+      if (remote.id != null && tombstones.contains(remote.id)) continue;
+      await _repo.applyRemote(remote);
     }
   }
 }

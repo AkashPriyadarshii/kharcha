@@ -693,6 +693,61 @@ class TransactionRepository {
         .getSingleOrNull();
   }
 
+  /// Edits an existing transaction. Marks it dirty so the next push
+  /// overwrites the remote row. Used by the edit flow on the transactions tab.
+  Future<void> updateTransaction({
+    required int id,
+    required double amount,
+    required String merchant,
+    int? categoryId,
+    String note = '',
+    String paymentMethod = 'upi',
+    DateTime? txnDate,
+    bool isIncome = false,
+  }) {
+    return (_db.update(_db.transactions)..where((t) => t.id.equals(id))).write(
+      TransactionsCompanion(
+        amount: Value(amount),
+        merchant: Value(merchant.trim()),
+        categoryId: Value(categoryId),
+        note: Value(note.trim().isEmpty ? null : note.trim()),
+        paymentMethod: Value(paymentMethod),
+        txnDate: Value(txnDate ?? DateTime.now()),
+        isIncome: Value(isIncome),
+        dirty: const Value(true),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  /// Local delete of a transaction. If it was already pushed (has a remote_id),
+  /// a tombstone records the remote row for deletion on the next sync — this
+  /// keeps a stale pull from resurrecting the row. Unsynced rows just vanish.
+  Future<void> deleteTransaction(int id) async {
+    final row = await (_db.select(_db.transactions)..where((t) => t.id.equals(id))).getSingleOrNull();
+    if (row == null) return;
+    await _db.transaction(() async {
+      if (row.remoteId != null) {
+        await _db.into(_db.deletedTransactions).insert(
+          DeletedTransactionsCompanion.insert(remoteId: row.remoteId!),
+        );
+      }
+      await (_db.delete(_db.transactions)..where((t) => t.id.equals(id))).go();
+    });
+  }
+
+  /// Tombstone remote ids that still need deleting on Supabase.
+  Future<List<int>> deletedRemoteIds() {
+    return _db.select(_db.deletedTransactions).get().then(
+          (rows) => [for (final r in rows) r.remoteId],
+        );
+  }
+
+  /// Clears a tombstone once its remote row is deleted (or gone).
+  Future<void> clearDeletedRow(int remoteId) {
+    return (_db.delete(_db.deletedTransactions)..where((t) => t.remoteId.equals(remoteId))).go();
+  }
+
   Future<Transaction?> findByUpiRef(String upiRef) {
     return (_db.select(_db.transactions)..where((t) => t.upiRef.equals(upiRef)))
         .getSingleOrNull();

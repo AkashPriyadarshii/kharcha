@@ -214,4 +214,69 @@ void main() {
     );
     expect(row!.isIncome, true);
   });
+
+  group('edit/delete', () {
+    test('updateTransaction edits fields and marks dirty', () async {
+      final t = await repo.insertManual(
+        amount: 100,
+        merchant: 'Swiggy',
+        paymentMethod: 'upi',
+        txnDate: DateTime(2026, 8, 6),
+      );
+      await repo.markSynced(t.id, 42); // simulate already pushed
+      await repo.updateTransaction(
+        id: t.id,
+        amount: 120,
+        merchant: 'Zomato',
+        paymentMethod: 'upi',
+        txnDate: DateTime(2026, 8, 7),
+      );
+      final rows = await repo.allTransactions();
+      expect(rows.single.$1.amount, 120);
+      expect(rows.single.$1.merchant, 'Zomato');
+      expect(rows.single.$1.dirty, isTrue);
+    });
+
+    test('deleteTransaction on a synced row writes a tombstone', () async {
+      final t = await repo.insertManual(
+        amount: 100,
+        merchant: 'Swiggy',
+        paymentMethod: 'upi',
+        txnDate: DateTime(2026, 8, 6),
+      );
+      await repo.markSynced(t.id, 42);
+      await repo.deleteTransaction(t.id);
+
+      expect(await repo.allTransactions(), isEmpty);
+      expect(await repo.deletedRemoteIds(), [42]);
+    });
+
+    test('deleteTransaction on an unsynced row leaves no tombstone', () async {
+      final t = await repo.insertManual(
+        amount: 100,
+        merchant: 'Swiggy',
+        paymentMethod: 'upi',
+        txnDate: DateTime(2026, 8, 6),
+      );
+      await repo.deleteTransaction(t.id);
+
+      expect(await repo.allTransactions(), isEmpty);
+      expect(await repo.deletedRemoteIds(), isEmpty);
+    });
+
+    test('clearDeletedRow removes the tombstone after remote delete', () async {
+      final t = await repo.insertManual(
+        amount: 100,
+        merchant: 'Swiggy',
+        paymentMethod: 'upi',
+        txnDate: DateTime(2026, 8, 6),
+      );
+      await repo.markSynced(t.id, 42);
+      await repo.deleteTransaction(t.id);
+      expect(await repo.deletedRemoteIds(), [42]);
+
+      await repo.clearDeletedRow(42);
+      expect(await repo.deletedRemoteIds(), isEmpty);
+    });
+  });
 }
