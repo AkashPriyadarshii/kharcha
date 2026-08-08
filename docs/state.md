@@ -52,6 +52,7 @@
 
 ## Next up
 
-1. **v0.1.1 release** — build `app-arm64-v8a-release.apk` (debug-signed, arm64-only per owner), push, `gh release create v0.1.1` + upload.
+1. **Audit fixes** — sync LWW tie loop (now converges), wallet balance live stream, capture drain per-line resilience, Supabase migration idempotency (42710). Analyze clean. [done]
+2. **v0.1.1 release** — build `app-arm64-v8a-release.apk` (debug-signed, arm64-only per owner), push, `gh release create v0.1.1` + upload.
 2. On-device verify (Akash) — sideload arm64 APK: new screens (wallets/subscriptions/objectives/split/categories), UPI capture re-check.
 3. Supabase schema mirror for new tables (wallets, recurring, objectives) — currently local-only.
