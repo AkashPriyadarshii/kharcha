@@ -256,4 +256,4 @@ class _CategoryBar extends StatelessWidget {
 
 /// Parses a stored #RRGGBB into a [Color]. Shared by dashboard + budget bars.
 Color categoryColor(Category category) =>
-    Color(int.parse('FF${category.color}', radix: 16));
+    Color(int.parse('FF${category.color.replaceFirst('#', '')}', radix: 16));
