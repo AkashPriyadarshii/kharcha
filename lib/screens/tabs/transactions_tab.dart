@@ -281,7 +281,7 @@ class _TransactionList extends StatelessWidget {
           leading: CircleAvatar(
             backgroundColor: cat == null
                 ? const Color(0xFF8D99AE)
-                : Color(int.parse('FF${cat.color}', radix: 16)),
+                : Color(int.parse('FF${cat.color.replaceFirst('#', '')}', radix: 16)),
             child: Text(cat?.emoji ?? '📦'),
           ),
           title: Text(t.merchant),
