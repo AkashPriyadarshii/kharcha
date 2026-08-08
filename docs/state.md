@@ -33,11 +33,12 @@
 - [x] **Step 4.5** Profile tab: account, payment methods, export CSV/JSON UI, backup status, app lock toggle.
 - [x] **Step 5.1** Export: CSV + JSON (category names, newest first).
 - [x] **Step 5.2** App lock: real now — `AppLockStore` (JSON file) + `AppLockController` provider, toggle in Profile, `LockGate` overlays + re-locks on resume. Tests.
-- [x] **Step 5.3** Privacy policy (`docs/privacy-policy.md`) + Play listing copy + data-safety mapping (`docs/play-listing.md`). Launcher icon + screenshots pending device.
+- [x] **Step 5.3** Privacy policy (`docs/privacy-policy.md`) + Play listing copy + data-safety mapping (`docs/play-listing.md`) + Terms screen (in-app `/terms`). Launcher icon + screenshots pending device.
+- [x] **Build fixes** — debug APK now builds: core library desugaring (flutter_local_notifications) + Kotlin `const val Set` → `val` in `UpiNotificationListener.kt`.
 
 ## Next up
 
-1. On-device verify (2.3, 3.1, 4.1-4.5)
+1. **On-device verify (Akash)** — sideload `build\app\outputs\flutter-apk\app-debug.apk` on Android 12+ phone (USB): 2.3 capture, 3.1 sync, 4.1-4.5 screens, 5.1 export, 5.2 app lock. No device connected on dev machine.
 2. Step 5.4/5.5: Final regression + release v0.1.0 (deferred until Akash tests)
 
 ## In progress
