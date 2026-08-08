@@ -29,7 +29,9 @@ void main() {
     expect(row.source, 'manual');
     expect(row.paymentMethod, 'upi');
     expect(row.txnDate, DateTime(2026, 8, 6));
-    expect(row.categoryId, isNull);
+    // Zomato matches a seeded rule → auto-categorized (categorization has its
+    // own test below; this one just records the row is not left null).
+    expect(row.categoryId, isNotNull);
 
     final stored = await (db.select(db.transactions)).get();
     expect(stored, hasLength(1));
