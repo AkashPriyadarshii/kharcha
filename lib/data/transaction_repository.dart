@@ -24,9 +24,21 @@ final categoriesProvider = StreamProvider<List<Category>>(
   (ref) => ref.watch(transactionRepositoryProvider).watchCategories(),
 );
 
+/// An aggregate derived from the live transactions stream.
+///
+/// Recomputes the DB query on every insert/delete — the FutureProvider
+/// versions computed once and stayed stale for the app's lifetime (the
+/// "budget/home/reports don't refresh" bug). Each aggregate subscribes to its
+/// own watchAll() stream; Drift keeps them cheap. ponytail: if profiles show
+/// N+1 watch streams, merge onto a single shared stream + map.
+Stream<T> _aggregate<T>(Ref ref, Future<T> Function(TransactionRepository) query) {
+  final repo = ref.watch(transactionRepositoryProvider);
+  return repo.watchAll().asyncMap((_) => query(repo));
+}
+
 /// This month's spend per category, largest first.
-final monthSpendProvider = FutureProvider<List<(Category, double)>>(
-  (ref) => ref.watch(transactionRepositoryProvider).monthSpendByCategory(DateTime.now()),
+final monthSpendProvider = StreamProvider<List<(Category, double)>>(
+  (ref) => _aggregate(ref, (repo) => repo.monthSpendByCategory(DateTime.now())),
 );
 
 /// Budgets joined with their categories.
@@ -35,18 +47,18 @@ final budgetsProvider = StreamProvider<List<(Budget, Category)>>(
 );
 
 /// Monthly spend trend for the reports chart.
-final monthlyTrendProvider = FutureProvider<List<(String, double)>>(
-  (ref) => ref.watch(transactionRepositoryProvider).monthlyTrend(DateTime.now()),
+final monthlyTrendProvider = StreamProvider<List<(String, double)>>(
+  (ref) => _aggregate(ref, (repo) => repo.monthlyTrend(DateTime.now())),
 );
 
 /// Merchant ranking for the reports list.
-final merchantRankingProvider = FutureProvider<List<(String, double, int)>>(
-  (ref) => ref.watch(transactionRepositoryProvider).merchantRanking(),
+final merchantRankingProvider = StreamProvider<List<(String, double, int)>>(
+  (ref) => _aggregate(ref, (repo) => repo.merchantRanking()),
 );
 
 /// Spend per payment method, for the profile tab.
-final paymentMethodTotalsProvider = FutureProvider<List<(String, double, int)>>(
-  (ref) => ref.watch(transactionRepositoryProvider).paymentMethodTotals(),
+final paymentMethodTotalsProvider = StreamProvider<List<(String, double, int)>>(
+  (ref) => _aggregate(ref, (repo) => repo.paymentMethodTotals()),
 );
 
 /// Backup status: (on Supabase, pending push), for the profile tab.

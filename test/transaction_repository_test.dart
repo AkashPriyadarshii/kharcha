@@ -1,4 +1,5 @@
 import 'package:drift/native.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kharcha/data/database.dart';
 import 'package:kharcha/data/transaction_repository.dart';
@@ -135,5 +136,33 @@ void main() {
 
     final rows = await repo.watchAll().first;
     expect(rows.map((r) => r.merchant).toList(), ['B', 'A']);
+  });
+
+  testWidgets('monthSpendProvider recomputes after a new transaction', (tester) async {
+    final container = ProviderContainer(
+      overrides: [
+        databaseProvider.overrideWithValue(db),
+        transactionRepositoryProvider.overrideWithValue(repo),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    // Watch like a widget does; collect the aggregate values over time.
+    final values = <List<(Category, double)>>[];
+    final sub = container.listen(monthSpendProvider, (_, next) {
+      final v = next.value;
+      if (v != null) values.add(v);
+    });
+    addTearDown(sub.close);
+    await tester.pumpAndSettle();
+    expect(values, [isEmpty]);
+
+    await repo.insertManual(
+      amount: 450, merchant: 'Zomato', paymentMethod: 'upi', txnDate: DateTime(2026, 8, 6));
+    await tester.pumpAndSettle();
+
+    // The stream-derived aggregate must have re-emitted with the new row.
+    expect(values.last, hasLength(1));
+    expect(values.last.single.$2, 450);
   });
 }

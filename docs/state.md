@@ -4,7 +4,7 @@
 
 ## Current status
 
-**Phase: Phase 4 core done, Phase 5 code in progress.** 4.1-4.5 all shipped (tabbed shell: Home/Transactions/Budget/Reports/Profile). 5.1 export + 5.2 app lock landed (app lock now real: toggle in Profile + resume gate). `flutter analyze` clean; targeted test suites pass; full `flutter test` flaky on Windows host (sqlite3 native-assets — recoverable with proc-kill + `flutter clean`, `docs/troubleshooting.md`). Next: on-device verify, 5.3 Play assets, 5.4/5.5 release (deferred until Akash tests).
+**Phase: v0.1.0 feature-complete, on-device verify + fixes in flight.** 4.1-4.5 shipped (tabbed shell). 5.1 export + 5.2 app lock landed. **Post-verify fixes landed:** stale-aggregate bug fixed (aggregate providers now derive from the transactions stream — budget/home/reports refresh on every insert instead of staying stale until app restart), Home tab shows recent transactions, first-launch onboarding (capture + battery + summaries), battery-optimization ignore + POST_NOTIFICATIONS manifest entries. `flutter analyze` clean; targeted suites pass. Next: rebuild+install on device, finish on-device verify, 5.4/5.5 release (deferred until Akash tests).
 
 ## Completed
 
@@ -35,6 +35,10 @@
 - [x] **Step 5.2** App lock: real now — `AppLockStore` (JSON file) + `AppLockController` provider, toggle in Profile, `LockGate` overlays + re-locks on resume. Tests.
 - [x] **Step 5.3** Privacy policy (`docs/privacy-policy.md`) + Play listing copy + data-safety mapping (`docs/play-listing.md`) + Terms screen (in-app `/terms`). Launcher icon + screenshots pending device.
 - [x] **Build fixes** — debug APK now builds: core library desugaring (flutter_local_notifications) + Kotlin `const val Set` → `val` in `UpiNotificationListener.kt`.
+- [x] **Stale-aggregate fix** — `monthSpendProvider`/`monthlyTrendProvider`/`merchantRankingProvider`/`paymentMethodTotalsProvider`/`homeSummaryProvider` were FutureProviders over one-shot DB reads → budget/home/reports stayed stale until app restart. Converted to stream-derived (`watchAll().asyncMap`). Tests updated.
+- [x] **Home recent transactions** — Home tab now lists the 5 newest expenses under the category bars.
+- [x] **Onboarding** — first-launch flow after login: capture disclosure → battery settings → summaries; skippable, persisted flag, gated via router redirect. `OnboardingStore` + tests.
+- [x] **Battery + notifications** — `POST_NOTIFICATIONS` manifest entry (Android 13+); `MainActivity` MethodChannel `openBatteryOptimizationSettings`.
 
 ## Next up
 

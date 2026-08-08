@@ -18,6 +18,13 @@ class MainActivity : FlutterActivity() {
                         startActivity(intent)
                         result.success(null)
                     }
+                    "openBatteryOptimizationSettings" -> {
+                        // System settings page — no permission needed to open.
+                        val intent =
+                            Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                        startActivity(intent)
+                        result.success(null)
+                    }
                     else -> result.notImplemented()
                 }
             }

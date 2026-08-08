@@ -22,21 +22,25 @@ class HomeSummary {
   final List<(Category, double)> byCategory;
 }
 
-final homeSummaryProvider = FutureProvider<HomeSummary>((ref) async {
+final homeSummaryProvider = StreamProvider<HomeSummary>((ref) {
   final repo = ref.watch(transactionRepositoryProvider);
-  final now = DateTime.now();
-  final byCategory = await ref.watch(monthSpendProvider.future);
-  final budgets = await ref.watch(budgetsProvider.future);
-  final spentOnBudgeted = byCategory
-      .where((c) => budgets.any((b) => b.$1.categoryId == c.$1.id))
-      .fold(0.0, (s, c) => s + c.$2);
-  final budgetTotal = budgets.fold(0.0, (s, b) => s + b.$1.amount);
-  return HomeSummary(
-    today: await repo.dayTotal(now),
-    month: await repo.monthTotal(now),
-    budgetLeft: (budgetTotal - spentOnBudgeted).clamp(0, double.infinity),
-    byCategory: byCategory,
-  );
+  // Recompute the whole dashboard on every insert/delete — same "stale
+  // aggregates" fix as the tab-level providers.
+  return repo.watchAll().asyncMap((_) async {
+    final now = DateTime.now();
+    final byCategory = await repo.monthSpendByCategory(now);
+    final budgets = await repo.watchBudgets().first;
+    final spentOnBudgeted = byCategory
+        .where((c) => budgets.any((b) => b.$1.categoryId == c.$1.id))
+        .fold(0.0, (s, c) => s + c.$2);
+    final budgetTotal = budgets.fold(0.0, (s, b) => s + b.$1.amount);
+    return HomeSummary(
+      today: await repo.dayTotal(now),
+      month: await repo.monthTotal(now),
+      budgetLeft: (budgetTotal - spentOnBudgeted).clamp(0, double.infinity),
+      byCategory: byCategory,
+    );
+  });
 });
 
 /// Home dashboard: today / this month / budget left + this month by category.
@@ -46,6 +50,8 @@ class HomeTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final summary = ref.watch(homeSummaryProvider);
+    final recent = ref.watch(transactionsProvider).value ?? const <Transaction>[];
+    final recent5 = recent.take(5).toList();
     return summary.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Could not load dashboard.\n$e')),
@@ -61,7 +67,38 @@ class HomeTab extends ConsumerWidget {
           else
             for (final c in s.byCategory)
               _CategoryBar(category: c.$1, amount: c.$2, max: s.byCategory.first.$2),
+          const SizedBox(height: 24),
+          Text('Recent transactions', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          if (recent5.isEmpty)
+            Text('No expenses yet — add one with Quick add, or enable capture.',
+                style: Theme.of(context).textTheme.bodyMedium)
+          else
+            for (final t in recent5) _RecentTile(transaction: t),
         ],
+      ),
+    );
+  }
+}
+
+class _RecentTile extends StatelessWidget {
+  const _RecentTile({required this.transaction});
+
+  final Transaction transaction;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      dense: true,
+      leading: const Icon(Icons.receipt_long_outlined, size: 20),
+      title: Text(transaction.merchant),
+      trailing: Text(
+        _currency.format(transaction.amount),
+        style: Theme.of(context)
+            .textTheme
+            .bodyMedium
+            ?.copyWith(fontWeight: FontWeight.w600),
       ),
     );
   }
