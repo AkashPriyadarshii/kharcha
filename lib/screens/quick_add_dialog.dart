@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/sync_engine.dart';
 import '../data/transaction_repository.dart';
+import '../widgets/income_expense_toggle.dart';
 
 /// Minimal expense entry — amount + optional merchant. < 2s. Same insert path
 /// as the full form, with defaults: today, UPI, uncategorized, manual source.
@@ -20,6 +21,7 @@ class _QuickAddDialogState extends ConsumerState<QuickAddDialog> {
   final _formKey = GlobalKey<FormState>();
   final _amount = TextEditingController();
   final _merchant = TextEditingController();
+  bool _isIncome = false;
   bool _saving = false;
 
   @override
@@ -40,6 +42,7 @@ class _QuickAddDialogState extends ConsumerState<QuickAddDialog> {
             merchant: _merchant.text.trim().isEmpty ? 'Manual' : _merchant.text,
             paymentMethod: 'upi',
             txnDate: DateTime.now(),
+            isIncome: _isIncome,
           );
       unawaited(syncIfSignedIn(container));
       if (!mounted) return;
@@ -61,6 +64,11 @@ class _QuickAddDialogState extends ConsumerState<QuickAddDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            IncomeExpenseToggle(
+              isIncome: _isIncome,
+              onChanged: (v) => setState(() => _isIncome = v),
+            ),
+            const SizedBox(height: 16),
             TextFormField(
               controller: _amount,
               autofocus: true,

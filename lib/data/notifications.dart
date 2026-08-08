@@ -44,7 +44,8 @@ class Notifications {
       description: 'Daily and weekly spending summaries',
       importance: Importance.high,
     ));
-    await android?.requestNotificationsPermission();
+    // Notification permission is requested contextually in onboarding, not at
+    // startup — a dialog on the auth screen would be spammy.
   }
 
   /// (Re)schedules the daily 21:00 push with today's numbers so far. Called

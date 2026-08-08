@@ -165,4 +165,53 @@ void main() {
     expect(values.last, hasLength(1));
     expect(values.last.single.$2, 450);
   });
+
+  test('income categories are seeded', () async {
+    final cats = await (db.select(db.categories)..where((c) => c.isIncome.equals(true))).get();
+    expect(cats.map((c) => c.name), containsAll(['Salary', 'Bonus', 'Gift', 'Other income']));
+  });
+
+  test('insertManual income persists isIncome and skips auto-categorize', () async {
+    final row = await repo.insertManual(
+      amount: 50000,
+      merchant: 'Acme Corp',
+      paymentMethod: 'upi',
+      txnDate: DateTime(2026, 8, 6),
+      isIncome: true,
+    );
+
+    expect(row.isIncome, true);
+    expect(row.categoryId, isNull); // income never matches expense rules
+  });
+
+  test('monthTotal excludes income but monthIncome counts it', () async {
+    await repo.insertManual(amount: 100, merchant: 'A', paymentMethod: 'upi', txnDate: DateTime(2026, 8, 1));
+    await repo.insertManual(
+      amount: 1000, merchant: 'Acme', paymentMethod: 'upi', txnDate: DateTime(2026, 8, 2), isIncome: true);
+
+    final month = DateTime(2026, 8);
+    expect(await repo.monthTotal(month), 100);
+    expect(await repo.monthIncome(month), 1000);
+  });
+
+  test('dayTotal excludes income but dayIncome counts it', () async {
+    await repo.insertManual(amount: 50, merchant: 'A', paymentMethod: 'upi', txnDate: DateTime(2026, 8, 6));
+    await repo.insertManual(
+      amount: 200, merchant: 'Acme', paymentMethod: 'upi', txnDate: DateTime(2026, 8, 6), isIncome: true);
+
+    final day = DateTime(2026, 8, 6);
+    expect(await repo.dayTotal(day), 50);
+    expect(await repo.dayIncome(day), 200);
+  });
+
+  test('imported income round-trips through insertImported', () async {
+    final row = await repo.insertImported(
+      amount: 500,
+      merchant: 'Client Payment',
+      paymentMethod: 'upi',
+      txnDate: DateTime(2026, 8, 6),
+      isIncome: true,
+    );
+    expect(row!.isIncome, true);
+  });
 }

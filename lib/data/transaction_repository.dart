@@ -129,6 +129,7 @@ class TransactionRepository {
     required String paymentMethod,
     required DateTime txnDate,
     int? walletId,
+    bool isIncome = false,
   }) async {
     final validation = validateManualTransaction(
       amount: amount,
@@ -138,11 +139,14 @@ class TransactionRepository {
     if (validation != null) throw TransactionValidationException(validation);
 
     // Auto-categorize when the caller left it blank: known merchant → rule.
+    // Income never auto-categorizes from expense rules.
     var resolvedCategory = categoryId;
-    resolvedCategory ??= categorize(
-      merchant: merchant,
-      rules: await _db.select(_db.rules).get(),
-    );
+    if (!isIncome) {
+      resolvedCategory ??= categorize(
+        merchant: merchant,
+        rules: await _db.select(_db.rules).get(),
+      );
+    }
 
     final id = await _db.into(_db.transactions).insert(
           TransactionsCompanion.insert(
@@ -155,6 +159,7 @@ class TransactionRepository {
             upiRef: const Value(null),
             source: 'manual',
             txnDate: txnDate,
+            isIncome: Value(isIncome),
           ),
         );
     final row = await (_db.select(_db.transactions)..where((t) => t.id.equals(id))).getSingle();
@@ -417,6 +422,7 @@ class TransactionRepository {
     required DateTime txnDate,
     String? upiRef,
     int? walletId,
+    bool isIncome = false,
   }) async {
     final validation = validateManualTransaction(
       amount: amount,
@@ -441,13 +447,18 @@ class TransactionRepository {
             upiRef: Value(trimmedRef),
             source: 'import',
             txnDate: txnDate,
+            isIncome: Value(isIncome),
           ),
         );
     final row = await (_db.select(_db.transactions)..where((t) => t.id.equals(id))).getSingle();
     return row;
   }
 
-  /// Total spent on [day] (local calendar day). 0 when none.
+  /// [Expression] that matches expense rows. Spend aggregates are expense-only;
+  /// income is tracked separately so it never inflates "how much did I spend".
+  Expression<bool> _expenseOnly() => _db.transactions.isIncome.equals(false);
+
+  /// Total spent on [day] (local calendar day). 0 when none. Expense-only.
   Future<double> dayTotal(DateTime day) {
     final start = DateTime(day.year, day.month, day.day);
     final end = start.add(const Duration(days: 1));
@@ -455,7 +466,21 @@ class TransactionRepository {
     final query = _db.selectOnly(_db.transactions)
       ..addColumns([sum])
       ..where(_db.transactions.txnDate.isBiggerOrEqualValue(start) &
-          _db.transactions.txnDate.isSmallerThanValue(end));
+          _db.transactions.txnDate.isSmallerThanValue(end) &
+          _expenseOnly());
+    return query.getSingle().then((row) => row.read(sum) ?? 0);
+  }
+
+  /// Total income on [day] (local calendar day). 0 when none.
+  Future<double> dayIncome(DateTime day) {
+    final start = DateTime(day.year, day.month, day.day);
+    final end = start.add(const Duration(days: 1));
+    final sum = _db.transactions.amount.sum();
+    final query = _db.selectOnly(_db.transactions)
+      ..addColumns([sum])
+      ..where(_db.transactions.txnDate.isBiggerOrEqualValue(start) &
+          _db.transactions.txnDate.isSmallerThanValue(end) &
+          _db.transactions.isIncome.equals(true));
     return query.getSingle().then((row) => row.read(sum) ?? 0);
   }
 
@@ -480,8 +505,22 @@ class TransactionRepository {
     final query = _db.selectOnly(_db.transactions)
       ..addColumns([sum])
       ..where(_db.transactions.txnDate.isBiggerOrEqualValue(start) &
-          _db.transactions.txnDate.isSmallerThanValue(endExclusive));
+          _db.transactions.txnDate.isSmallerThanValue(endExclusive) &
+          _expenseOnly());
     return query.getSingle().then((row) => row.read(sum) ?? 0);
+  }
+
+  /// Total income in [month] (local). 0 when none.
+  Future<double> monthIncome(DateTime month) {
+    final start = DateTime(month.year, month.month, 1);
+    final end = DateTime(month.year, month.month + 1, 1);
+    final sum = _db.transactions.amount.sum();
+    final q = _db.selectOnly(_db.transactions)
+      ..addColumns([sum])
+      ..where(_db.transactions.txnDate.isBiggerOrEqualValue(start) &
+          _db.transactions.txnDate.isSmallerThanValue(end) &
+          _db.transactions.isIncome.equals(true));
+    return q.getSingle().then((row) => row.read(sum) ?? 0);
   }
 
   /// Top [n] categories by spend in the 7 days up to and including [end].
@@ -493,7 +532,8 @@ class TransactionRepository {
       innerJoin(_db.categories, _db.categories.id.equalsExp(_db.transactions.categoryId)),
     ])
       ..where(_db.transactions.txnDate.isBiggerOrEqualValue(start) &
-          _db.transactions.txnDate.isSmallerThanValue(endExclusive));
+          _db.transactions.txnDate.isSmallerThanValue(endExclusive) &
+          _expenseOnly());
     final perCategory = <String, double>{};
     for (final r in await rows.get()) {
       final name = r.readTable(_db.categories).name;
@@ -504,7 +544,7 @@ class TransactionRepository {
     return ranked.take(n).map((e) => (e.key, e.value)).toList();
   }
 
-  /// Total spent in [month] (local).
+  /// Total spent in [month] (local). Expense-only.
   Future<double> monthTotal(DateTime month) {
     final start = DateTime(month.year, month.month, 1);
     final end = DateTime(month.year, month.month + 1, 1);
@@ -512,11 +552,13 @@ class TransactionRepository {
     final q = _db.selectOnly(_db.transactions)
       ..addColumns([sum])
       ..where(_db.transactions.txnDate.isBiggerOrEqualValue(start) &
-          _db.transactions.txnDate.isSmallerThanValue(end));
+          _db.transactions.txnDate.isSmallerThanValue(end) &
+          _expenseOnly());
     return q.getSingle().then((row) => row.read(sum) ?? 0);
   }
 
   /// Spend per category in [month], largest first. Uncategorized excluded.
+  /// Expense-only — income never counts toward category spend.
   Future<List<(Category, double)>> monthSpendByCategory(DateTime month) async {
     final start = DateTime(month.year, month.month, 1);
     final end = DateTime(month.year, month.month + 1, 1);
@@ -524,7 +566,8 @@ class TransactionRepository {
       innerJoin(_db.categories, _db.categories.id.equalsExp(_db.transactions.categoryId)),
     ])
       ..where(_db.transactions.txnDate.isBiggerOrEqualValue(start) &
-          _db.transactions.txnDate.isSmallerThanValue(end));
+          _db.transactions.txnDate.isSmallerThanValue(end) &
+          _expenseOnly());
     final per = <int, (Category, double)>{};
     for (final r in await rows.get()) {
       final cat = r.readTable(_db.categories);
@@ -539,7 +582,9 @@ class TransactionRepository {
   /// [end], oldest first. Returns (monthLabel, total) — for the trend chart.
   Future<List<(String, double)>> monthlyTrend(DateTime end, {int months = 6}) async {
     // Scan newest-first, stop once we've covered [months] distinct months.
-    final rows = await (_db.select(_db.transactions)..orderBy([(t) => OrderingTerm.desc(t.txnDate)]))
+    final rows = await (_db.select(_db.transactions)
+          ..where((t) => t.isIncome.equals(false))
+          ..orderBy([(t) => OrderingTerm.desc(t.txnDate)]))
         .get();
     final per = <DateTime, double>{};
     for (final t in rows) {
@@ -559,6 +604,7 @@ class TransactionRepository {
   Future<List<(String, double, int)>> merchantRanking({int n = 10}) async {
     final per = <String, (double, int)>{};
     for (final (t, _) in await allTransactions()) {
+      if (t.isIncome) continue; // merchant ranking is spend-only
       final v = per[t.merchant] ?? (0, 0);
       per[t.merchant] = (v.$1 + t.amount, v.$2 + 1);
     }
@@ -570,6 +616,7 @@ class TransactionRepository {
   Future<List<(String, double, int)>> paymentMethodTotals() async {
     final per = <String, (double, int)>{};
     for (final (t, _) in await allTransactions()) {
+      if (t.isIncome) continue; // method totals are spend-only
       final v = per[t.paymentMethod] ?? (0, 0);
       per[t.paymentMethod] = (v.$1 + t.amount, v.$2 + 1);
     }
@@ -686,6 +733,7 @@ class TransactionRepository {
           paymentMethod: Value(r.paymentMethod),
           upiRef: Value(r.upiRef),
           source: Value(r.source),
+          isIncome: Value(r.isIncome),
           updatedAt: Value(r.updatedAt),
           remoteId: Value(r.id),
           dirty: const Value(false),
@@ -702,10 +750,13 @@ class TransactionRepository {
   /// A remote row we've never seen → insert a local copy. Categorization is
   /// derived locally from rules (the remote stores no per-user category id).
   Future<Transaction> _insertFromRemote(RemoteTransaction r) async {
-    final categoryId = categorize(
-      merchant: r.merchant,
-      rules: await _db.select(_db.rules).get(),
-    );
+    // Income never auto-categorizes from expense rules.
+    final categoryId = r.isIncome
+        ? null
+        : categorize(
+            merchant: r.merchant,
+            rules: await _db.select(_db.rules).get(),
+          );
     final id = await _db.into(_db.transactions).insert(
           TransactionsCompanion.insert(
             amount: r.amount,
@@ -715,6 +766,7 @@ class TransactionRepository {
             paymentMethod: r.paymentMethod,
             upiRef: Value(r.upiRef),
             source: r.source,
+            isIncome: Value(r.isIncome),
             txnDate: r.txnDate,
             updatedAt: Value(r.updatedAt),
             dirty: const Value(false),

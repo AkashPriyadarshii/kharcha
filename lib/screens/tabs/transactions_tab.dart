@@ -6,6 +6,7 @@ import '../../core/theme.dart';
 import '../../core/transaction_filter.dart';
 import '../../data/database.dart';
 import '../../data/transaction_repository.dart';
+import '../../widgets/income_expense_toggle.dart';
 
 final _currency = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
 final _dateFormat = DateFormat('d MMM');
@@ -26,6 +27,7 @@ class _TransactionsTabState extends ConsumerState<TransactionsTab> {
   int? _categoryId;
   String? _merchant;
   String? _paymentMethod;
+  bool? _isIncome;
   _DatePreset _datePreset = _DatePreset.all;
   DateTimeRange? _customRange;
 
@@ -85,6 +87,7 @@ class _TransactionsTabState extends ConsumerState<TransactionsTab> {
       _categoryId = null;
       _merchant = null;
       _paymentMethod = null;
+      _isIncome = null;
       _datePreset = _DatePreset.all;
       _customRange = null;
     });
@@ -125,6 +128,7 @@ class _TransactionsTabState extends ConsumerState<TransactionsTab> {
       categoryId: _categoryId,
       merchant: merchant,
       paymentMethod: _paymentMethod,
+      isIncome: _isIncome,
       from: from,
       to: to,
     );
@@ -151,6 +155,7 @@ class _TransactionsTabState extends ConsumerState<TransactionsTab> {
         _categoryId != null ||
         merchant != null ||
         _paymentMethod != null ||
+        _isIncome != null ||
         _datePreset != _DatePreset.all;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
@@ -208,6 +213,16 @@ class _TransactionsTabState extends ConsumerState<TransactionsTab> {
                       DropdownMenuItem(value: m, child: Text(_methodLabel(m))),
                   ],
                   onChanged: (v) => setState(() => _paymentMethod = v),
+                ),
+                const SizedBox(width: 24),
+                _FilterDropdown<bool>(
+                  value: _isIncome,
+                  items: const [
+                    DropdownMenuItem(value: null, child: Text('All types')),
+                    DropdownMenuItem(value: false, child: Text('Expenses')),
+                    DropdownMenuItem(value: true, child: Text('Income')),
+                  ],
+                  onChanged: (v) => setState(() => _isIncome = v),
                 ),
                 const SizedBox(width: 24),
                 _FilterDropdown<_DatePreset>(
@@ -293,9 +308,10 @@ class _TransactionList extends StatelessWidget {
             ].where((s) => s.isNotEmpty).join(' · '),
           ),
           trailing: Text(
-            _currency.format(t.amount),
+            '${t.isIncome ? '+ ' : ''}${_currency.format(t.amount)}',
             style: moneyStyle.copyWith(
               fontSize: Theme.of(context).textTheme.titleMedium?.fontSize,
+              color: t.isIncome ? incomeGreen : expenseRed,
             ),
           ),
         );

@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import '../data/database.dart';
 import '../data/sync_engine.dart';
 import '../data/transaction_repository.dart';
+import '../widgets/income_expense_toggle.dart';
 
 /// Full manual expense entry. Launched from the transactions list.
 class AddExpenseScreen extends ConsumerStatefulWidget {
@@ -28,6 +29,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   int? _walletId;
   String _paymentMethod = 'upi';
   DateTime _date = DateTime.now();
+  bool _isIncome = false;
   bool _saving = false;
 
   @override
@@ -52,6 +54,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             note: _note.text,
             paymentMethod: _paymentMethod,
             txnDate: _date,
+            isIncome: _isIncome,
           );
       unawaited(syncIfSignedIn(container));
       if (!mounted) return;
@@ -67,11 +70,13 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   @override
   Widget build(BuildContext context) {
     final categories = ref.watch(categoriesProvider).value ?? const <Category>[];
+    // Only the categories that match the current mode (expense or income).
+    final cats = categories.where((c) => c.isIncome == _isIncome).toList();
     final wallets = ref.watch(walletsProvider).value ?? const <Wallet>[];
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add expense'),
+        title: Text(_isIncome ? 'Add income' : 'Add expense'),
         leading: IconButton(
           icon: const Icon(Icons.close),
           tooltip: 'Cancel',
@@ -83,6 +88,14 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            IncomeExpenseToggle(
+              isIncome: _isIncome,
+              onChanged: (v) => setState(() {
+                _isIncome = v;
+                _categoryId = null; // category list changes with the mode
+              }),
+            ),
+            const SizedBox(height: 16),
             TextFormField(
               controller: _amount,
               autofocus: true,
@@ -119,7 +132,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               decoration: const InputDecoration(labelText: 'Category'),
               hint: const Text('Uncategorized'),
               items: [
-                for (final c in categories)
+                for (final c in cats)
                   DropdownMenuItem(value: c.id, child: Text('${c.emoji}  ${c.name}')),
               ],
               onChanged: (value) => setState(() => _categoryId = value),
@@ -168,7 +181,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Save expense'),
+                  : Text(_isIncome ? 'Save income' : 'Save expense'),
             ),
           ],
         ),
