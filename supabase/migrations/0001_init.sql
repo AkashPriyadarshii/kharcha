@@ -54,6 +54,9 @@ create table if not exists public.budgets (
 alter table public.transactions enable row level security;
 alter table public.budgets enable row level security;
 
+-- Drop-first so the migration is idempotent (re-running doesn't hit 42710).
+drop policy if exists "users can manage own transactions" on public.transactions;
+drop policy if exists "users can manage own budgets" on public.budgets;
 create policy "users can manage own transactions" on public.transactions
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "users can manage own budgets" on public.budgets
