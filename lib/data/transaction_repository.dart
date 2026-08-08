@@ -669,28 +669,34 @@ class TransactionRepository {
   }
 
   Future<Transaction> _merge(Transaction local, RemoteTransaction r) async {
-    if (localWins(local.updatedAt, r.updatedAt)) {
-      // Local is newer/equal. Claim the remote id so a duplicate is never
+    if (local.updatedAt.isAfter(r.updatedAt)) {
+      // Local is strictly newer. Claim the remote id so a duplicate is never
       // inserted, but stay dirty so the next push overwrites the remote copy.
       await markSynced(local.id, r.id!, dirty: true);
       return local;
     }
-    // Remote is newer → local copy is stale; overwrite and sync clean.
-    await (_db.update(_db.transactions)..where((t) => t.id.equals(local.id))).write(
-      TransactionsCompanion(
-        amount: Value(r.amount),
-        merchant: Value(r.merchant),
-        txnDate: Value(r.txnDate),
-        note: Value(r.note),
-        paymentMethod: Value(r.paymentMethod),
-        upiRef: Value(r.upiRef),
-        source: Value(r.source),
-        updatedAt: Value(r.updatedAt),
-        remoteId: Value(r.id),
-        dirty: const Value(false),
-      ),
-    );
-    return (_db.select(_db.transactions)..where((t) => t.id.equals(local.id))).getSingle();
+    if (local.updatedAt.isBefore(r.updatedAt)) {
+      // Remote is newer → local copy is stale; overwrite and sync clean.
+      await (_db.update(_db.transactions)..where((t) => t.id.equals(local.id))).write(
+        TransactionsCompanion(
+          amount: Value(r.amount),
+          merchant: Value(r.merchant),
+          txnDate: Value(r.txnDate),
+          note: Value(r.note),
+          paymentMethod: Value(r.paymentMethod),
+          upiRef: Value(r.upiRef),
+          source: Value(r.source),
+          updatedAt: Value(r.updatedAt),
+          remoteId: Value(r.id),
+          dirty: const Value(false),
+        ),
+      );
+      return (_db.select(_db.transactions)..where((t) => t.id.equals(local.id))).getSingle();
+    }
+    // Equal timestamps → already converged. Claim the remote id and go clean;
+    // marking equal rows dirty re-pushed them on every sync forever.
+    await markSynced(local.id, r.id!);
+    return local;
   }
 
   /// A remote row we've never seen → insert a local copy. Categorization is

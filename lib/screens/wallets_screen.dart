@@ -141,8 +141,13 @@ class _WalletTile extends ConsumerWidget {
   }
 }
 
-final walletBalanceProvider = FutureProvider.family<double, int>(
-  (ref, walletId) => ref.read(transactionRepositoryProvider).walletBalance(walletId),
+/// Live per-wallet balance: recomputed on every insert/delete (same stale-
+/// aggregate fix as the dashboard providers).
+final walletBalanceProvider = StreamProvider.family<double, int>(
+  (ref, walletId) => ref
+      .watch(transactionRepositoryProvider)
+      .watchAll()
+      .asyncMap((_) => ref.read(transactionRepositoryProvider).walletBalance(walletId)),
 );
 
 String _currencySymbol(String code) => switch (code) {

@@ -32,13 +32,19 @@ Future<int> drainCaptureInbox({required File inbox, required TransactionReposito
     }
     if (parsed == null) continue;
 
-    final inserted = await repo.insertCaptured(
-      amount: parsed.amount,
-      merchant: parsed.merchant,
-      upiRef: parsed.upiRef,
-      txnDate: DateTime.now(),
-    );
-    if (inserted != null) added++;
+    try {
+      final inserted = await repo.insertCaptured(
+        amount: parsed.amount,
+        merchant: parsed.merchant,
+        upiRef: parsed.upiRef,
+        txnDate: DateTime.now(),
+      );
+      if (inserted != null) added++;
+    } catch (_) {
+      // A single insert failure (e.g. constraint) must not abort the drain —
+      // that would replay every earlier line as a duplicate on the next open.
+      continue;
+    }
   }
 
   // Consumed the whole file — truncate so a notification is never replayed.
