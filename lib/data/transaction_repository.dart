@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../core/categorizer.dart';
 import 'database.dart';
+import 'remote_feature.dart';
 import 'remote_transaction.dart';
 
 /// Provider for the single shared [AppDatabase].
@@ -221,8 +222,10 @@ class TransactionRepository {
         ));
   }
 
-  /// Renames a wallet / changes its currency.
-  Future<void> updateWallet(Wallet wallet) => _db.update(_db.wallets).replace(wallet);
+  /// Renames a wallet / changes its currency. Marks it dirty for sync.
+  Future<void> updateWallet(Wallet wallet) => _db.update(_db.wallets).replace(
+        wallet.copyWith(dirty: true),
+      );
 
   Future<void> deleteWallet(int id) async {
     // Null out wallet_id on its transactions so they don't disappear.
@@ -297,7 +300,10 @@ class TransactionRepository {
 
   Future<void> setRecurringActive(int id, bool active) =>
       (_db.update(_db.recurringTransactions)..where((r) => r.id.equals(id)))
-          .write(RecurringTransactionsCompanion(active: Value(active)));
+          .write(RecurringTransactionsCompanion(
+        active: Value(active),
+        dirty: const Value(true),
+      ));
 
   /// Advances [r.nextDue] by one period after it has been paid, so the next
   /// due date rolls forward. Pure + unit-testable.
@@ -325,7 +331,10 @@ class TransactionRepository {
       walletId: walletId,
     );
     await (_db.update(_db.recurringTransactions)..where((x) => x.id.equals(r.id)))
-        .write(RecurringTransactionsCompanion(nextDue: Value(nextDueAfter(r, paidOn))));
+        .write(RecurringTransactionsCompanion(
+      nextDue: Value(nextDueAfter(r, paidOn)),
+      dirty: const Value(true),
+    ));
     return txn;
   }
 
@@ -352,7 +361,10 @@ class TransactionRepository {
     final o = await (_db.select(_db.objectives)..where((x) => x.id.equals(id))).getSingleOrNull();
     if (o == null) return;
     await (_db.update(_db.objectives)..where((x) => x.id.equals(id)))
-        .write(ObjectivesCompanion(saved: Value(o.saved + amount)));
+        .write(ObjectivesCompanion(
+      saved: Value(o.saved + amount),
+      dirty: const Value(true),
+    ));
   }
 
   Future<void> deleteObjective(int id) =>
@@ -370,7 +382,10 @@ class TransactionRepository {
 
   Future<void> setDebtSettled(int id, bool settled) =>
       (_db.update(_db.debts)..where((d) => d.id.equals(id)))
-          .write(DebtsCompanion(settled: Value(settled)));
+          .write(DebtsCompanion(
+        settled: Value(settled),
+        dirty: const Value(true),
+      ));
 
   Future<void> deleteDebt(int id) => (_db.delete(_db.debts)..where((d) => d.id.equals(id))).go();
 
@@ -624,11 +639,308 @@ class TransactionRepository {
     return ranked.map((e) => (e.key, e.value.$1, e.value.$2)).toList();
   }
 
-  /// (rows pushed to Supabase, rows pending push).
+  /// (rows pushed to Supabase, rows pending push). Feature rows (budgets,
+  /// wallets, recurring, objectives, debts) count as pending until synced.
   Future<(int, int)> syncStatus() async {
     final all = await _db.select(_db.transactions).get();
     final pending = all.where((t) => t.dirty).length;
-    return (all.length - pending, pending);
+    return (all.length + (await _featureRowsSynced()), pending + (await featureRowsPending()));
+  }
+
+  /// Synced feature rows (remoteId != null) — for the profile backup line.
+  Future<int> _featureRowsSynced() async {
+    var synced = 0;
+    synced += (await _db.select(_db.budgets).get()).where((b) => b.remoteId != null).length;
+    synced += (await _db.select(_db.wallets).get()).where((w) => w.remoteId != null).length;
+    synced += (await _db.select(_db.recurringTransactions).get()).where((r) => r.remoteId != null).length;
+    synced += (await _db.select(_db.objectives).get()).where((o) => o.remoteId != null).length;
+    synced += (await _db.select(_db.debts).get()).where((d) => d.remoteId != null).length;
+    return synced;
+  }
+
+  /// Total unsynced feature rows (budgets, wallets, recurring, objectives,
+  /// debts) — for the profile backup line.
+  Future<int> featureRowsPending() async {
+    var pending = 0;
+    pending += (await _db.select(_db.budgets).get()).where((b) => b.dirty).length;
+    pending += (await _db.select(_db.wallets).get()).where((w) => w.dirty).length;
+    pending += (await _db.select(_db.recurringTransactions).get()).where((r) => r.dirty).length;
+    pending += (await _db.select(_db.objectives).get()).where((o) => o.dirty).length;
+    pending += (await _db.select(_db.debts).get()).where((d) => d.dirty).length;
+    return pending;
+  }
+
+  /// Dirty feature rows of [kind] — the SyncEngine pushes these.
+  Future<List<dynamic>> dirtyRowsFor(SyncKind kind) {
+    switch (kind) {
+      case SyncKind.budgets:
+        return (_db.select(_db.budgets)..where((b) => b.dirty.equals(true))).get();
+      case SyncKind.wallets:
+        return (_db.select(_db.wallets)..where((w) => w.dirty.equals(true))).get();
+      case SyncKind.recurring:
+        return (_db.select(_db.recurringTransactions)..where((r) => r.dirty.equals(true))).get();
+      case SyncKind.objectives:
+        return (_db.select(_db.objectives)..where((o) => o.dirty.equals(true))).get();
+      case SyncKind.debts:
+        return (_db.select(_db.debts)..where((d) => d.dirty.equals(true))).get();
+    }
+  }
+
+  /// Marks a feature row synced (or dirty when [dirty]).
+  Future<void> markFeatureSynced(SyncKind kind, int id, int remoteId, {bool dirty = false}) async {
+    switch (kind) {
+      case SyncKind.budgets:
+        await (_db.update(_db.budgets)..where((b) => b.id.equals(id)))
+            .write(BudgetsCompanion(remoteId: Value(remoteId), dirty: Value(dirty)));
+      case SyncKind.wallets:
+        await (_db.update(_db.wallets)..where((w) => w.id.equals(id)))
+            .write(WalletsCompanion(remoteId: Value(remoteId), dirty: Value(dirty)));
+      case SyncKind.recurring:
+        await (_db.update(_db.recurringTransactions)..where((r) => r.id.equals(id)))
+            .write(RecurringTransactionsCompanion(remoteId: Value(remoteId), dirty: Value(dirty)));
+      case SyncKind.objectives:
+        await (_db.update(_db.objectives)..where((o) => o.id.equals(id)))
+            .write(ObjectivesCompanion(remoteId: Value(remoteId), dirty: Value(dirty)));
+      case SyncKind.debts:
+        await (_db.update(_db.debts)..where((d) => d.id.equals(id)))
+            .write(DebtsCompanion(remoteId: Value(remoteId), dirty: Value(dirty)));
+    }
+  }
+
+  /// Whether a local feature row is shareable to Supabase. Rows referencing a
+  /// custom category (no server mirror) stay local — the remote has no such id.
+  Future<bool> featureRowShareable(SyncKind kind, dynamic row) async {
+    final categoryId = switch (kind) {
+      SyncKind.budgets => (row as Budget).categoryId,
+      SyncKind.recurring => (row as RecurringTransaction).categoryId,
+      _ => null,
+    };
+    if (categoryId == null) return true;
+    final cat = await (_db.select(_db.categories)..where((c) => c.id.equals(categoryId)))
+        .getSingleOrNull();
+    return cat != null && !cat.isCustom;
+  }
+
+  /// Records that [id] is local-only (custom category) and stops retrying.
+  Future<void> markFeatureLocalOnly(SyncKind kind, int id) {
+    switch (kind) {
+      case SyncKind.budgets:
+        return (_db.update(_db.budgets)..where((b) => b.id.equals(id)))
+            .write(const BudgetsCompanion(dirty: Value(false)));
+      case SyncKind.recurring:
+        return (_db.update(_db.recurringTransactions)..where((r) => r.id.equals(id)))
+            .write(const RecurringTransactionsCompanion(dirty: Value(false)));
+      case SyncKind.wallets:
+      case SyncKind.objectives:
+      case SyncKind.debts:
+        return Future.value();
+    }
+  }
+
+  /// A remote feature row → local payload. [SyncKind] chooses the table.
+  ///
+  /// categoryId null → custom category (no server mirror); the row is skipped
+  /// by the engine before this is reached. updatedAt defaults to now for
+  /// tables without an updated_at column (wallets/recurring/objectives/debts).
+  Map<String, Object?> featureToLocalMap(SyncKind kind, Map<String, dynamic> r) {
+    switch (kind) {
+      case SyncKind.budgets:
+        return {
+          'id': r['id'],
+          'categoryId': r['category_id'],
+          'amount': (r['amount'] as num).toDouble(),
+          'period': r['period'],
+          'alertPct50': r['alert_pct_50'] ?? 50,
+          'alertPct80': r['alert_pct_80'] ?? 80,
+          'alertPct100': r['alert_pct_100'] ?? 100,
+          'updatedAt': r['updated_at'] == null
+              ? DateTime.now()
+              : DateTime.parse(r['updated_at'] as String).toLocal(),
+          'dirty': false,
+          'remoteId': r['id'],
+        };
+      case SyncKind.wallets:
+        return {
+          'id': r['id'],
+          'name': r['name'],
+          'currency': r['currency'],
+          'initialBalance': (r['initial_balance'] as num?)?.toDouble() ?? 0,
+          'createdAt': DateTime.parse(r['created_at'] as String).toLocal(),
+          'dirty': false,
+          'remoteId': r['id'],
+        };
+      case SyncKind.recurring:
+        return {
+          'id': r['id'],
+          'merchant': r['merchant'],
+          'amount': (r['amount'] as num).toDouble(),
+          'categoryId': r['category_id'],
+          'period': r['period'],
+          'nextDue': DateTime.parse(r['next_due'] as String).toLocal(),
+          'active': r['active'] ?? true,
+          'dirty': false,
+          'remoteId': r['id'],
+        };
+      case SyncKind.objectives:
+        return {
+          'id': r['id'],
+          'name': r['name'],
+          'target': (r['target'] as num).toDouble(),
+          'saved': (r['saved'] as num?)?.toDouble() ?? 0,
+          'deadline': r['deadline'] == null ? null : DateTime.parse(r['deadline'] as String).toLocal(),
+          'dirty': false,
+          'remoteId': r['id'],
+        };
+      case SyncKind.debts:
+        return {
+          'id': r['id'],
+          'name': r['name'],
+          'amount': (r['amount'] as num).toDouble(),
+          'isLent': r['is_lent'] ?? false,
+          'note': r['note'],
+          'settled': r['settled'] ?? false,
+          'createdAt': DateTime.parse(r['created_at'] as String).toLocal(),
+          'dirty': false,
+          'remoteId': r['id'],
+        };
+    }
+  }
+
+  /// Local feature row by its remote id, or null when not stored yet.
+  Future<dynamic> findFeatureByRemoteId(SyncKind kind, int remoteId) {
+    switch (kind) {
+      case SyncKind.budgets:
+        return (_db.select(_db.budgets)..where((b) => b.remoteId.equals(remoteId))).getSingleOrNull();
+      case SyncKind.wallets:
+        return (_db.select(_db.wallets)..where((w) => w.remoteId.equals(remoteId))).getSingleOrNull();
+      case SyncKind.recurring:
+        return (_db.select(_db.recurringTransactions)..where((r) => r.remoteId.equals(remoteId))).getSingleOrNull();
+      case SyncKind.objectives:
+        return (_db.select(_db.objectives)..where((o) => o.remoteId.equals(remoteId))).getSingleOrNull();
+      case SyncKind.debts:
+        return (_db.select(_db.debts)..where((d) => d.remoteId.equals(remoteId))).getSingleOrNull();
+    }
+  }
+
+  /// Inserts a remote feature row locally with [map] (column-name → value,
+  /// local id = remote id, dirty=false). Only reached when the remote
+  /// category_id maps to a local category (custom-category rows skipped).
+  Future<void> insertFeatureFromRemote(SyncKind kind, Map<String, Object?> map) {
+    switch (kind) {
+      case SyncKind.budgets:
+        return _db.into(_db.budgets).insert(BudgetsCompanion(
+              id: Value(map['id']! as int),
+              categoryId: Value(map['categoryId']! as int),
+              amount: Value(map['amount']! as double),
+              period: Value(map['period']! as String),
+              alertPct50: Value(map['alertPct50']! as int),
+              alertPct80: Value(map['alertPct80']! as int),
+              alertPct100: Value(map['alertPct100']! as int),
+              updatedAt: Value(map['updatedAt']! as DateTime),
+              dirty: const Value(false),
+              remoteId: Value(map['remoteId']! as int),
+            ));
+      case SyncKind.wallets:
+        return _db.into(_db.wallets).insert(WalletsCompanion(
+              id: Value(map['id']! as int),
+              name: Value(map['name']! as String),
+              currency: Value(map['currency']! as String),
+              initialBalance: Value(map['initialBalance']! as double),
+              createdAt: Value(map['createdAt']! as DateTime),
+              dirty: const Value(false),
+              remoteId: Value(map['remoteId']! as int),
+            ));
+      case SyncKind.recurring:
+        return _db.into(_db.recurringTransactions).insert(RecurringTransactionsCompanion(
+              id: Value(map['id']! as int),
+              merchant: Value(map['merchant']! as String),
+              amount: Value(map['amount']! as double),
+              categoryId: Value(map['categoryId'] as int?),
+              period: Value(map['period']! as String),
+              nextDue: Value(map['nextDue']! as DateTime),
+              active: Value(map['active']! as bool),
+              dirty: const Value(false),
+              remoteId: Value(map['remoteId']! as int),
+            ));
+      case SyncKind.objectives:
+        return _db.into(_db.objectives).insert(ObjectivesCompanion(
+              id: Value(map['id']! as int),
+              name: Value(map['name']! as String),
+              target: Value(map['target']! as double),
+              saved: Value(map['saved']! as double),
+              deadline: Value(map['deadline'] as DateTime?),
+              dirty: const Value(false),
+              remoteId: Value(map['remoteId']! as int),
+            ));
+      case SyncKind.debts:
+        return _db.into(_db.debts).insert(DebtsCompanion(
+              id: Value(map['id']! as int),
+              name: Value(map['name']! as String),
+              amount: Value(map['amount']! as double),
+              isLent: Value(map['isLent']! as bool),
+              note: Value(map['note'] as String?),
+              settled: Value(map['settled']! as bool),
+              createdAt: Value(map['createdAt']! as DateTime),
+              dirty: const Value(false),
+              remoteId: Value(map['remoteId']! as int),
+            ));
+    }
+  }
+
+  /// Overwrites local feature row [localId] with remote [map]. Only reached
+  /// when the row is converged or remote-owned (local not dirty).
+  Future<void> updateFeatureFromRemote(SyncKind kind, int localId, Map<String, Object?> map) {
+    switch (kind) {
+      case SyncKind.budgets:
+        return (_db.update(_db.budgets)..where((b) => b.id.equals(localId))).write(BudgetsCompanion(
+              amount: Value(map['amount']! as double),
+              period: Value(map['period']! as String),
+              alertPct50: Value(map['alertPct50']! as int),
+              alertPct80: Value(map['alertPct80']! as int),
+              alertPct100: Value(map['alertPct100']! as int),
+              updatedAt: Value(map['updatedAt']! as DateTime),
+              dirty: const Value(false),
+              remoteId: Value(map['remoteId']! as int),
+            ));
+      case SyncKind.wallets:
+        return (_db.update(_db.wallets)..where((w) => w.id.equals(localId))).write(WalletsCompanion(
+              name: Value(map['name']! as String),
+              currency: Value(map['currency']! as String),
+              initialBalance: Value(map['initialBalance']! as double),
+              dirty: const Value(false),
+              remoteId: Value(map['remoteId']! as int),
+            ));
+      case SyncKind.recurring:
+        return (_db.update(_db.recurringTransactions)..where((r) => r.id.equals(localId))).write(RecurringTransactionsCompanion(
+              merchant: Value(map['merchant']! as String),
+              amount: Value(map['amount']! as double),
+              categoryId: Value(map['categoryId'] as int?),
+              period: Value(map['period']! as String),
+              nextDue: Value(map['nextDue']! as DateTime),
+              active: Value(map['active']! as bool),
+              dirty: const Value(false),
+              remoteId: Value(map['remoteId']! as int),
+            ));
+      case SyncKind.objectives:
+        return (_db.update(_db.objectives)..where((o) => o.id.equals(localId))).write(ObjectivesCompanion(
+              name: Value(map['name']! as String),
+              target: Value(map['target']! as double),
+              saved: Value(map['saved']! as double),
+              deadline: Value(map['deadline'] as DateTime?),
+              dirty: const Value(false),
+              remoteId: Value(map['remoteId']! as int),
+            ));
+      case SyncKind.debts:
+        return (_db.update(_db.debts)..where((d) => d.id.equals(localId))).write(DebtsCompanion(
+              name: Value(map['name']! as String),
+              amount: Value(map['amount']! as double),
+              isLent: Value(map['isLent']! as bool),
+              note: Value(map['note'] as String?),
+              settled: Value(map['settled']! as bool),
+              dirty: const Value(false),
+              remoteId: Value(map['remoteId']! as int),
+            ));
+    }
   }
 
   /// Budgets joined with their category.
@@ -641,7 +953,7 @@ class TransactionRepository {
         ]);
   }
 
-  /// Creates or updates the monthly budget for [categoryId].
+  /// Creates or updates the monthly budget for [categoryId]. Marks it dirty.
   Future<void> upsertBudget({required int categoryId, required double amount}) async {
     final existing = await (_db.select(_db.budgets)..where((b) => b.categoryId.equals(categoryId)))
         .getSingleOrNull();
@@ -653,7 +965,11 @@ class TransactionRepository {
       ));
     } else {
       await (_db.update(_db.budgets)..where((b) => b.id.equals(existing.id)))
-          .write(BudgetsCompanion(amount: Value(amount)));
+          .write(BudgetsCompanion(
+        amount: Value(amount),
+        updatedAt: Value(DateTime.now()),
+        dirty: const Value(true),
+      ));
     }
   }
 
