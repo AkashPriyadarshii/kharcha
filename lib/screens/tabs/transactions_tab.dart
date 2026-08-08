@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/theme.dart';
 import '../../core/transaction_filter.dart';
 import '../../data/database.dart';
 import '../../data/transaction_repository.dart';
@@ -293,10 +294,9 @@ class _TransactionList extends StatelessWidget {
           ),
           trailing: Text(
             _currency.format(t.amount),
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                  fontWeight: FontWeight.w600,
-                ),
+            style: moneyStyle.copyWith(
+              fontSize: Theme.of(context).textTheme.titleMedium?.fontSize,
+            ),
           ),
         );
       },

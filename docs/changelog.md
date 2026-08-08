@@ -2,7 +2,22 @@
 
 All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
 
-## [v0.1.0] — in development
+## [v0.1.1] — in build
+
+- **UPI capture fixes** — dedupe by identical text (60s window), amount scan on title+text, crash-guarded handler
+- **CSV import** — kharcha export format, tolerant parse, upi_ref dedupe
+- **Wallets + multi-currency** — wallet per transaction, per-wallet balance, add/edit/delete, 6 currencies + exchange rates
+- **Recurring subscriptions** — due list, pay-one-tap with roll-forward, pause/resume
+- **Savings objectives** — goal cards + progress, add saved amount
+- **Bill splitter** — exact-sum integer paise split, one expense per person
+- **Categories editor** — add/edit/delete custom categories (emoji + color), builtins read-only
+- **Credit/Debt ledger** — lend/borrow with settle toggle, net-owed strip
+- **Design pass** — ink-green on warm paper theme, display-numeral money, hero month count-up, caps section labels
+- **Guest mode** — continue without Google (pre-release)
+- Schema v2 → v6 (wallets/exchange_rates, recurring_transactions, objectives, debts)
+- Arm64-only release build (debug-signed)
+
+## [v0.1.0] — released
 
 - Repo `AkashPriyadarshii/kharcha` created (private)
 - Design, PRD, implementation plan, team docs, CLAUDE.md written

@@ -57,6 +57,24 @@ flutter_local_notifications scheduled. Daily: today's total, uncategorized count
 **Step 5.4: Final regression** — analyze, test, smoke, release build.
 **Step 5.5: Release v0.1.0** — tagged, signed APK.
 
+## Phase 6 — v0.1.1 feature expansion (Cashew-inspired, kharcha-adapted)
+
+**Step 6.1: Fix UPI capture** — dedupe by identical text (60s window), amount scan on title+text, guarded handler.
+**Step 6.2: CSV import** — kharcha export format, tolerant parse, upi_ref dedupe, Profile import UI.
+**Step 6.3: Wallets + multi-currency** — `Wallets`/`ExchangeRates` tables (schema v3), per-transaction wallet, balances, 6 currencies.
+**Step 6.4: Recurring subscriptions** — `RecurringTransactions` (schema v4), due list, pay-one-tap roll-forward, pause/resume.
+**Step 6.5: Savings objectives** — `Objectives` (schema v5), progress cards, add saved amount.
+**Step 6.6: Bill splitter** — exact-sum integer paise split, one expense per person.
+**Step 6.7: Categories editor** — add/edit/delete custom (emoji + color), delete detaches transactions.
+**Step 6.8: Design pass** — unique, intentional redesign across screens (better than kharcha+Cashew defaults).
+**Step 6.9: Credit/Debt ledger** — debts table, add/lend + borrow, mark settled.
+✅ Verify each: `flutter analyze` clean + feature test file.
+
+## Phase 7 — Release v0.1.1
+
+**Step 7.1: Regression** — analyze clean, new-feature suites pass (full `flutter test` blocked on Windows host — `docs/troubleshooting.md`).
+**Step 7.2: Build + release** — version bump 0.1.1, `flutter build apk --release --target-platform android-arm64 --split-per-abi`, `gh release create v0.1.1` + upload arm64 APK. Arm64-only per owner (no x86/universal).
+
 ## Definition of done per step
 
 - Code matches CLAUDE.md standards
