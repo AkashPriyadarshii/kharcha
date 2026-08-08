@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -71,12 +69,11 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             tooltip: 'Add expense',
             onPressed: () => context.push('/add'),
           ),
-          if (Platform.isAndroid)
-            IconButton(
-              icon: const Icon(Icons.notifications_active_outlined),
-              tooltip: 'Auto-capture UPI payments',
-              onPressed: () => context.push('/enable-capture'),
-            ),
+          IconButton(
+            icon: const Icon(Icons.notifications_active_outlined),
+            tooltip: 'Auto-capture UPI payments',
+            onPressed: () => context.push('/enable-capture'),
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Sign out',
