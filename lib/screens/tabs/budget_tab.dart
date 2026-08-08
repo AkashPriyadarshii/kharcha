@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/theme.dart';
 import '../../data/database.dart';
 import '../../data/transaction_repository.dart';
 import 'home_tab.dart' show categoryColor;
@@ -128,8 +129,10 @@ class _BudgetList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.only(bottom: 96),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
       children: [
+        const SectionTitle('Monthly budgets'),
+        const SizedBox(height: 8),
         for (final (budget, category) in budgets)
           _BudgetTile(
             budget: budget,
@@ -166,11 +169,12 @@ class _BudgetTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ratio = budget.amount <= 0 ? 0.0 : spent / budget.amount;
+    final scheme = Theme.of(context).colorScheme;
     final color = switch (budgetAlert(ratio)) {
-      BudgetAlert.ok => Colors.green,
-      BudgetAlert.warn50 => Colors.amber.shade700,
-      BudgetAlert.warn80 => Colors.orange,
-      BudgetAlert.over => Colors.red,
+      BudgetAlert.ok => scheme.primary,
+      BudgetAlert.warn50 => const Color(0xFFB08900), // amber, spend-tracked
+      BudgetAlert.warn80 => const Color(0xFFE07B00), // orange
+      BudgetAlert.over => scheme.error,
     };
     return ListTile(
       leading: CircleAvatar(
@@ -192,7 +196,8 @@ class _BudgetTile extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text('${_currency.format(spent)} / ${_currency.format(budget.amount)}'),
+          Text('${_currency.format(spent)} / ${_currency.format(budget.amount)}',
+              style: moneyStyle.copyWith(fontSize: 13)),
         ],
       ),
       trailing: PopupMenuButton<String>(

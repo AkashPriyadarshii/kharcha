@@ -22,12 +22,25 @@ import java.util.TimeZone
  *
  * A NotificationListenerService must be explicitly enabled by the user in
  * Settings — see the capture-disclosure screen.
+ *
+ * v0.1.1 fixes: (1) drop the per-key tombstone set (it grew forever and
+ * `sbn.key` survives some re-posts) — dedupe is now a short rolling time
+ * window, Dart's `upi_ref` check is the real authority; (2) only write
+ * notifications that look like a payment (contain an amount); (3) read the
+ * amount from title OR text (some UPI apps put it in the title); (4) the whole
+ * handler is crash-contained so a bad notification never kills the service.
  */
 class UpiNotificationListener : NotificationListenerService() {
 
     companion object {
         private const val PREFS = "kharcha_inbox"
         private const val LAST_SEEN = "last_seen_utc_ms"
+        private const val LAST_TEXT = "last_text"
+        // Re-posts of the identical notification (e.g. an in-place update)
+        // within this window are treated as the same payment. Real payments
+        // have distinct UPI refs, so the Dart-side dedupe is authoritative;
+        // this window only stops the loudest spam.
+        private const val DEDUPE_WINDOW_MS = 60_000L
         private val UPI_PACKAGES =
             setOf(
                 "com.google.android.apps.nbu.paisa.user", // Google Pay
@@ -36,6 +49,7 @@ class UpiNotificationListener : NotificationListenerService() {
                 "com.axis.mobile", // Axis BHIM
                 "com.chqbook", // etc.
             )
+        private val AMOUNT_RE = Regex("""(?:₹|Rs\.?|INR|inr)\s*\d""")
 
         private val dateFmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
             timeZone = TimeZone.getTimeZone("UTC")
@@ -45,25 +59,35 @@ class UpiNotificationListener : NotificationListenerService() {
     private val handler = Handler(Looper.getMainLooper())
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        val pkg = sbn.packageName
-        if (pkg !in UPI_PACKAGES) return
+        try {
+            val pkg = sbn.packageName
+            if (pkg !in UPI_PACKAGES) return
 
-        val prefs: SharedPreferences = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val now = System.currentTimeMillis()
-        val lastSeen = prefs.getLong(LAST_SEEN, 0L)
+            val extras = sbn.notification?.extras ?: return
+            val text = (
+                extras.getCharSequence("android.title")?.toString()
+                    ?: ""
+                ) + " " + (
+                extras.getCharSequence("android.text")?.toString()
+                    ?: ""
+                )
+            if (!AMOUNT_RE.containsMatchIn(text)) return // not a payment
+            if (text.isBlank()) return
 
-        // Respect an existing in-flight copy for this sbn (notifications can
-        // be re-posted with the same key, e.g. update). Skip dups by key.
-        val key = sbn.key
-        if (prefs.contains(key)) return
-        prefs.edit().putBoolean(key, true).putLong(LAST_SEEN, now).apply()
+            val prefs: SharedPreferences = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            val now = System.currentTimeMillis()
+            val lastSeen = prefs.getLong(LAST_SEEN, 0L)
+            val lastText = prefs.getString(LAST_TEXT, null)
+            if (now - lastSeen < DEDUPE_WINDOW_MS && lastText == text) return
 
-        val text = sbn.notification?.extras?.getCharSequence("android.text")?.toString() ?: return
-        if (text.isBlank()) return
+            prefs.edit().putLong(LAST_SEEN, now).putString(LAST_TEXT, text).apply()
 
-        val line =
-            "{\"package\":\"${escape(pkg)}\",\"text\":\"${escape(text)}\",\"seenAt\":\"${dateFmt.format(Date(now))}\"}\n"
-        appendToInbox(line)
+            val line =
+                "{\"package\":\"${escape(pkg)}\",\"text\":\"${escape(text)}\",\"seenAt\":\"${dateFmt.format(Date(now))}\"}\n"
+            appendToInbox(line)
+        } catch (_: Exception) {
+            // A bad notification must never crash the service — skip it.
+        }
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {

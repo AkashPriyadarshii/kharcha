@@ -2,7 +2,7 @@ name: kharcha
 description: "Kharcha — India-first UPI expense tracker. Offline-first, notification-based auto-capture, Supabase sync."
 publish_to: 'none'
 
-version: 0.1.0+1
+version: 0.1.1+2
 
 environment:
   sdk: ^3.11.5
@@ -29,8 +29,9 @@ dependencies:
   timezone: ^0.9.4
   # App lock
   local_auth: ^2.3.0
-  # Export
+  # Export / import
   csv: ^6.0.0
+  file_picker: ^8.1.2
   intl: ^0.19.0
   flutter_timezone: ^5.1.0
   google_sign_in: ^7.2.0

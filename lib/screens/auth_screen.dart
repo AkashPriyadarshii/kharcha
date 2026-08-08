@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -74,16 +73,15 @@ class _AuthScreenState extends State<AuthScreen> {
                 icon: const Icon(Icons.login),
                 label: Text(_busy ? 'Signing in…' : 'Sign in with Google'),
               ),
-              // ponytail: debug-only auth bypass for on-device testing.
-              // kDebugMode strips this from release builds; bypass grants no
-              // Supabase session, so RLS-protected endpoints stay unreachable.
-              if (kDebugMode) ...[
-                const SizedBox(height: 8),
-                TextButton(
-                  onPressed: () => authBypass.value = true,
-                  child: const Text('Continue without account (debug)'),
-                ),
-              ],
+              const SizedBox(height: 8),
+              // ponytail: guest mode — pre-release, no publishing yet. Grants
+              // no Supabase session, so sync no-ops and RLS-protected
+              // endpoints stay unreachable. Local-only use.
+              TextButton.icon(
+                onPressed: () => authBypass.value = true,
+                icon: const Icon(Icons.person_outline),
+                label: const Text('Continue as guest'),
+              ),
               const SizedBox(height: 16),
               TextButton(
                 onPressed: () => context.push('/terms'),

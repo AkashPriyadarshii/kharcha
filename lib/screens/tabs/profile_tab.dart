@@ -1,11 +1,17 @@
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/app_lock.dart';
+import '../../core/theme.dart';
 import '../../data/exporter.dart';
+import '../../data/importer.dart';
 import '../../data/transaction_repository.dart';
 
 final _currency = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
@@ -19,12 +25,12 @@ class ProfileTab extends ConsumerWidget {
     final methods = ref.watch(paymentMethodTotalsProvider);
     final sync = ref.watch(syncStatusProvider);
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       children: [
         _AccountHeader(),
         const SizedBox(height: 24),
-        Text('Payment methods', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 4),
+        const SectionTitle('Payment methods'),
+        const SizedBox(height: 8),
         if (methods.value == null)
           const Center(child: Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator()))
         else if (methods.value!.isEmpty)
@@ -41,8 +47,8 @@ class ProfileTab extends ConsumerWidget {
               ),
             ),
         const SizedBox(height: 16),
-        Text('Backup & export', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 4),
+        const SectionTitle('Backup & export'),
+        const SizedBox(height: 8),
         if (sync.value != null)
           Text(
             'Synced ${sync.value!.$1} of ${sync.value!.$1 + sync.value!.$2} expenses',
@@ -68,9 +74,57 @@ class ProfileTab extends ConsumerWidget {
             ),
           ],
         ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: () => _import(context, ref),
+          icon: const Icon(Icons.upload_file_outlined),
+          label: const Text('Import CSV'),
+        ),
         const SizedBox(height: 16),
-        Text('Settings', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 4),
+        const SectionTitle('Settings'),
+        const SizedBox(height: 8),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.balance),
+          title: const Text('Credit & debt'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.push('/debts'),
+        ),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.category_outlined),
+          title: const Text('Categories'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.push('/categories'),
+        ),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.account_balance_wallet_outlined),
+          title: const Text('Wallets'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.push('/wallets'),
+        ),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.repeat),
+          title: const Text('Subscriptions'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.push('/subscriptions'),
+        ),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.flag_outlined),
+          title: const Text('Savings goals'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.push('/objectives'),
+        ),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.call_split),
+          title: const Text('Split a bill'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.push('/split'),
+        ),
         _AppLockTile(),
       ],
     );
@@ -91,6 +145,33 @@ class ProfileTab extends ConsumerWidget {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Export failed: $e')),
+      );
+    }
+  }
+
+  Future<void> _import(BuildContext context, WidgetRef ref) async {
+    try {
+      final picked = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['csv'],
+        allowMultiple: false,
+      );
+      final path = picked?.files.single.path;
+      if (path == null) return; // user cancelled
+
+      final repo = ref.read(transactionRepositoryProvider);
+      final result = await importCsv(File(path), repo);
+      if (!context.mounted) return;
+      final msg = result.errors.isEmpty
+          ? 'Imported ${result.added} expenses.'
+          : 'Imported ${result.added}, skipped ${result.skipped}.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg)),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Import failed: $e')),
       );
     }
   }

@@ -4,7 +4,7 @@
 
 ## Current status
 
-**Phase: v0.1.0 feature-complete, on-device verify + fixes in flight.** 4.1-4.5 shipped (tabbed shell). 5.1 export + 5.2 app lock landed. **Post-verify fixes landed:** stale-aggregate bug fixed (aggregate providers now derive from the transactions stream — budget/home/reports refresh on every insert instead of staying stale until app restart), Home tab shows recent transactions, first-launch onboarding (capture + battery + summaries), battery-optimization ignore + POST_NOTIFICATIONS manifest entries. `flutter analyze` clean; targeted suites pass. Next: rebuild+install on device, finish on-device verify, 5.4/5.5 release (deferred until Akash tests).
+**Phase: v0.1.1 in build.** v0.1.0 shipped. The 9-feature expansion landed (Cashew-inspired, kharcha-adapted): UPI capture fixes, CSV import, wallets + multi-currency, recurring subscriptions, savings objectives, bill splitter, categories editor, design pass, credit/debt ledger. Schema v2→v6 (wallets/exchange_rates, recurring_transactions, objectives, debts). Design pass: unified `kharchaTheme` (ink-green on warm paper, `moneyStyle` display numerals, `SectionTitle` labels, hero month panel with count-up + over-budget amber). Guest mode added to auth (no Google needed — pre-release, not publishing yet). `flutter analyze` clean; feature suites written (importer, wallets, recurring, objectives, bill_splitter, categories, debts). `flutter test` full-suite blocked on Windows host (sqlite3 native-assets, `docs/troubleshooting.md`). Next: v0.1.1 arm64-only release build + `gh release`.
 
 ## Completed
 
@@ -39,18 +39,19 @@
 - [x] **Home recent transactions** — Home tab now lists the 5 newest expenses under the category bars.
 - [x] **Onboarding** — first-launch flow after login: capture disclosure → battery settings → summaries; skippable, persisted flag, gated via router redirect. `OnboardingStore` + tests.
 - [x] **Battery + notifications** — `POST_NOTIFICATIONS` manifest entry (Android 13+); `MainActivity` MethodChannel `openBatteryOptimizationSettings`.
+- [x] **UPI capture fixes** — `UpiNotificationListener.kt`: dedupe by identical text within 60s window (no tombstone set), amount regex on both `android.title` + `android.text`, whole handler try/catch. Kotlin append → Dart parse/dedupe by upi_ref.
+- [x] **CSV import** — `importer.dart`: kharcha export format (`date,amount,merchant,category,note,payment_method,upi_ref,source`), tolerant rows, upi_ref dedupe, result summary. Import UI in Profile.
+- [x] **Wallets + multi-currency** — `Wallets` + `ExchangeRates` tables (schema v3), `walletId` on transactions, wallet dropdown in add-expense, live per-wallet balance, add/edit/delete wallet, INR/USD/EUR/GBP/AED/SGD.
+- [x] **Recurring subscriptions** — `RecurringTransactions` table (schema v4), due list + "N due now" header, pay-one-tap (rolls next due), pause/resume.
+- [x] **Savings objectives** — `Objectives` table (schema v5), goal cards with progress, add saved amount, delete.
+- [x] **Bill splitter** — `splitBillPaisa` (integer paise, exact-sum), split screen inserts one expense per person (`Split i/N` note).
+- [x] **Categories editor** — list seeded+custom, add name/emoji/color, edit, delete (detaches transactions → uncategorized). Builtins read-only.
+- [x] **Credit/Debt ledger** — `Debts` table (schema v6), lend/borrow with settle toggle, net-owed strip, delete.
+- [x] **Design pass** — `lib/core/theme.dart`: ink-green on warm paper, `moneyStyle` (display + tabular figures), `SectionTitle` caps labels, hero month panel (count-up, over-budget amber), themed charts/budget/tabs.
+- [x] **Guest mode** — "Continue as guest" on auth (no Supabase session, local-only, sync no-ops). Pre-release — not publishing yet.
 
 ## Next up
 
-1. **On-device verify (Akash)** — sideload `build\app\outputs\flutter-apk\app-debug.apk` on Android 12+ phone (USB): 2.3 capture, 3.1 sync, 4.1-4.5 screens, 5.1 export, 5.2 app lock. No device connected on dev machine.
-2. Step 5.4/5.5: Final regression + release v0.1.0 (deferred until Akash tests)
-
-## In progress
-
-- **Step 3.1/3.2** on-device verify (add offline → sync when online; daily 9PM + Sunday weekly push)
-
-## Next up
-
-1. Step 2.3 verify on device (adb fake UPI notification → auto-add once; dup not re-added)
-2. Step 4.1: Home dashboard — today ₹, this month ₹, budget left, category bars
-3. Step 4.2: Transactions tab — list, search, filters
+1. **v0.1.1 release** — build `app-arm64-v8a-release.apk` (debug-signed, arm64-only per owner), push, `gh release create v0.1.1` + upload.
+2. On-device verify (Akash) — sideload arm64 APK: new screens (wallets/subscriptions/objectives/split/categories), UPI capture re-check.
+3. Supabase schema mirror for new tables (wallets, recurring, objectives) — currently local-only.

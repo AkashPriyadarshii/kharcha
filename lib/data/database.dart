@@ -32,17 +32,78 @@ class Rules extends Table {
   TextColumn get type => text().withLength(min: 1, max: 16)(); // builtin | learned
 }
 
+/// Wallets: separate balances + per-wallet currency (offline-first; exchange
+/// rates are manual). v0.1.1.
+class Wallets extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text().withLength(min: 1, max: 40)();
+  TextColumn get currency => text().withLength(min: 3, max: 3)(); // ISO 4217
+  /// Opening balance (positive = money already in the wallet before tracking).
+  RealColumn get initialBalance => real().withDefault(const Constant(0))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+/// Manual exchange rates (ISO → ISO), used to convert wallet balances to the
+/// app's display currency. Offline-first; user-maintained, no live fetch.
+class ExchangeRates extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get fromCurrency => text().withLength(min: 3, max: 3)();
+  TextColumn get toCurrency => text().withLength(min: 3, max: 3)();
+  /// Amount of `toCurrency` for 1 unit of `fromCurrency`.
+  RealColumn get rate => real()();
+}
+
+/// Recurring subscriptions: amount, merchant, cadence, next-due date. The app
+/// lists due/overdue subscriptions and can add them as transactions in one tap.
+/// v0.1.1.
+class RecurringTransactions extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get merchant => text().withLength(min: 1, max: 80)();
+  RealColumn get amount => real()();
+  IntColumn get categoryId => integer().nullable().references(Categories, #id)();
+  /// daily | weekly | monthly | yearly
+  TextColumn get period => text().withLength(min: 1, max: 16)();
+  /// Next due date (local). Today/overdue = due now.
+  DateTimeColumn get nextDue => dateTime()();
+  BoolColumn get active => boolean().withDefault(const Constant(true))();
+}
+
+/// Savings goals: name, target, deadline. Progress is funded by a one-off
+/// allocation (saved amount) tracked on the goal itself. v0.1.1.
+class Objectives extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text().withLength(min: 1, max: 60)();
+  RealColumn get target => real()();
+  /// How much has been saved toward the goal so far.
+  RealColumn get saved => real().withDefault(const Constant(0))();
+  DateTimeColumn? get deadline => dateTime().nullable()();
+}
+
+/// Credit/debt ledger: money lent to or borrowed from someone. v0.1.1.
+class Debts extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  /// The person you lent to / borrowed from.
+  TextColumn get name => text().withLength(min: 1, max: 60)();
+  RealColumn get amount => real()();
+  /// true = you lent (money out), false = you borrowed (money in).
+  BoolColumn get isLent => boolean()();
+  TextColumn get note => text().withLength(min: 0, max: 200).nullable()();
+  BoolColumn get settled => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
 /// Transactions mirror the Supabase `transactions` table.
 class Transactions extends Table {
   IntColumn get id => integer().autoIncrement()();
   RealColumn get amount => real()();
   TextColumn get merchant => text().withLength(min: 1, max: 80)();
   IntColumn get categoryId => integer().nullable().references(Categories, #id)();
+  IntColumn get walletId => integer().nullable().references(Wallets, #id)();
   DateTimeColumn get txnDate => dateTime()();
   TextColumn get note => text().withLength(min: 0, max: 500).nullable()();
   TextColumn get paymentMethod => text().withLength(min: 1, max: 16)(); // cash | upi | card | wallet
   TextColumn get upiRef => text().withLength(min: 0, max: 120).nullable()();
-  TextColumn get source => text().withLength(min: 1, max: 16)(); // notification | manual | sms
+  TextColumn get source => text().withLength(min: 1, max: 16)(); // notification | manual | sms | import
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
   /// True until the row is pushed to Supabase.
@@ -62,13 +123,13 @@ class Budgets extends Table {
   IntColumn get alertPct100 => integer().withDefault(const Constant(100))();
 }
 
-@DriftDatabase(tables: [Categories, Merchants, Rules, Transactions, Budgets])
+@DriftDatabase(tables: [Categories, Merchants, Rules, Transactions, Budgets, Wallets, ExchangeRates, RecurringTransactions, Objectives, Debts])
 class AppDatabase extends _$AppDatabase {
   /// [executor] override lets tests inject `NativeDatabase.memory()`.
   AppDatabase({QueryExecutor? executor}) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -81,6 +142,22 @@ class AppDatabase extends _$AppDatabase {
             // Existing rows default dirty = true → they push on first sync.
             await m.addColumn(transactions, transactions.dirty);
             await m.addColumn(transactions, transactions.remoteId);
+          }
+          if (from < 3) {
+            // v0.1.1: wallets + multi-currency. Existing transactions keep
+            // wallet_id NULL (they belong to no wallet) — no data rewrite.
+            await m.addColumn(transactions, transactions.walletId);
+            await m.createTable(wallets);
+            await m.createTable(exchangeRates);
+          }
+          if (from < 4) {
+            await m.createTable(recurringTransactions);
+          }
+          if (from < 5) {
+            await m.createTable(objectives);
+          }
+          if (from < 6) {
+            await m.createTable(debts);
           }
         },
       );

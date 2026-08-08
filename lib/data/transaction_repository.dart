@@ -66,6 +66,31 @@ final syncStatusProvider = FutureProvider<(int, int)>(
   (ref) => ref.watch(transactionRepositoryProvider).syncStatus(),
 );
 
+/// All wallets for the balance header + pickers.
+final walletsProvider = StreamProvider<List<Wallet>>(
+  (ref) => ref.watch(transactionRepositoryProvider).watchWallets(),
+);
+
+/// Manual exchange rates for multi-currency conversion.
+final exchangeRatesProvider = StreamProvider<List<ExchangeRate>>(
+  (ref) => ref.watch(transactionRepositoryProvider).watchExchangeRates(),
+);
+
+/// Recurring subscriptions for the subscriptions tab/screen.
+final recurringProvider = StreamProvider<List<RecurringTransaction>>(
+  (ref) => ref.watch(transactionRepositoryProvider).watchRecurring(),
+);
+
+/// Savings goals.
+final objectivesProvider = StreamProvider<List<Objective>>(
+  (ref) => ref.watch(transactionRepositoryProvider).watchObjectives(),
+);
+
+/// Credit/debt ledger.
+final debtsProvider = StreamProvider<List<Debt>>(
+  (ref) => ref.watch(transactionRepositoryProvider).watchDebts(),
+);
+
 /// Throws when a manual transaction is invalid. Message is user-facing.
 class TransactionValidationException implements Exception {
   TransactionValidationException(this.message);
@@ -103,6 +128,7 @@ class TransactionRepository {
     String note = '',
     required String paymentMethod,
     required DateTime txnDate,
+    int? walletId,
   }) async {
     final validation = validateManualTransaction(
       amount: amount,
@@ -123,6 +149,7 @@ class TransactionRepository {
             amount: amount,
             merchant: merchant.trim(),
             categoryId: Value(resolvedCategory),
+            walletId: Value(walletId),
             note: Value(note.trim().isEmpty ? null : note.trim()),
             paymentMethod: paymentMethod,
             upiRef: const Value(null),
@@ -170,6 +197,249 @@ class TransactionRepository {
             paymentMethod: 'upi',
             upiRef: Value(trimmedRef),
             source: 'notification',
+            txnDate: txnDate,
+          ),
+        );
+    final row = await (_db.select(_db.transactions)..where((t) => t.id.equals(id))).getSingle();
+    return row;
+  }
+
+  /// Watches wallets for the picker + balance header.
+  Stream<List<Wallet>> watchWallets() => _db.select(_db.wallets).watch();
+
+  /// Creates a wallet.
+  Future<Wallet> insertWallet({required String name, required String currency, double initialBalance = 0}) {
+    return _db.into(_db.wallets).insertReturning(WalletsCompanion.insert(
+          name: name,
+          currency: currency,
+          initialBalance: Value(initialBalance),
+        ));
+  }
+
+  /// Renames a wallet / changes its currency.
+  Future<void> updateWallet(Wallet wallet) => _db.update(_db.wallets).replace(wallet);
+
+  Future<void> deleteWallet(int id) async {
+    // Null out wallet_id on its transactions so they don't disappear.
+    await (_db.update(_db.transactions)..where((t) => t.walletId.equals(id)))
+        .write(const TransactionsCompanion(walletId: Value(null)));
+    await (_db.delete(_db.wallets)..where((w) => w.id.equals(id))).go();
+  }
+
+  /// Balance of a wallet in its own currency: initial + sum of spends.
+  Future<double> walletBalance(int walletId) async {
+    final sum = _db.transactions.amount.sum();
+    final row = await (_db.selectOnly(_db.transactions)
+          ..addColumns([sum])
+          ..where(_db.transactions.walletId.equals(walletId)))
+        .getSingle();
+    return (row.read(sum) ?? 0).toDouble();
+  }
+
+  /// Watches exchange rates.
+  Stream<List<ExchangeRate>> watchExchangeRates() => _db.select(_db.exchangeRates).watch();
+
+  /// Sets (or replaces) the manual rate fromCurrency → toCurrency.
+  Future<void> setExchangeRate({required String from, required String to, required double rate}) async {
+    if (rate <= 0) return;
+    final existing = await (_db.select(_db.exchangeRates)
+          ..where((e) => e.fromCurrency.equals(from) & e.toCurrency.equals(to)))
+        .getSingleOrNull();
+    if (existing == null) {
+      await _db.into(_db.exchangeRates).insert(ExchangeRatesCompanion.insert(
+            fromCurrency: from,
+            toCurrency: to,
+            rate: rate,
+          ));
+    } else {
+      await (_db.update(_db.exchangeRates)..where((e) => e.id.equals(existing.id)))
+          .write(ExchangeRatesCompanion(rate: Value(rate)));
+    }
+  }
+
+  /// Converts [amount] from [from] to [to] using the manual rate (or 1:1 when
+  /// the same currency / no rate stored).
+  Future<double> convertCurrency(double amount, String from, String to) async {
+    if (from == to) return amount;
+    final rate = await (_db.select(_db.exchangeRates)
+          ..where((e) => e.fromCurrency.equals(from) & e.toCurrency.equals(to)))
+        .getSingleOrNull();
+    return rate == null ? amount : amount * rate.rate;
+  }
+
+  /// Watches recurring subscriptions.
+  Stream<List<RecurringTransaction>> watchRecurring() => _db.select(_db.recurringTransactions).watch();
+
+  /// Adds a recurring subscription.
+  Future<RecurringTransaction> insertRecurring({
+    required String merchant,
+    required double amount,
+    int? categoryId,
+    required String period,
+    required DateTime nextDue,
+  }) {
+    return _db.into(_db.recurringTransactions).insertReturning(RecurringTransactionsCompanion.insert(
+          merchant: merchant,
+          amount: amount,
+          categoryId: Value(categoryId),
+          period: period,
+          nextDue: nextDue,
+        ));
+  }
+
+  Future<void> deleteRecurring(int id) =>
+      (_db.delete(_db.recurringTransactions)..where((r) => r.id.equals(id))).go();
+
+  Future<void> setRecurringActive(int id, bool active) =>
+      (_db.update(_db.recurringTransactions)..where((r) => r.id.equals(id)))
+          .write(RecurringTransactionsCompanion(active: Value(active)));
+
+  /// Advances [r.nextDue] by one period after it has been paid, so the next
+  /// due date rolls forward. Pure + unit-testable.
+  static DateTime nextDueAfter(RecurringTransaction r, DateTime paidOn) {
+    final base = paidOn.isAfter(r.nextDue) ? paidOn : r.nextDue;
+    return switch (r.period) {
+      'daily' => base.add(const Duration(days: 1)),
+      'weekly' => base.add(const Duration(days: 7)),
+      'monthly' => DateTime(base.year, base.month + 1, base.day),
+      'yearly' => DateTime(base.year + 1, base.month, base.day),
+      _ => base.add(const Duration(days: 30)),
+    };
+  }
+
+  /// Adds a due subscription as a transaction (source = manual) and rolls the
+  /// next-due date forward. Returns the inserted transaction.
+  Future<Transaction> payRecurring(RecurringTransaction r, {int? walletId, DateTime? on}) async {
+    final paidOn = on ?? DateTime.now();
+    final txn = await insertManual(
+      amount: r.amount,
+      merchant: r.merchant,
+      categoryId: r.categoryId,
+      paymentMethod: 'upi',
+      txnDate: paidOn,
+      walletId: walletId,
+    );
+    await (_db.update(_db.recurringTransactions)..where((x) => x.id.equals(r.id)))
+        .write(RecurringTransactionsCompanion(nextDue: Value(nextDueAfter(r, paidOn))));
+    return txn;
+  }
+
+  /// Watches savings goals.
+  Stream<List<Objective>> watchObjectives() => _db.select(_db.objectives).watch();
+
+  Future<Objective> insertObjective({
+    required String name,
+    required double target,
+    double saved = 0,
+    DateTime? deadline,
+  }) {
+    return _db.into(_db.objectives).insertReturning(ObjectivesCompanion.insert(
+          name: name,
+          target: target,
+          saved: Value(saved),
+          deadline: Value(deadline),
+        ));
+  }
+
+  /// Adds [amount] to a goal's saved total (allocating saved money).
+  Future<void> addToObjective(int id, double amount) async {
+    if (amount <= 0) return;
+    final o = await (_db.select(_db.objectives)..where((x) => x.id.equals(id))).getSingleOrNull();
+    if (o == null) return;
+    await (_db.update(_db.objectives)..where((x) => x.id.equals(id)))
+        .write(ObjectivesCompanion(saved: Value(o.saved + amount)));
+  }
+
+  Future<void> deleteObjective(int id) =>
+      (_db.delete(_db.objectives)..where((o) => o.id.equals(id))).go();
+
+  Stream<List<Debt>> watchDebts() => _db.select(_db.debts).watch();
+
+  Future<void> insertDebt({required String name, required double amount, required bool isLent, String? note}) =>
+      _db.into(_db.debts).insert(DebtsCompanion.insert(
+        name: name,
+        amount: amount,
+        isLent: isLent,
+        note: Value(note),
+      ));
+
+  Future<void> setDebtSettled(int id, bool settled) =>
+      (_db.update(_db.debts)..where((d) => d.id.equals(id)))
+          .write(DebtsCompanion(settled: Value(settled)));
+
+  Future<void> deleteDebt(int id) => (_db.delete(_db.debts)..where((d) => d.id.equals(id))).go();
+
+  /// Category id for [name], case-insensitive. Null when no match.
+  Future<int?> categoryIdByName(String name) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return null;
+    final row = await (_db.select(_db.categories)
+          ..where((c) => c.name.lower().equals(trimmed.toLowerCase())))
+        .getSingleOrNull();
+    return row?.id;
+  }
+
+  /// Adds a custom category. New categories sort after all builtins.
+  Future<int> insertCategory({required String name, required String emoji, required String color}) {
+    final sortOrder = _db.selectOnly(_db.categories)
+      ..addColumns([_db.categories.sortOrder.max()]);
+    return _db.transaction(() async {
+      final max = await sortOrder.map((r) => r.read(_db.categories.sortOrder.max())).getSingle();
+      return (await _db.into(_db.categories).insertReturning(CategoriesCompanion.insert(
+        name: name,
+        emoji: emoji,
+        color: color,
+        isCustom: const Value(true),
+        sortOrder: Value((max ?? 0) + 1),
+      ))).id;
+    });
+  }
+
+  Future<void> updateCategory(int id, {required String name, required String emoji, required String color}) =>
+      (_db.update(_db.categories)..where((c) => c.id.equals(id)))
+          .write(CategoriesCompanion(name: Value(name), emoji: Value(emoji), color: Value(color)));
+
+  /// Deletes a category and detaches its transactions (they become uncategorized).
+  Future<void> deleteCategory(int id) => _db.transaction(() async {
+        await (_db.update(_db.transactions)..where((t) => t.categoryId.equals(id)))
+            .write(TransactionsCompanion(categoryId: const Value(null)));
+        await (_db.delete(_db.categories)..where((c) => c.id.equals(id))).go();
+      });
+
+  /// Inserts a row read from an import file (source = import).
+  /// Returns null when a row with the same [upiRef] is already stored (dedupe).
+  Future<Transaction?> insertImported({
+    required double amount,
+    required String merchant,
+    int? categoryId,
+    String? note,
+    required String paymentMethod,
+    required DateTime txnDate,
+    String? upiRef,
+    int? walletId,
+  }) async {
+    final validation = validateManualTransaction(
+      amount: amount,
+      merchant: merchant,
+      paymentMethod: paymentMethod,
+    );
+    if (validation != null) throw TransactionValidationException(validation);
+
+    final trimmedRef = upiRef?.trim();
+    if (trimmedRef != null && trimmedRef.isNotEmpty && await existsUpiRef(trimmedRef)) {
+      return null; // duplicate import
+    }
+
+    final id = await _db.into(_db.transactions).insert(
+          TransactionsCompanion.insert(
+            amount: amount,
+            merchant: merchant.trim(),
+            categoryId: Value(categoryId),
+            walletId: Value(walletId),
+            note: Value(note?.trim().isEmpty ?? true ? null : note!.trim()),
+            paymentMethod: paymentMethod,
+            upiRef: Value(trimmedRef),
+            source: 'import',
             txnDate: txnDate,
           ),
         );

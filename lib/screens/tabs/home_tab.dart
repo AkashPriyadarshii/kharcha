@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/theme.dart';
 import '../../data/database.dart';
 import '../../data/transaction_repository.dart';
 
@@ -56,11 +57,11 @@ class HomeTab extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Could not load dashboard.\n$e')),
       data: (s) => ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
-          _StatRow(summary: s),
+          _HeroPanel(summary: s),
           const SizedBox(height: 24),
-          Text('This month by category', style: Theme.of(context).textTheme.titleMedium),
+          SectionTitle('This month by category'),
           const SizedBox(height: 8),
           if (s.byCategory.isEmpty)
             Text('No spends this month yet.', style: Theme.of(context).textTheme.bodyMedium)
@@ -68,7 +69,7 @@ class HomeTab extends ConsumerWidget {
             for (final c in s.byCategory)
               _CategoryBar(category: c.$1, amount: c.$2, max: s.byCategory.first.$2),
           const SizedBox(height: 24),
-          Text('Recent transactions', style: Theme.of(context).textTheme.titleMedium),
+          SectionTitle('Recent transactions'),
           const SizedBox(height: 8),
           if (recent5.isEmpty)
             Text('No expenses yet — add one with Quick add, or enable capture.',
@@ -104,50 +105,104 @@ class _RecentTile extends StatelessWidget {
   }
 }
 
-class _StatRow extends StatelessWidget {
-  const _StatRow({required this.summary});
+/// Signature hero: a deep green panel whose headline is the month spend —
+/// the ₹ figure is the point of every screen. Amber only when over budget.
+class _HeroPanel extends ConsumerStatefulWidget {
+  const _HeroPanel({required this.summary});
 
   final HomeSummary summary;
 
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        _Stat(label: 'Today', value: _currency.format(summary.today)),
-        const SizedBox(width: 12),
-        _Stat(label: 'This month', value: _currency.format(summary.month)),
-        const SizedBox(width: 12),
-        _Stat(label: 'Budget left', value: _currency.format(summary.budgetLeft)),
-      ],
-    );
-  }
+  ConsumerState<_HeroPanel> createState() => _HeroPanelState();
 }
 
-class _Stat extends StatelessWidget {
-  const _Stat({required this.label, required this.value});
+class _HeroPanelState extends ConsumerState<_HeroPanel>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl =
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
 
-  final String label;
-  final String value;
+  @override
+  void initState() {
+    super.initState();
+    _ctrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Expanded(
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    final scheme = theme.colorScheme;
+    final over = widget.summary.budgetLeft <= 0;
+    // Count-up from ₹0 → month spend on load (and on every data refresh).
+    final animated = Tween(begin: 0.0, end: widget.summary.month)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: over ? const Color(0xFF2A1606) : const Color(0xFF0A3D2E),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Text(label, style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-              const SizedBox(height: 8),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(value, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0x14FFFFFF),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  'THIS MONTH',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: const Color(0xB3FFFFFF),
+                    letterSpacing: 1.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
+              const Spacer(),
+              Text('Today ${_currency.format(widget.summary.today)}',
+                  style: theme.textTheme.labelMedium?.copyWith(color: const Color(0xB3FFFFFF))),
             ],
           ),
-        ),
+          const SizedBox(height: 20),
+          AnimatedBuilder(
+            animation: _ctrl,
+            builder: (context, _) => Text(
+              _currency.format(animated.value),
+              style: moneyStyle.copyWith(
+                fontSize: 40,
+                height: 1.0,
+                color: over ? const Color(0xFFFFC266) : Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            over ? 'Over budget — time to slow down' : 'Budget left ${_currency.format(widget.summary.budgetLeft)}',
+            style: theme.textTheme.bodyMedium?.copyWith(color: const Color(0xCCFFFFFF)),
+          ),
+          // Signature ₹ strip — quiet, bottom edge of the panel.
+          const SizedBox(height: 14),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Container(
+              width: 28,
+              height: 3,
+              decoration: BoxDecoration(
+                color: scheme.tertiary,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -9,15 +9,22 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'core/app_lock.dart';
 import 'core/config.dart';
+import 'core/theme.dart';
 import 'data/notifications.dart';
 import 'data/sync_engine.dart';
 import 'data/transaction_repository.dart';
 import 'screens/add_expense_screen.dart';
 import 'screens/auth_screen.dart';
+import 'screens/bill_splitter_screen.dart';
+import 'screens/categories_screen.dart';
+import 'screens/debts_screen.dart';
 import 'screens/enable_capture_screen.dart';
 import 'screens/home_shell.dart';
+import 'screens/objectives_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'screens/subscriptions_screen.dart';
 import 'screens/terms_screen.dart';
+import 'screens/wallets_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -55,12 +62,7 @@ class KharchaApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
       title: 'Kharcha',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0A6B4D), // ink green — ₹
-        ),
-        useMaterial3: true,
-      ),
+      theme: kharchaTheme(),
       routerConfig: _router,
       // LockGate overlays everything while the app is locked.
       builder: (context, child) => LockGate(child: child ?? const SizedBox.shrink()),
@@ -160,6 +162,12 @@ final _router = GoRouter(
     GoRoute(path: '/', builder: (context, state) => HomeShell(container: _container)),
     GoRoute(path: '/add', builder: (context, state) => const AddExpenseScreen()),
     GoRoute(path: '/enable-capture', builder: (context, state) => const EnableCaptureScreen()),
+    GoRoute(path: '/wallets', builder: (context, state) => const WalletsScreen()),
+    GoRoute(path: '/subscriptions', builder: (context, state) => const SubscriptionsScreen()),
+    GoRoute(path: '/objectives', builder: (context, state) => const ObjectivesScreen()),
+    GoRoute(path: '/split', builder: (context, state) => const BillSplitterScreen()),
+    GoRoute(path: '/categories', builder: (context, state) => const CategoriesScreen()),
+    GoRoute(path: '/debts', builder: (context, state) => const DebtsScreen()),
 
   ],
 );
