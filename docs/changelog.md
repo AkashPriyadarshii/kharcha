@@ -6,8 +6,10 @@ All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
 
 - **Transactions edit/delete (v0.2.1)** — every transaction now has edit (reuses the add form, prefilled) and delete (confirm dialog) via the transactions tab. Deletes are sync-correct: a new `deleted_transactions` tombstone table (schema v8) records remote rows for deletion, pushed as a DELETE before pulls, so a deleted expense never resurrects from Supabase. Update marks the row dirty and overwrites on push.
 - **UX audit pass** — categories grouped into expense/income sections; wallets tap no longer silently deletes (rename-only via edit); subscriptions gain delete-with-confirm + actionable empty state; debts/objectives deletes confirmed; transactions list shows income with a glyph badge (not color-only).
+- **Vector Icons & App Launcher Redesign** — added `lucide_icons_flutter` (^3.1.15) for high-performance in-app category vector icons (`CategoryIcon` widget, fallback to emoji); redesigned launcher icon with an elite geometric **K+₹ Monogram Emblem** (3D chiseled off-white on `#0A6B4D` deep ink green) saved at `assets/icon/app_icon.png`. Authored by Antigravity AI Agent for Akash.
 - **Release hardening** — Android-only (Windows scaffold removed); Gradle arm64 ABI filter + page-aligned native libs (`useLegacyPackaging=false`) → clean arm64 install (no "package invalid"). APK named `kharcha-armv8a-release.apk` on the v0.2.1 release. CI removed (on-demand build + release).
 - **Cleanup** — removed Windows scaffold, `Platform.isAndroid` branches, Windows-only deps from lockfile; `.codegraph/` gitignored.
+- **Onboarding redesign** — 4-step flow (value prop → capture → summaries → battery) with progress bar, one step at a time, live permission status from a new `getCaptureStatus` channel method (granted/denied visible, auto-advances), skip-all path. No more "Kharcha is set up" lie or fire-and-forget buttons.
 
 ## [v0.2.0] — 2026-08-08
 

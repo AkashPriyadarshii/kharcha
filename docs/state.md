@@ -4,7 +4,7 @@
 
 ## Current status
 
-**Phase: v0.2.1 — shipped.** Transactions edit/delete + tombstone sync, UX audit, arm64 release APK (`kharcha-armv8a-release.apk`) live on the v0.2.1 GitHub release. Android-only (Windows platform scaffold removed). Gradle now arm64-only ABI-filtered + page-aligned native libs — builds clean, installs clean (no "package invalid"). CI removed (on-demand build + release). `flutter analyze` clean. Full `flutter test` still blocked on this Windows host (sqlite3 native-assets, `docs/troubleshooting.md`). Next: on-device verify.
+**Phase: v0.2.1 — shipped.** Transactions edit/delete + tombstone sync, UX audit, arm64 release APK (`kharcha-armv8a-release.apk`) live on the v0.2.1 GitHub release. Android-only (Windows platform scaffold removed). Gradle now arm64-only ABI-filtered + page-aligned native libs — builds clean, installs clean (no "package invalid"). CI removed (on-demand build + release). Onboarding redesigned: 4-step flow (value prop → capture → summaries → battery) with live permission status + progress bar. `flutter analyze` clean. Full `flutter test` still blocked on this Windows host (sqlite3 native-assets, `docs/troubleshooting.md`). Next: on-device verify.
 
 **Phase: v0.2.0 — income support shipped.** Income is live end-to-end: per-transaction + per-category `is_income` (schema v7, Supabase mirrored), income/expense toggle on both add forms, built-in income categories, home hero income/spend split (green income, red spend), transactions tab income filter, spend aggregates exclude income, sync round-trip, CSV/JSON export `type` column + import. Permissions pass: full manifest set, onboarding asks notification + battery exemption in-app (no manual settings). Manifest now declares INTERNET/ACCESS_NETWORK_STATE (release builds need it for Supabase sync — debug got it injected). `flutter analyze` clean. Full `flutter test` still blocked on Windows host (sqlite3 native-assets, `docs/troubleshooting.md`). CI removed (on-demand release). Next: on-device verify + publish.
 
@@ -52,6 +52,7 @@
 - [x] **Design pass** — `lib/core/theme.dart`: ink-green on warm paper, `moneyStyle` (display + tabular figures), `SectionTitle` caps labels, hero month panel (count-up, over-budget amber), themed charts/budget/tabs.
 - [x] **Guest mode** — "Continue as guest" on auth (no Supabase session, local-only, sync no-ops). Pre-release — not publishing yet.
 - [x] **Android-only cleanup** — `windows/` platform scaffold removed (was debug-only); Windows-specific code (`dart:io` `Platform.isAndroid` branches) stripped; `local_auth_windows`/`path_provider_windows` gone from lockfile. Android is the only target.
+- [x] **Vector Icons & App Launcher Redesign** — `lucide_icons_flutter` (^3.1.15) added for in-app category vector icons (`lib/widgets/category_icon.dart` `CategoryIcon` widget); redesigned launcher icon with geometric K+₹ Monogram emblem on deep ink green (`assets/icon/app_icon.png`). Authored by Antigravity AI Agent for Akash. `flutter analyze` clean.
 
 ## Next up
 

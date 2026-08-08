@@ -10,6 +10,11 @@
 - GitHub: `priyaranjan122002`
 - Contributes via PRs; reviews Akash's PRs
 
+## Antigravity AI Agent — Pair Programmer
+- Role: Autonomous AI agent for Akash (Google DeepMind Antigravity framework)
+- Authored: Icon design research, K+₹ Monogram app launcher icon generation, `lucide_icons_flutter` UI vector icons integration (`CategoryIcon` widget)
+- Works under Akash's direction via branches + PRs
+
 ## Working agreement
 - No pushes to `main`. Everything through branches + PRs.
 - PR needs one other dev's approval before merge.
