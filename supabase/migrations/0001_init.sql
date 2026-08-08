@@ -6,6 +6,10 @@
 
 begin;
 
+-- Existing tables upgraded to income support (idempotent).
+alter table if exists public.transactions add column if not exists is_income boolean not null default false;
+alter table if exists public.categories add column if not exists is_income boolean not null default false;
+
 -- ----------------------------
 -- Tables
 -- ----------------------------
@@ -16,7 +20,8 @@ create table if not exists public.categories (
   emoji text not null default '📦',
   color text not null default '#8D99AE',
   is_custom boolean not null default false,
-  sort_order integer not null default 0
+  sort_order integer not null default 0,
+  is_income boolean not null default false
 );
 
 create table if not exists public.merchants (
@@ -44,6 +49,7 @@ create table if not exists public.transactions (
   payment_method text not null default 'upi',
   upi_ref text,
   source text not null default 'manual',
+  is_income boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (user_id, upi_ref)

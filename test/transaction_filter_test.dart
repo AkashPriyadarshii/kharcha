@@ -9,6 +9,7 @@ Transaction _tx({
   DateTime? txnDate,
   String? note,
   String paymentMethod = 'upi',
+  bool isIncome = false,
 }) =>
     Transaction(
       id: id,
@@ -19,6 +20,7 @@ Transaction _tx({
       note: note,
       paymentMethod: paymentMethod,
       source: 'manual',
+      isIncome: isIncome,
       createdAt: DateTime(2026),
       updatedAt: DateTime(2026),
       dirty: false,
@@ -31,6 +33,7 @@ void main() {
     _tx(id: 2, merchant: 'Swiggy', note: 'dinner', categoryId: 1, txnDate: DateTime(2026, 8, 5)),
     _tx(id: 3, merchant: 'Metro', categoryId: 2, txnDate: DateTime(2026, 7, 20), paymentMethod: 'card'),
     _tx(id: 4, merchant: 'Ravi Kirana', categoryId: 6, txnDate: DateTime(2026, 8, 10), paymentMethod: 'cash'),
+    _tx(id: 5, merchant: 'Acme Corp', isIncome: true, txnDate: DateTime(2026, 8, 11)),
   ];
 
   List<int> ids(List<Transaction> ts) => [for (final t in ts) t.id];
@@ -38,7 +41,7 @@ void main() {
   test('empty filter returns all rows in input order', () {
     const f = TransactionFilter();
     expect(f.isEmpty, isTrue);
-    expect(ids(f.apply(rows)), [1, 2, 3, 4]);
+    expect(ids(f.apply(rows)), [1, 2, 3, 4, 5]);
   });
 
   test('query matches merchant case-insensitively', () {
@@ -74,9 +77,19 @@ void main() {
     expect(ids(f.apply(rows)), [4]);
   });
 
+  test('income filter keeps only income rows', () {
+    const f = TransactionFilter(isIncome: true);
+    expect(ids(f.apply(rows)), [5]);
+  });
+
+  test('expense filter excludes income rows', () {
+    const f = TransactionFilter(isIncome: false);
+    expect(ids(f.apply(rows)), [1, 2, 3, 4]);
+  });
+
   test('from bound is inclusive', () {
     final f = TransactionFilter(from: DateTime(2026, 8, 5));
-    expect(ids(f.apply(rows)), [2, 4]);
+    expect(ids(f.apply(rows)), [2, 4, 5]);
   });
 
   test('to bound is inclusive', () {

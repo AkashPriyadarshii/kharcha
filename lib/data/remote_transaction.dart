@@ -12,6 +12,7 @@ class RemoteTransaction {
     required this.paymentMethod,
     required this.source,
     required this.updatedAt,
+    this.isIncome = false,
     this.id,
     this.note,
     this.upiRef,
@@ -27,6 +28,7 @@ class RemoteTransaction {
   final String? upiRef;
   final String source;
   final DateTime updatedAt;
+  final bool isIncome;
 
   /// Local row → Supabase upsert payload. [userId] is the signed-in user;
   /// RLS requires `user_id = auth.uid()`. Local `id` is deliberately omitted
@@ -45,6 +47,7 @@ class RemoteTransaction {
       'payment_method': paymentMethod,
       'upi_ref': upiRef,
       'source': source,
+      'is_income': isIncome,
       'updated_at': updatedAt.toUtc().toIso8601String(),
     };
   }
@@ -59,6 +62,7 @@ class RemoteTransaction {
       paymentMethod: json['payment_method'] as String,
       upiRef: json['upi_ref'] as String?,
       source: json['source'] as String,
+      isIncome: json['is_income'] as bool? ?? false,
       updatedAt: DateTime.parse(json['updated_at'] as String).toLocal(),
     );
   }
@@ -75,6 +79,7 @@ Map<String, dynamic> localToRemoteJson(Transaction t, String userId) {
     paymentMethod: t.paymentMethod,
     upiRef: t.upiRef,
     source: t.source,
+    isIncome: t.isIncome,
     updatedAt: t.updatedAt,
   ).toRemoteJson(userId);
 }

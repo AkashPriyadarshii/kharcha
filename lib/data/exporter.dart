@@ -15,11 +15,12 @@ class Exporter {
   Future<File> exportCsv(Directory dir, String fileName) async {
     final rows = await _repo.allTransactions();
     final csv = const ListToCsvConverter().convert([
-      ['date', 'amount', 'merchant', 'category', 'note', 'payment_method', 'upi_ref', 'source'],
+      ['date', 'amount', 'type', 'merchant', 'category', 'note', 'payment_method', 'upi_ref', 'source'],
       for (final (t, cat) in rows)
         [
           t.txnDate.toIso8601String(),
           t.amount.toString(),
+          t.isIncome ? 'income' : 'expense',
           t.merchant,
           cat ?? '',
           t.note ?? '',
@@ -41,6 +42,7 @@ class Exporter {
         {
           'date': t.txnDate.toIso8601String(),
           'amount': t.amount,
+          'type': t.isIncome ? 'income' : 'expense',
           'merchant': t.merchant,
           'category': cat ?? '',
           'note': t.note ?? '',

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../core/theme.dart';
 import '../../data/database.dart';
 import '../../data/transaction_repository.dart';
+import '../../widgets/income_expense_toggle.dart';
 
 final _currency = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
 
@@ -13,12 +14,14 @@ class HomeSummary {
   const HomeSummary({
     required this.today,
     required this.month,
+    required this.income,
     required this.budgetLeft,
     required this.byCategory,
   });
 
   final double today;
   final double month;
+  final double income;
   final double budgetLeft;
   final List<(Category, double)> byCategory;
 }
@@ -38,6 +41,7 @@ final homeSummaryProvider = StreamProvider<HomeSummary>((ref) {
     return HomeSummary(
       today: await repo.dayTotal(now),
       month: await repo.monthTotal(now),
+      income: await repo.monthIncome(now),
       budgetLeft: (budgetTotal - spentOnBudgeted).clamp(0, double.infinity),
       byCategory: byCategory,
     );
@@ -89,17 +93,23 @@ class _RecentTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final income = transaction.isIncome;
     return ListTile(
       contentPadding: EdgeInsets.zero,
       dense: true,
-      leading: const Icon(Icons.receipt_long_outlined, size: 20),
+      leading: Icon(
+        income ? Icons.arrow_downward : Icons.receipt_long_outlined,
+        size: 20,
+        color: income ? incomeGreen : expenseRed,
+      ),
       title: Text(transaction.merchant),
+      subtitle: income ? const Text('Income') : null,
       trailing: Text(
-        _currency.format(transaction.amount),
-        style: Theme.of(context)
-            .textTheme
-            .bodyMedium
-            ?.copyWith(fontWeight: FontWeight.w600),
+        '${income ? '+ ' : ''}${_currency.format(transaction.amount)}',
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: income ? incomeGreen : expenseRed,
+            ),
       ),
     );
   }
@@ -188,6 +198,24 @@ class _HeroPanelState extends ConsumerState<_HeroPanel>
           Text(
             over ? 'Over budget — time to slow down' : 'Budget left ${_currency.format(widget.summary.budgetLeft)}',
             style: theme.textTheme.bodyMedium?.copyWith(color: const Color(0xCCFFFFFF)),
+          ),
+          // Income figure — mint (light green) for contrast on the dark panel.
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              const Icon(Icons.arrow_downward, size: 14, color: Color(0xFF7EE0A8)),
+              const SizedBox(width: 6),
+              Text('Income this month',
+                  style: theme.textTheme.bodySmall?.copyWith(color: const Color(0xB3FFFFFF))),
+              const Spacer(),
+              Text(
+                _currency.format(widget.summary.income),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: const Color(0xFF7EE0A8),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
           ),
           // Signature ₹ strip — quiet, bottom edge of the panel.
           const SizedBox(height: 14),

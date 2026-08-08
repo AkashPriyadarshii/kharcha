@@ -15,7 +15,7 @@ class ImportResult {
 
 /// Columns, in the same order [Exporter] writes them (round-trips our own
 /// exports; other tools may produce the same headers in any order).
-const _headers = ['date', 'amount', 'merchant', 'category', 'note', 'payment_method', 'upi_ref', 'source'];
+const _headers = ['date', 'amount', 'type', 'merchant', 'category', 'note', 'payment_method', 'upi_ref', 'source'];
 
 /// Parses [file] (CSV with a header row) and inserts each row via [repo].
 /// Tolerant: a bad row is skipped and counted, never an abort. Returns the
@@ -84,6 +84,7 @@ Future<ImportResult> importCsv(File file, TransactionRepository repo) async {
     var method = cell(row, 'payment_method') ?? 'upi';
     if (!TransactionRepository.paymentMethods.contains(method)) method = 'upi';
     final categoryId = await repo.categoryIdByName(cell(row, 'category') ?? '');
+    final isIncome = cell(row, 'type') == 'income';
 
     final inserted = await repo.insertImported(
       amount: amount,
@@ -93,6 +94,7 @@ Future<ImportResult> importCsv(File file, TransactionRepository repo) async {
       paymentMethod: method,
       txnDate: txnDate,
       upiRef: cell(row, 'upi_ref'),
+      isIncome: isIncome,
     );
     if (inserted == null) {
       skipped++;

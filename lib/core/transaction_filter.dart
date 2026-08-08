@@ -11,6 +11,7 @@ class TransactionFilter {
     this.categoryId,
     this.merchant,
     this.paymentMethod,
+    this.isIncome,
     this.from,
     this.to,
   });
@@ -27,6 +28,9 @@ class TransactionFilter {
   /// Exact payment method: cash | upi | card | wallet (null = all).
   final String? paymentMethod;
 
+  /// Income/expense filter (null = both).
+  final bool? isIncome;
+
   /// Earliest txnDate, inclusive (null = unbounded).
   final DateTime? from;
 
@@ -38,6 +42,7 @@ class TransactionFilter {
       categoryId == null &&
       merchant == null &&
       paymentMethod == null &&
+      isIncome == null &&
       from == null &&
       to == null;
 
@@ -54,6 +59,7 @@ class TransactionFilter {
             (categoryId == null || t.categoryId == categoryId) &&
             (merchant == null || t.merchant == merchant) &&
             (paymentMethod == null || t.paymentMethod == paymentMethod) &&
+            (isIncome == null || t.isIncome == isIncome) &&
             (f == null || !t.txnDate.isBefore(f)) &&
             (t2 == null || !t.txnDate.isAfter(t2)))
           t,

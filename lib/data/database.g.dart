@@ -88,6 +88,21 @@ class $CategoriesTable extends Categories
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _isIncomeMeta = const VerificationMeta(
+    'isIncome',
+  );
+  @override
+  late final GeneratedColumn<bool> isIncome = GeneratedColumn<bool>(
+    'is_income',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_income" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -96,6 +111,7 @@ class $CategoriesTable extends Categories
     color,
     isCustom,
     sortOrder,
+    isIncome,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -148,6 +164,12 @@ class $CategoriesTable extends Categories
         sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
       );
     }
+    if (data.containsKey('is_income')) {
+      context.handle(
+        _isIncomeMeta,
+        isIncome.isAcceptableOrUnknown(data['is_income']!, _isIncomeMeta),
+      );
+    }
     return context;
   }
 
@@ -181,6 +203,10 @@ class $CategoriesTable extends Categories
         DriftSqlType.int,
         data['${effectivePrefix}sort_order'],
       )!,
+      isIncome: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_income'],
+      )!,
     );
   }
 
@@ -197,6 +223,9 @@ class Category extends DataClass implements Insertable<Category> {
   final String color;
   final bool isCustom;
   final int sortOrder;
+
+  /// Income category (Salary, Bonus…) — only offered when adding income.
+  final bool isIncome;
   const Category({
     required this.id,
     required this.name,
@@ -204,6 +233,7 @@ class Category extends DataClass implements Insertable<Category> {
     required this.color,
     required this.isCustom,
     required this.sortOrder,
+    required this.isIncome,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -214,6 +244,7 @@ class Category extends DataClass implements Insertable<Category> {
     map['color'] = Variable<String>(color);
     map['is_custom'] = Variable<bool>(isCustom);
     map['sort_order'] = Variable<int>(sortOrder);
+    map['is_income'] = Variable<bool>(isIncome);
     return map;
   }
 
@@ -225,6 +256,7 @@ class Category extends DataClass implements Insertable<Category> {
       color: Value(color),
       isCustom: Value(isCustom),
       sortOrder: Value(sortOrder),
+      isIncome: Value(isIncome),
     );
   }
 
@@ -240,6 +272,7 @@ class Category extends DataClass implements Insertable<Category> {
       color: serializer.fromJson<String>(json['color']),
       isCustom: serializer.fromJson<bool>(json['isCustom']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      isIncome: serializer.fromJson<bool>(json['isIncome']),
     );
   }
   @override
@@ -252,6 +285,7 @@ class Category extends DataClass implements Insertable<Category> {
       'color': serializer.toJson<String>(color),
       'isCustom': serializer.toJson<bool>(isCustom),
       'sortOrder': serializer.toJson<int>(sortOrder),
+      'isIncome': serializer.toJson<bool>(isIncome),
     };
   }
 
@@ -262,6 +296,7 @@ class Category extends DataClass implements Insertable<Category> {
     String? color,
     bool? isCustom,
     int? sortOrder,
+    bool? isIncome,
   }) => Category(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -269,6 +304,7 @@ class Category extends DataClass implements Insertable<Category> {
     color: color ?? this.color,
     isCustom: isCustom ?? this.isCustom,
     sortOrder: sortOrder ?? this.sortOrder,
+    isIncome: isIncome ?? this.isIncome,
   );
   Category copyWithCompanion(CategoriesCompanion data) {
     return Category(
@@ -278,6 +314,7 @@ class Category extends DataClass implements Insertable<Category> {
       color: data.color.present ? data.color.value : this.color,
       isCustom: data.isCustom.present ? data.isCustom.value : this.isCustom,
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      isIncome: data.isIncome.present ? data.isIncome.value : this.isIncome,
     );
   }
 
@@ -289,13 +326,15 @@ class Category extends DataClass implements Insertable<Category> {
           ..write('emoji: $emoji, ')
           ..write('color: $color, ')
           ..write('isCustom: $isCustom, ')
-          ..write('sortOrder: $sortOrder')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('isIncome: $isIncome')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, emoji, color, isCustom, sortOrder);
+  int get hashCode =>
+      Object.hash(id, name, emoji, color, isCustom, sortOrder, isIncome);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -305,7 +344,8 @@ class Category extends DataClass implements Insertable<Category> {
           other.emoji == this.emoji &&
           other.color == this.color &&
           other.isCustom == this.isCustom &&
-          other.sortOrder == this.sortOrder);
+          other.sortOrder == this.sortOrder &&
+          other.isIncome == this.isIncome);
 }
 
 class CategoriesCompanion extends UpdateCompanion<Category> {
@@ -315,6 +355,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
   final Value<String> color;
   final Value<bool> isCustom;
   final Value<int> sortOrder;
+  final Value<bool> isIncome;
   const CategoriesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -322,6 +363,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.color = const Value.absent(),
     this.isCustom = const Value.absent(),
     this.sortOrder = const Value.absent(),
+    this.isIncome = const Value.absent(),
   });
   CategoriesCompanion.insert({
     this.id = const Value.absent(),
@@ -330,6 +372,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     required String color,
     this.isCustom = const Value.absent(),
     this.sortOrder = const Value.absent(),
+    this.isIncome = const Value.absent(),
   }) : name = Value(name),
        emoji = Value(emoji),
        color = Value(color);
@@ -340,6 +383,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Expression<String>? color,
     Expression<bool>? isCustom,
     Expression<int>? sortOrder,
+    Expression<bool>? isIncome,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -348,6 +392,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       if (color != null) 'color': color,
       if (isCustom != null) 'is_custom': isCustom,
       if (sortOrder != null) 'sort_order': sortOrder,
+      if (isIncome != null) 'is_income': isIncome,
     });
   }
 
@@ -358,6 +403,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Value<String>? color,
     Value<bool>? isCustom,
     Value<int>? sortOrder,
+    Value<bool>? isIncome,
   }) {
     return CategoriesCompanion(
       id: id ?? this.id,
@@ -366,6 +412,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       color: color ?? this.color,
       isCustom: isCustom ?? this.isCustom,
       sortOrder: sortOrder ?? this.sortOrder,
+      isIncome: isIncome ?? this.isIncome,
     );
   }
 
@@ -390,6 +437,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     if (sortOrder.present) {
       map['sort_order'] = Variable<int>(sortOrder.value);
     }
+    if (isIncome.present) {
+      map['is_income'] = Variable<bool>(isIncome.value);
+    }
     return map;
   }
 
@@ -401,7 +451,8 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
           ..write('emoji: $emoji, ')
           ..write('color: $color, ')
           ..write('isCustom: $isCustom, ')
-          ..write('sortOrder: $sortOrder')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('isIncome: $isIncome')
           ..write(')'))
         .toString();
   }
@@ -1519,6 +1570,21 @@ class $TransactionsTable extends Transactions
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _isIncomeMeta = const VerificationMeta(
+    'isIncome',
+  );
+  @override
+  late final GeneratedColumn<bool> isIncome = GeneratedColumn<bool>(
+    'is_income',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_income" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1579,6 +1645,7 @@ class $TransactionsTable extends Transactions
     paymentMethod,
     upiRef,
     source,
+    isIncome,
     createdAt,
     updatedAt,
     dirty,
@@ -1666,6 +1733,12 @@ class $TransactionsTable extends Transactions
     } else if (isInserting) {
       context.missing(_sourceMeta);
     }
+    if (data.containsKey('is_income')) {
+      context.handle(
+        _isIncomeMeta,
+        isIncome.isAcceptableOrUnknown(data['is_income']!, _isIncomeMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -1739,6 +1812,10 @@ class $TransactionsTable extends Transactions
         DriftSqlType.string,
         data['${effectivePrefix}source'],
       )!,
+      isIncome: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_income'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -1775,6 +1852,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   final String paymentMethod;
   final String? upiRef;
   final String source;
+
+  /// True for money in (salary, cashback…) — excluded from spend aggregates.
+  final bool isIncome;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -1794,6 +1874,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     required this.paymentMethod,
     this.upiRef,
     required this.source,
+    required this.isIncome,
     required this.createdAt,
     required this.updatedAt,
     required this.dirty,
@@ -1820,6 +1901,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       map['upi_ref'] = Variable<String>(upiRef);
     }
     map['source'] = Variable<String>(source);
+    map['is_income'] = Variable<bool>(isIncome);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     map['dirty'] = Variable<bool>(dirty);
@@ -1847,6 +1929,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ? const Value.absent()
           : Value(upiRef),
       source: Value(source),
+      isIncome: Value(isIncome),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       dirty: Value(dirty),
@@ -1872,6 +1955,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       paymentMethod: serializer.fromJson<String>(json['paymentMethod']),
       upiRef: serializer.fromJson<String?>(json['upiRef']),
       source: serializer.fromJson<String>(json['source']),
+      isIncome: serializer.fromJson<bool>(json['isIncome']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       dirty: serializer.fromJson<bool>(json['dirty']),
@@ -1892,6 +1976,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       'paymentMethod': serializer.toJson<String>(paymentMethod),
       'upiRef': serializer.toJson<String?>(upiRef),
       'source': serializer.toJson<String>(source),
+      'isIncome': serializer.toJson<bool>(isIncome),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'dirty': serializer.toJson<bool>(dirty),
@@ -1910,6 +1995,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     String? paymentMethod,
     Value<String?> upiRef = const Value.absent(),
     String? source,
+    bool? isIncome,
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? dirty,
@@ -1925,6 +2011,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     paymentMethod: paymentMethod ?? this.paymentMethod,
     upiRef: upiRef.present ? upiRef.value : this.upiRef,
     source: source ?? this.source,
+    isIncome: isIncome ?? this.isIncome,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     dirty: dirty ?? this.dirty,
@@ -1946,6 +2033,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           : this.paymentMethod,
       upiRef: data.upiRef.present ? data.upiRef.value : this.upiRef,
       source: data.source.present ? data.source.value : this.source,
+      isIncome: data.isIncome.present ? data.isIncome.value : this.isIncome,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       dirty: data.dirty.present ? data.dirty.value : this.dirty,
@@ -1966,6 +2054,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ..write('paymentMethod: $paymentMethod, ')
           ..write('upiRef: $upiRef, ')
           ..write('source: $source, ')
+          ..write('isIncome: $isIncome, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('dirty: $dirty, ')
@@ -1986,6 +2075,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     paymentMethod,
     upiRef,
     source,
+    isIncome,
     createdAt,
     updatedAt,
     dirty,
@@ -2005,6 +2095,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           other.paymentMethod == this.paymentMethod &&
           other.upiRef == this.upiRef &&
           other.source == this.source &&
+          other.isIncome == this.isIncome &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.dirty == this.dirty &&
@@ -2022,6 +2113,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<String> paymentMethod;
   final Value<String?> upiRef;
   final Value<String> source;
+  final Value<bool> isIncome;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<bool> dirty;
@@ -2037,6 +2129,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.paymentMethod = const Value.absent(),
     this.upiRef = const Value.absent(),
     this.source = const Value.absent(),
+    this.isIncome = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.dirty = const Value.absent(),
@@ -2053,6 +2146,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     required String paymentMethod,
     this.upiRef = const Value.absent(),
     required String source,
+    this.isIncome = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.dirty = const Value.absent(),
@@ -2073,6 +2167,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Expression<String>? paymentMethod,
     Expression<String>? upiRef,
     Expression<String>? source,
+    Expression<bool>? isIncome,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<bool>? dirty,
@@ -2089,6 +2184,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       if (paymentMethod != null) 'payment_method': paymentMethod,
       if (upiRef != null) 'upi_ref': upiRef,
       if (source != null) 'source': source,
+      if (isIncome != null) 'is_income': isIncome,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (dirty != null) 'dirty': dirty,
@@ -2107,6 +2203,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Value<String>? paymentMethod,
     Value<String?>? upiRef,
     Value<String>? source,
+    Value<bool>? isIncome,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<bool>? dirty,
@@ -2123,6 +2220,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       paymentMethod: paymentMethod ?? this.paymentMethod,
       upiRef: upiRef ?? this.upiRef,
       source: source ?? this.source,
+      isIncome: isIncome ?? this.isIncome,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       dirty: dirty ?? this.dirty,
@@ -2163,6 +2261,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     if (source.present) {
       map['source'] = Variable<String>(source.value);
     }
+    if (isIncome.present) {
+      map['is_income'] = Variable<bool>(isIncome.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -2191,6 +2292,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           ..write('paymentMethod: $paymentMethod, ')
           ..write('upiRef: $upiRef, ')
           ..write('source: $source, ')
+          ..write('isIncome: $isIncome, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('dirty: $dirty, ')
@@ -4274,6 +4376,7 @@ typedef $$CategoriesTableCreateCompanionBuilder =
       required String color,
       Value<bool> isCustom,
       Value<int> sortOrder,
+      Value<bool> isIncome,
     });
 typedef $$CategoriesTableUpdateCompanionBuilder =
     CategoriesCompanion Function({
@@ -4283,6 +4386,7 @@ typedef $$CategoriesTableUpdateCompanionBuilder =
       Value<String> color,
       Value<bool> isCustom,
       Value<int> sortOrder,
+      Value<bool> isIncome,
     });
 
 final class $$CategoriesTableReferences
@@ -4425,6 +4529,11 @@ class $$CategoriesTableFilterComposer
 
   ColumnFilters<int> get sortOrder => $composableBuilder(
     column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isIncome => $composableBuilder(
+    column: $table.isIncome,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4593,6 +4702,11 @@ class $$CategoriesTableOrderingComposer
     column: $table.sortOrder,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get isIncome => $composableBuilder(
+    column: $table.isIncome,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CategoriesTableAnnotationComposer
@@ -4621,6 +4735,9 @@ class $$CategoriesTableAnnotationComposer
 
   GeneratedColumn<int> get sortOrder =>
       $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<bool> get isIncome =>
+      $composableBuilder(column: $table.isIncome, builder: (column) => column);
 
   Expression<T> merchantsRefs<T extends Object>(
     Expression<T> Function($$MerchantsTableAnnotationComposer a) f,
@@ -4789,6 +4906,7 @@ class $$CategoriesTableTableManager
                 Value<String> color = const Value.absent(),
                 Value<bool> isCustom = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
+                Value<bool> isIncome = const Value.absent(),
               }) => CategoriesCompanion(
                 id: id,
                 name: name,
@@ -4796,6 +4914,7 @@ class $$CategoriesTableTableManager
                 color: color,
                 isCustom: isCustom,
                 sortOrder: sortOrder,
+                isIncome: isIncome,
               ),
           createCompanionCallback:
               ({
@@ -4805,6 +4924,7 @@ class $$CategoriesTableTableManager
                 required String color,
                 Value<bool> isCustom = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
+                Value<bool> isIncome = const Value.absent(),
               }) => CategoriesCompanion.insert(
                 id: id,
                 name: name,
@@ -4812,6 +4932,7 @@ class $$CategoriesTableTableManager
                 color: color,
                 isCustom: isCustom,
                 sortOrder: sortOrder,
+                isIncome: isIncome,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -5863,6 +5984,7 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       required String paymentMethod,
       Value<String?> upiRef,
       required String source,
+      Value<bool> isIncome,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<bool> dirty,
@@ -5880,6 +6002,7 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<String> paymentMethod,
       Value<String?> upiRef,
       Value<String> source,
+      Value<bool> isIncome,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<bool> dirty,
@@ -5971,6 +6094,11 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<String> get source => $composableBuilder(
     column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isIncome => $composableBuilder(
+    column: $table.isIncome,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6090,6 +6218,11 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isIncome => $composableBuilder(
+    column: $table.isIncome,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -6192,6 +6325,9 @@ class $$TransactionsTableAnnotationComposer
   GeneratedColumn<String> get source =>
       $composableBuilder(column: $table.source, builder: (column) => column);
 
+  GeneratedColumn<bool> get isIncome =>
+      $composableBuilder(column: $table.isIncome, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -6289,6 +6425,7 @@ class $$TransactionsTableTableManager
                 Value<String> paymentMethod = const Value.absent(),
                 Value<String?> upiRef = const Value.absent(),
                 Value<String> source = const Value.absent(),
+                Value<bool> isIncome = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> dirty = const Value.absent(),
@@ -6304,6 +6441,7 @@ class $$TransactionsTableTableManager
                 paymentMethod: paymentMethod,
                 upiRef: upiRef,
                 source: source,
+                isIncome: isIncome,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 dirty: dirty,
@@ -6321,6 +6459,7 @@ class $$TransactionsTableTableManager
                 required String paymentMethod,
                 Value<String?> upiRef = const Value.absent(),
                 required String source,
+                Value<bool> isIncome = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> dirty = const Value.absent(),
@@ -6336,6 +6475,7 @@ class $$TransactionsTableTableManager
                 paymentMethod: paymentMethod,
                 upiRef: upiRef,
                 source: source,
+                isIncome: isIncome,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 dirty: dirty,

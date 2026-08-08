@@ -14,6 +14,8 @@ class Categories extends Table {
   TextColumn get color => text().withLength(min: 7, max: 9)(); // #RRGGBB
   BoolColumn get isCustom => boolean().withDefault(const Constant(false))();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+  /// Income category (Salary, Bonus…) — only offered when adding income.
+  BoolColumn get isIncome => boolean().withDefault(const Constant(false))();
 }
 
 /// Merchants: normalized name + default category.
@@ -104,6 +106,8 @@ class Transactions extends Table {
   TextColumn get paymentMethod => text().withLength(min: 1, max: 16)(); // cash | upi | card | wallet
   TextColumn get upiRef => text().withLength(min: 0, max: 120).nullable()();
   TextColumn get source => text().withLength(min: 1, max: 16)(); // notification | manual | sms | import
+  /// True for money in (salary, cashback…) — excluded from spend aggregates.
+  BoolColumn get isIncome => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
   /// True until the row is pushed to Supabase.
@@ -129,7 +133,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase({QueryExecutor? executor}) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -159,6 +163,11 @@ class AppDatabase extends _$AppDatabase {
           if (from < 6) {
             await m.createTable(debts);
           }
+          if (from < 7) {
+            // v0.2.0: income support. Existing rows stay expenses (false).
+            await m.addColumn(transactions, transactions.isIncome);
+            await m.addColumn(categories, categories.isIncome);
+          }
         },
       );
 
@@ -186,6 +195,22 @@ class AppDatabase extends _$AppDatabase {
         name: c.name,
         categoryId: Value(id.id),
         icon: Value(c.emoji),
+      ));
+    }
+    // Income categories — shown only in income mode on the add forms.
+    final incomeCategories = [
+      (name: 'Salary', emoji: '💼', color: '#2E9E6B', sortOrder: 0),
+      (name: 'Bonus', emoji: '🎁', color: '#F4B942', sortOrder: 1),
+      (name: 'Gift', emoji: '🎉', color: '#9B5DE5', sortOrder: 2),
+      (name: 'Other income', emoji: '💰', color: '#06D6A0', sortOrder: 3),
+    ];
+    for (final c in incomeCategories) {
+      await into(categories).insert(CategoriesCompanion.insert(
+        name: c.name,
+        emoji: c.emoji,
+        color: c.color,
+        sortOrder: Value(10 + c.sortOrder),
+        isIncome: const Value(true),
       ));
     }
     await _seedRules();

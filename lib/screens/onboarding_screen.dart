@@ -45,25 +45,20 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   static const _channel = MethodChannel('com.kharcha.app/capture');
 
-  Future<void> _openBatterySettings() async {
+  /// Best-effort platform call; failures show a snackbar, never block setup.
+  Future<void> _invoke(String method, {String fallback = 'Could not complete that step.'}) async {
     try {
-      await _channel.invokeMethod<void>('openBatteryOptimizationSettings');
+      await _channel.invokeMethod<void>(method);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Could not open settings: $e')));
+          .showSnackBar(SnackBar(content: Text('$fallback $e')));
     }
   }
 
-  Future<void> _openCaptureSettings() async {
-    try {
-      await _channel.invokeMethod<void>('openNotificationListenerSettings');
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Could not open settings: $e')));
-    }
-  }
+  Future<void> _openCaptureSettings() => _invoke('openNotificationListenerSettings');
+  Future<void> _askNotifications() => _invoke('requestNotificationPermission');
+  Future<void> _askBattery() => _invoke('requestBatteryOptimizationExemption');
 
   Future<void> _finish() async {
     await (await OnboardingStore.create()).markDone();
@@ -109,11 +104,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: 16),
           _StepCard(
             step: '2',
-            title: 'Summaries + battery',
-            body: 'Allow notifications for your 9PM daily recap, and let Kharcha ignore battery optimization so capture never sleeps.',
+            title: 'Daily summaries',
+            body: 'Allow notifications for your 9PM recap and budget alerts.',
+            icon: Icons.notifications_outlined,
+            actionLabel: 'Allow notifications',
+            onAction: () => _askNotifications(),
+          ),
+          const SizedBox(height: 16),
+          _StepCard(
+            step: '3',
+            title: 'Keep capture awake',
+            body: 'Let Kharcha ignore battery optimization so auto-capture never sleeps.',
             icon: Icons.battery_charging_full,
-            actionLabel: 'Open battery settings',
-            onAction: () => _openBatterySettings(),
+            actionLabel: 'Allow battery exemption',
+            onAction: () => _askBattery(),
           ),
           const SizedBox(height: 32),
           FilledButton.icon(
