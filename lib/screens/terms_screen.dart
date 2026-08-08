@@ -12,6 +12,14 @@ class TermsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
+          Text(
+            'By using Kharcha you agree to these terms. '
+            'Last updated: 8 Aug 2026.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+          ),
+          const SizedBox(height: 16),
           const _Section(
             title: '1. What Kharcha does',
             body: 'Kharcha tracks your expenses. UPI payments can be '
