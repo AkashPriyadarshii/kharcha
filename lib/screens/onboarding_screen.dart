@@ -7,6 +7,8 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../core/config.dart';
+
 /// Marks first-launch onboarding done. Persisted — shown once, after login.
 class OnboardingStore {
   OnboardingStore(this.file);
@@ -62,6 +64,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   Future<void> _finish() async {
     await (await OnboardingStore.create()).markDone();
+    onboardingDone.value = true; // flip the router gate — markDone alone didn't
     if (!mounted) return;
     context.go('/');
   }
