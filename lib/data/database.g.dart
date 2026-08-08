@@ -1143,6 +1143,30 @@ class $WalletsTable extends Wallets with TableInfo<$WalletsTable, Wallet> {
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _dirtyMeta = const VerificationMeta('dirty');
+  @override
+  late final GeneratedColumn<bool> dirty = GeneratedColumn<bool>(
+    'dirty',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("dirty" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _remoteIdMeta = const VerificationMeta(
+    'remoteId',
+  );
+  @override
+  late final GeneratedColumn<int> remoteId = GeneratedColumn<int>(
+    'remote_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1150,6 +1174,8 @@ class $WalletsTable extends Wallets with TableInfo<$WalletsTable, Wallet> {
     currency,
     initialBalance,
     createdAt,
+    dirty,
+    remoteId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1197,6 +1223,18 @@ class $WalletsTable extends Wallets with TableInfo<$WalletsTable, Wallet> {
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
     }
+    if (data.containsKey('dirty')) {
+      context.handle(
+        _dirtyMeta,
+        dirty.isAcceptableOrUnknown(data['dirty']!, _dirtyMeta),
+      );
+    }
+    if (data.containsKey('remote_id')) {
+      context.handle(
+        _remoteIdMeta,
+        remoteId.isAcceptableOrUnknown(data['remote_id']!, _remoteIdMeta),
+      );
+    }
     return context;
   }
 
@@ -1226,6 +1264,14 @@ class $WalletsTable extends Wallets with TableInfo<$WalletsTable, Wallet> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      dirty: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}dirty'],
+      )!,
+      remoteId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}remote_id'],
+      ),
     );
   }
 
@@ -1243,12 +1289,16 @@ class Wallet extends DataClass implements Insertable<Wallet> {
   /// Opening balance (positive = money already in the wallet before tracking).
   final double initialBalance;
   final DateTime createdAt;
+  final bool dirty;
+  final int? remoteId;
   const Wallet({
     required this.id,
     required this.name,
     required this.currency,
     required this.initialBalance,
     required this.createdAt,
+    required this.dirty,
+    this.remoteId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1258,6 +1308,10 @@ class Wallet extends DataClass implements Insertable<Wallet> {
     map['currency'] = Variable<String>(currency);
     map['initial_balance'] = Variable<double>(initialBalance);
     map['created_at'] = Variable<DateTime>(createdAt);
+    map['dirty'] = Variable<bool>(dirty);
+    if (!nullToAbsent || remoteId != null) {
+      map['remote_id'] = Variable<int>(remoteId);
+    }
     return map;
   }
 
@@ -1268,6 +1322,10 @@ class Wallet extends DataClass implements Insertable<Wallet> {
       currency: Value(currency),
       initialBalance: Value(initialBalance),
       createdAt: Value(createdAt),
+      dirty: Value(dirty),
+      remoteId: remoteId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remoteId),
     );
   }
 
@@ -1282,6 +1340,8 @@ class Wallet extends DataClass implements Insertable<Wallet> {
       currency: serializer.fromJson<String>(json['currency']),
       initialBalance: serializer.fromJson<double>(json['initialBalance']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      dirty: serializer.fromJson<bool>(json['dirty']),
+      remoteId: serializer.fromJson<int?>(json['remoteId']),
     );
   }
   @override
@@ -1293,6 +1353,8 @@ class Wallet extends DataClass implements Insertable<Wallet> {
       'currency': serializer.toJson<String>(currency),
       'initialBalance': serializer.toJson<double>(initialBalance),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'dirty': serializer.toJson<bool>(dirty),
+      'remoteId': serializer.toJson<int?>(remoteId),
     };
   }
 
@@ -1302,12 +1364,16 @@ class Wallet extends DataClass implements Insertable<Wallet> {
     String? currency,
     double? initialBalance,
     DateTime? createdAt,
+    bool? dirty,
+    Value<int?> remoteId = const Value.absent(),
   }) => Wallet(
     id: id ?? this.id,
     name: name ?? this.name,
     currency: currency ?? this.currency,
     initialBalance: initialBalance ?? this.initialBalance,
     createdAt: createdAt ?? this.createdAt,
+    dirty: dirty ?? this.dirty,
+    remoteId: remoteId.present ? remoteId.value : this.remoteId,
   );
   Wallet copyWithCompanion(WalletsCompanion data) {
     return Wallet(
@@ -1318,6 +1384,8 @@ class Wallet extends DataClass implements Insertable<Wallet> {
           ? data.initialBalance.value
           : this.initialBalance,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      dirty: data.dirty.present ? data.dirty.value : this.dirty,
+      remoteId: data.remoteId.present ? data.remoteId.value : this.remoteId,
     );
   }
 
@@ -1328,14 +1396,23 @@ class Wallet extends DataClass implements Insertable<Wallet> {
           ..write('name: $name, ')
           ..write('currency: $currency, ')
           ..write('initialBalance: $initialBalance, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('dirty: $dirty, ')
+          ..write('remoteId: $remoteId')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, name, currency, initialBalance, createdAt);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    currency,
+    initialBalance,
+    createdAt,
+    dirty,
+    remoteId,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1344,7 +1421,9 @@ class Wallet extends DataClass implements Insertable<Wallet> {
           other.name == this.name &&
           other.currency == this.currency &&
           other.initialBalance == this.initialBalance &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.dirty == this.dirty &&
+          other.remoteId == this.remoteId);
 }
 
 class WalletsCompanion extends UpdateCompanion<Wallet> {
@@ -1353,12 +1432,16 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
   final Value<String> currency;
   final Value<double> initialBalance;
   final Value<DateTime> createdAt;
+  final Value<bool> dirty;
+  final Value<int?> remoteId;
   const WalletsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.currency = const Value.absent(),
     this.initialBalance = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.dirty = const Value.absent(),
+    this.remoteId = const Value.absent(),
   });
   WalletsCompanion.insert({
     this.id = const Value.absent(),
@@ -1366,6 +1449,8 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     required String currency,
     this.initialBalance = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.dirty = const Value.absent(),
+    this.remoteId = const Value.absent(),
   }) : name = Value(name),
        currency = Value(currency);
   static Insertable<Wallet> custom({
@@ -1374,6 +1459,8 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     Expression<String>? currency,
     Expression<double>? initialBalance,
     Expression<DateTime>? createdAt,
+    Expression<bool>? dirty,
+    Expression<int>? remoteId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1381,6 +1468,8 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
       if (currency != null) 'currency': currency,
       if (initialBalance != null) 'initial_balance': initialBalance,
       if (createdAt != null) 'created_at': createdAt,
+      if (dirty != null) 'dirty': dirty,
+      if (remoteId != null) 'remote_id': remoteId,
     });
   }
 
@@ -1390,6 +1479,8 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     Value<String>? currency,
     Value<double>? initialBalance,
     Value<DateTime>? createdAt,
+    Value<bool>? dirty,
+    Value<int?>? remoteId,
   }) {
     return WalletsCompanion(
       id: id ?? this.id,
@@ -1397,6 +1488,8 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
       currency: currency ?? this.currency,
       initialBalance: initialBalance ?? this.initialBalance,
       createdAt: createdAt ?? this.createdAt,
+      dirty: dirty ?? this.dirty,
+      remoteId: remoteId ?? this.remoteId,
     );
   }
 
@@ -1418,6 +1511,12 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (dirty.present) {
+      map['dirty'] = Variable<bool>(dirty.value);
+    }
+    if (remoteId.present) {
+      map['remote_id'] = Variable<int>(remoteId.value);
+    }
     return map;
   }
 
@@ -1428,7 +1527,9 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
           ..write('name: $name, ')
           ..write('currency: $currency, ')
           ..write('initialBalance: $initialBalance, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('dirty: $dirty, ')
+          ..write('remoteId: $remoteId')
           ..write(')'))
         .toString();
   }
@@ -2392,6 +2493,42 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
     requiredDuringInsert: false,
     defaultValue: const Constant(100),
   );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _dirtyMeta = const VerificationMeta('dirty');
+  @override
+  late final GeneratedColumn<bool> dirty = GeneratedColumn<bool>(
+    'dirty',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("dirty" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _remoteIdMeta = const VerificationMeta(
+    'remoteId',
+  );
+  @override
+  late final GeneratedColumn<int> remoteId = GeneratedColumn<int>(
+    'remote_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2401,6 +2538,9 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
     alertPct50,
     alertPct80,
     alertPct100,
+    updatedAt,
+    dirty,
+    remoteId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2462,6 +2602,24 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
         ),
       );
     }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('dirty')) {
+      context.handle(
+        _dirtyMeta,
+        dirty.isAcceptableOrUnknown(data['dirty']!, _dirtyMeta),
+      );
+    }
+    if (data.containsKey('remote_id')) {
+      context.handle(
+        _remoteIdMeta,
+        remoteId.isAcceptableOrUnknown(data['remote_id']!, _remoteIdMeta),
+      );
+    }
     return context;
   }
 
@@ -2499,6 +2657,18 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
         DriftSqlType.int,
         data['${effectivePrefix}alert_pct100'],
       )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      dirty: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}dirty'],
+      )!,
+      remoteId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}remote_id'],
+      ),
     );
   }
 
@@ -2516,6 +2686,9 @@ class Budget extends DataClass implements Insertable<Budget> {
   final int alertPct50;
   final int alertPct80;
   final int alertPct100;
+  final DateTime updatedAt;
+  final bool dirty;
+  final int? remoteId;
   const Budget({
     required this.id,
     required this.categoryId,
@@ -2524,6 +2697,9 @@ class Budget extends DataClass implements Insertable<Budget> {
     required this.alertPct50,
     required this.alertPct80,
     required this.alertPct100,
+    required this.updatedAt,
+    required this.dirty,
+    this.remoteId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2535,6 +2711,11 @@ class Budget extends DataClass implements Insertable<Budget> {
     map['alert_pct50'] = Variable<int>(alertPct50);
     map['alert_pct80'] = Variable<int>(alertPct80);
     map['alert_pct100'] = Variable<int>(alertPct100);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['dirty'] = Variable<bool>(dirty);
+    if (!nullToAbsent || remoteId != null) {
+      map['remote_id'] = Variable<int>(remoteId);
+    }
     return map;
   }
 
@@ -2547,6 +2728,11 @@ class Budget extends DataClass implements Insertable<Budget> {
       alertPct50: Value(alertPct50),
       alertPct80: Value(alertPct80),
       alertPct100: Value(alertPct100),
+      updatedAt: Value(updatedAt),
+      dirty: Value(dirty),
+      remoteId: remoteId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remoteId),
     );
   }
 
@@ -2563,6 +2749,9 @@ class Budget extends DataClass implements Insertable<Budget> {
       alertPct50: serializer.fromJson<int>(json['alertPct50']),
       alertPct80: serializer.fromJson<int>(json['alertPct80']),
       alertPct100: serializer.fromJson<int>(json['alertPct100']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      dirty: serializer.fromJson<bool>(json['dirty']),
+      remoteId: serializer.fromJson<int?>(json['remoteId']),
     );
   }
   @override
@@ -2576,6 +2765,9 @@ class Budget extends DataClass implements Insertable<Budget> {
       'alertPct50': serializer.toJson<int>(alertPct50),
       'alertPct80': serializer.toJson<int>(alertPct80),
       'alertPct100': serializer.toJson<int>(alertPct100),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'dirty': serializer.toJson<bool>(dirty),
+      'remoteId': serializer.toJson<int?>(remoteId),
     };
   }
 
@@ -2587,6 +2779,9 @@ class Budget extends DataClass implements Insertable<Budget> {
     int? alertPct50,
     int? alertPct80,
     int? alertPct100,
+    DateTime? updatedAt,
+    bool? dirty,
+    Value<int?> remoteId = const Value.absent(),
   }) => Budget(
     id: id ?? this.id,
     categoryId: categoryId ?? this.categoryId,
@@ -2595,6 +2790,9 @@ class Budget extends DataClass implements Insertable<Budget> {
     alertPct50: alertPct50 ?? this.alertPct50,
     alertPct80: alertPct80 ?? this.alertPct80,
     alertPct100: alertPct100 ?? this.alertPct100,
+    updatedAt: updatedAt ?? this.updatedAt,
+    dirty: dirty ?? this.dirty,
+    remoteId: remoteId.present ? remoteId.value : this.remoteId,
   );
   Budget copyWithCompanion(BudgetsCompanion data) {
     return Budget(
@@ -2613,6 +2811,9 @@ class Budget extends DataClass implements Insertable<Budget> {
       alertPct100: data.alertPct100.present
           ? data.alertPct100.value
           : this.alertPct100,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      dirty: data.dirty.present ? data.dirty.value : this.dirty,
+      remoteId: data.remoteId.present ? data.remoteId.value : this.remoteId,
     );
   }
 
@@ -2625,7 +2826,10 @@ class Budget extends DataClass implements Insertable<Budget> {
           ..write('period: $period, ')
           ..write('alertPct50: $alertPct50, ')
           ..write('alertPct80: $alertPct80, ')
-          ..write('alertPct100: $alertPct100')
+          ..write('alertPct100: $alertPct100, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('dirty: $dirty, ')
+          ..write('remoteId: $remoteId')
           ..write(')'))
         .toString();
   }
@@ -2639,6 +2843,9 @@ class Budget extends DataClass implements Insertable<Budget> {
     alertPct50,
     alertPct80,
     alertPct100,
+    updatedAt,
+    dirty,
+    remoteId,
   );
   @override
   bool operator ==(Object other) =>
@@ -2650,7 +2857,10 @@ class Budget extends DataClass implements Insertable<Budget> {
           other.period == this.period &&
           other.alertPct50 == this.alertPct50 &&
           other.alertPct80 == this.alertPct80 &&
-          other.alertPct100 == this.alertPct100);
+          other.alertPct100 == this.alertPct100 &&
+          other.updatedAt == this.updatedAt &&
+          other.dirty == this.dirty &&
+          other.remoteId == this.remoteId);
 }
 
 class BudgetsCompanion extends UpdateCompanion<Budget> {
@@ -2661,6 +2871,9 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
   final Value<int> alertPct50;
   final Value<int> alertPct80;
   final Value<int> alertPct100;
+  final Value<DateTime> updatedAt;
+  final Value<bool> dirty;
+  final Value<int?> remoteId;
   const BudgetsCompanion({
     this.id = const Value.absent(),
     this.categoryId = const Value.absent(),
@@ -2669,6 +2882,9 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     this.alertPct50 = const Value.absent(),
     this.alertPct80 = const Value.absent(),
     this.alertPct100 = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.dirty = const Value.absent(),
+    this.remoteId = const Value.absent(),
   });
   BudgetsCompanion.insert({
     this.id = const Value.absent(),
@@ -2678,6 +2894,9 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     this.alertPct50 = const Value.absent(),
     this.alertPct80 = const Value.absent(),
     this.alertPct100 = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.dirty = const Value.absent(),
+    this.remoteId = const Value.absent(),
   }) : categoryId = Value(categoryId),
        amount = Value(amount),
        period = Value(period);
@@ -2689,6 +2908,9 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     Expression<int>? alertPct50,
     Expression<int>? alertPct80,
     Expression<int>? alertPct100,
+    Expression<DateTime>? updatedAt,
+    Expression<bool>? dirty,
+    Expression<int>? remoteId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2698,6 +2920,9 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
       if (alertPct50 != null) 'alert_pct50': alertPct50,
       if (alertPct80 != null) 'alert_pct80': alertPct80,
       if (alertPct100 != null) 'alert_pct100': alertPct100,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (dirty != null) 'dirty': dirty,
+      if (remoteId != null) 'remote_id': remoteId,
     });
   }
 
@@ -2709,6 +2934,9 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     Value<int>? alertPct50,
     Value<int>? alertPct80,
     Value<int>? alertPct100,
+    Value<DateTime>? updatedAt,
+    Value<bool>? dirty,
+    Value<int?>? remoteId,
   }) {
     return BudgetsCompanion(
       id: id ?? this.id,
@@ -2718,6 +2946,9 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
       alertPct50: alertPct50 ?? this.alertPct50,
       alertPct80: alertPct80 ?? this.alertPct80,
       alertPct100: alertPct100 ?? this.alertPct100,
+      updatedAt: updatedAt ?? this.updatedAt,
+      dirty: dirty ?? this.dirty,
+      remoteId: remoteId ?? this.remoteId,
     );
   }
 
@@ -2745,6 +2976,15 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     if (alertPct100.present) {
       map['alert_pct100'] = Variable<int>(alertPct100.value);
     }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (dirty.present) {
+      map['dirty'] = Variable<bool>(dirty.value);
+    }
+    if (remoteId.present) {
+      map['remote_id'] = Variable<int>(remoteId.value);
+    }
     return map;
   }
 
@@ -2757,7 +2997,10 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
           ..write('period: $period, ')
           ..write('alertPct50: $alertPct50, ')
           ..write('alertPct80: $alertPct80, ')
-          ..write('alertPct100: $alertPct100')
+          ..write('alertPct100: $alertPct100, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('dirty: $dirty, ')
+          ..write('remoteId: $remoteId')
           ..write(')'))
         .toString();
   }
@@ -3172,6 +3415,30 @@ class $RecurringTransactionsTable extends RecurringTransactions
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _dirtyMeta = const VerificationMeta('dirty');
+  @override
+  late final GeneratedColumn<bool> dirty = GeneratedColumn<bool>(
+    'dirty',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("dirty" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _remoteIdMeta = const VerificationMeta(
+    'remoteId',
+  );
+  @override
+  late final GeneratedColumn<int> remoteId = GeneratedColumn<int>(
+    'remote_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -3181,6 +3448,8 @@ class $RecurringTransactionsTable extends RecurringTransactions
     period,
     nextDue,
     active,
+    dirty,
+    remoteId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3241,6 +3510,18 @@ class $RecurringTransactionsTable extends RecurringTransactions
         active.isAcceptableOrUnknown(data['active']!, _activeMeta),
       );
     }
+    if (data.containsKey('dirty')) {
+      context.handle(
+        _dirtyMeta,
+        dirty.isAcceptableOrUnknown(data['dirty']!, _dirtyMeta),
+      );
+    }
+    if (data.containsKey('remote_id')) {
+      context.handle(
+        _remoteIdMeta,
+        remoteId.isAcceptableOrUnknown(data['remote_id']!, _remoteIdMeta),
+      );
+    }
     return context;
   }
 
@@ -3278,6 +3559,14 @@ class $RecurringTransactionsTable extends RecurringTransactions
         DriftSqlType.bool,
         data['${effectivePrefix}active'],
       )!,
+      dirty: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}dirty'],
+      )!,
+      remoteId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}remote_id'],
+      ),
     );
   }
 
@@ -3300,6 +3589,8 @@ class RecurringTransaction extends DataClass
   /// Next due date (local). Today/overdue = due now.
   final DateTime nextDue;
   final bool active;
+  final bool dirty;
+  final int? remoteId;
   const RecurringTransaction({
     required this.id,
     required this.merchant,
@@ -3308,6 +3599,8 @@ class RecurringTransaction extends DataClass
     required this.period,
     required this.nextDue,
     required this.active,
+    required this.dirty,
+    this.remoteId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3321,6 +3614,10 @@ class RecurringTransaction extends DataClass
     map['period'] = Variable<String>(period);
     map['next_due'] = Variable<DateTime>(nextDue);
     map['active'] = Variable<bool>(active);
+    map['dirty'] = Variable<bool>(dirty);
+    if (!nullToAbsent || remoteId != null) {
+      map['remote_id'] = Variable<int>(remoteId);
+    }
     return map;
   }
 
@@ -3335,6 +3632,10 @@ class RecurringTransaction extends DataClass
       period: Value(period),
       nextDue: Value(nextDue),
       active: Value(active),
+      dirty: Value(dirty),
+      remoteId: remoteId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remoteId),
     );
   }
 
@@ -3351,6 +3652,8 @@ class RecurringTransaction extends DataClass
       period: serializer.fromJson<String>(json['period']),
       nextDue: serializer.fromJson<DateTime>(json['nextDue']),
       active: serializer.fromJson<bool>(json['active']),
+      dirty: serializer.fromJson<bool>(json['dirty']),
+      remoteId: serializer.fromJson<int?>(json['remoteId']),
     );
   }
   @override
@@ -3364,6 +3667,8 @@ class RecurringTransaction extends DataClass
       'period': serializer.toJson<String>(period),
       'nextDue': serializer.toJson<DateTime>(nextDue),
       'active': serializer.toJson<bool>(active),
+      'dirty': serializer.toJson<bool>(dirty),
+      'remoteId': serializer.toJson<int?>(remoteId),
     };
   }
 
@@ -3375,6 +3680,8 @@ class RecurringTransaction extends DataClass
     String? period,
     DateTime? nextDue,
     bool? active,
+    bool? dirty,
+    Value<int?> remoteId = const Value.absent(),
   }) => RecurringTransaction(
     id: id ?? this.id,
     merchant: merchant ?? this.merchant,
@@ -3383,6 +3690,8 @@ class RecurringTransaction extends DataClass
     period: period ?? this.period,
     nextDue: nextDue ?? this.nextDue,
     active: active ?? this.active,
+    dirty: dirty ?? this.dirty,
+    remoteId: remoteId.present ? remoteId.value : this.remoteId,
   );
   RecurringTransaction copyWithCompanion(RecurringTransactionsCompanion data) {
     return RecurringTransaction(
@@ -3395,6 +3704,8 @@ class RecurringTransaction extends DataClass
       period: data.period.present ? data.period.value : this.period,
       nextDue: data.nextDue.present ? data.nextDue.value : this.nextDue,
       active: data.active.present ? data.active.value : this.active,
+      dirty: data.dirty.present ? data.dirty.value : this.dirty,
+      remoteId: data.remoteId.present ? data.remoteId.value : this.remoteId,
     );
   }
 
@@ -3407,14 +3718,25 @@ class RecurringTransaction extends DataClass
           ..write('categoryId: $categoryId, ')
           ..write('period: $period, ')
           ..write('nextDue: $nextDue, ')
-          ..write('active: $active')
+          ..write('active: $active, ')
+          ..write('dirty: $dirty, ')
+          ..write('remoteId: $remoteId')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, merchant, amount, categoryId, period, nextDue, active);
+  int get hashCode => Object.hash(
+    id,
+    merchant,
+    amount,
+    categoryId,
+    period,
+    nextDue,
+    active,
+    dirty,
+    remoteId,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3425,7 +3747,9 @@ class RecurringTransaction extends DataClass
           other.categoryId == this.categoryId &&
           other.period == this.period &&
           other.nextDue == this.nextDue &&
-          other.active == this.active);
+          other.active == this.active &&
+          other.dirty == this.dirty &&
+          other.remoteId == this.remoteId);
 }
 
 class RecurringTransactionsCompanion
@@ -3437,6 +3761,8 @@ class RecurringTransactionsCompanion
   final Value<String> period;
   final Value<DateTime> nextDue;
   final Value<bool> active;
+  final Value<bool> dirty;
+  final Value<int?> remoteId;
   const RecurringTransactionsCompanion({
     this.id = const Value.absent(),
     this.merchant = const Value.absent(),
@@ -3445,6 +3771,8 @@ class RecurringTransactionsCompanion
     this.period = const Value.absent(),
     this.nextDue = const Value.absent(),
     this.active = const Value.absent(),
+    this.dirty = const Value.absent(),
+    this.remoteId = const Value.absent(),
   });
   RecurringTransactionsCompanion.insert({
     this.id = const Value.absent(),
@@ -3454,6 +3782,8 @@ class RecurringTransactionsCompanion
     required String period,
     required DateTime nextDue,
     this.active = const Value.absent(),
+    this.dirty = const Value.absent(),
+    this.remoteId = const Value.absent(),
   }) : merchant = Value(merchant),
        amount = Value(amount),
        period = Value(period),
@@ -3466,6 +3796,8 @@ class RecurringTransactionsCompanion
     Expression<String>? period,
     Expression<DateTime>? nextDue,
     Expression<bool>? active,
+    Expression<bool>? dirty,
+    Expression<int>? remoteId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3475,6 +3807,8 @@ class RecurringTransactionsCompanion
       if (period != null) 'period': period,
       if (nextDue != null) 'next_due': nextDue,
       if (active != null) 'active': active,
+      if (dirty != null) 'dirty': dirty,
+      if (remoteId != null) 'remote_id': remoteId,
     });
   }
 
@@ -3486,6 +3820,8 @@ class RecurringTransactionsCompanion
     Value<String>? period,
     Value<DateTime>? nextDue,
     Value<bool>? active,
+    Value<bool>? dirty,
+    Value<int?>? remoteId,
   }) {
     return RecurringTransactionsCompanion(
       id: id ?? this.id,
@@ -3495,6 +3831,8 @@ class RecurringTransactionsCompanion
       period: period ?? this.period,
       nextDue: nextDue ?? this.nextDue,
       active: active ?? this.active,
+      dirty: dirty ?? this.dirty,
+      remoteId: remoteId ?? this.remoteId,
     );
   }
 
@@ -3522,6 +3860,12 @@ class RecurringTransactionsCompanion
     if (active.present) {
       map['active'] = Variable<bool>(active.value);
     }
+    if (dirty.present) {
+      map['dirty'] = Variable<bool>(dirty.value);
+    }
+    if (remoteId.present) {
+      map['remote_id'] = Variable<int>(remoteId.value);
+    }
     return map;
   }
 
@@ -3534,7 +3878,9 @@ class RecurringTransactionsCompanion
           ..write('categoryId: $categoryId, ')
           ..write('period: $period, ')
           ..write('nextDue: $nextDue, ')
-          ..write('active: $active')
+          ..write('active: $active, ')
+          ..write('dirty: $dirty, ')
+          ..write('remoteId: $remoteId')
           ..write(')'))
         .toString();
   }
@@ -3602,8 +3948,40 @@ class $ObjectivesTable extends Objectives
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _dirtyMeta = const VerificationMeta('dirty');
   @override
-  List<GeneratedColumn> get $columns => [id, name, target, saved, deadline];
+  late final GeneratedColumn<bool> dirty = GeneratedColumn<bool>(
+    'dirty',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("dirty" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _remoteIdMeta = const VerificationMeta(
+    'remoteId',
+  );
+  @override
+  late final GeneratedColumn<int> remoteId = GeneratedColumn<int>(
+    'remote_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    target,
+    saved,
+    deadline,
+    dirty,
+    remoteId,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -3647,6 +4025,18 @@ class $ObjectivesTable extends Objectives
         deadline.isAcceptableOrUnknown(data['deadline']!, _deadlineMeta),
       );
     }
+    if (data.containsKey('dirty')) {
+      context.handle(
+        _dirtyMeta,
+        dirty.isAcceptableOrUnknown(data['dirty']!, _dirtyMeta),
+      );
+    }
+    if (data.containsKey('remote_id')) {
+      context.handle(
+        _remoteIdMeta,
+        remoteId.isAcceptableOrUnknown(data['remote_id']!, _remoteIdMeta),
+      );
+    }
     return context;
   }
 
@@ -3676,6 +4066,14 @@ class $ObjectivesTable extends Objectives
         DriftSqlType.dateTime,
         data['${effectivePrefix}deadline'],
       ),
+      dirty: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}dirty'],
+      )!,
+      remoteId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}remote_id'],
+      ),
     );
   }
 
@@ -3693,12 +4091,16 @@ class Objective extends DataClass implements Insertable<Objective> {
   /// How much has been saved toward the goal so far.
   final double saved;
   final DateTime? deadline;
+  final bool dirty;
+  final int? remoteId;
   const Objective({
     required this.id,
     required this.name,
     required this.target,
     required this.saved,
     this.deadline,
+    required this.dirty,
+    this.remoteId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3709,6 +4111,10 @@ class Objective extends DataClass implements Insertable<Objective> {
     map['saved'] = Variable<double>(saved);
     if (!nullToAbsent || deadline != null) {
       map['deadline'] = Variable<DateTime>(deadline);
+    }
+    map['dirty'] = Variable<bool>(dirty);
+    if (!nullToAbsent || remoteId != null) {
+      map['remote_id'] = Variable<int>(remoteId);
     }
     return map;
   }
@@ -3722,6 +4128,10 @@ class Objective extends DataClass implements Insertable<Objective> {
       deadline: deadline == null && nullToAbsent
           ? const Value.absent()
           : Value(deadline),
+      dirty: Value(dirty),
+      remoteId: remoteId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remoteId),
     );
   }
 
@@ -3736,6 +4146,8 @@ class Objective extends DataClass implements Insertable<Objective> {
       target: serializer.fromJson<double>(json['target']),
       saved: serializer.fromJson<double>(json['saved']),
       deadline: serializer.fromJson<DateTime?>(json['deadline']),
+      dirty: serializer.fromJson<bool>(json['dirty']),
+      remoteId: serializer.fromJson<int?>(json['remoteId']),
     );
   }
   @override
@@ -3747,6 +4159,8 @@ class Objective extends DataClass implements Insertable<Objective> {
       'target': serializer.toJson<double>(target),
       'saved': serializer.toJson<double>(saved),
       'deadline': serializer.toJson<DateTime?>(deadline),
+      'dirty': serializer.toJson<bool>(dirty),
+      'remoteId': serializer.toJson<int?>(remoteId),
     };
   }
 
@@ -3756,12 +4170,16 @@ class Objective extends DataClass implements Insertable<Objective> {
     double? target,
     double? saved,
     Value<DateTime?> deadline = const Value.absent(),
+    bool? dirty,
+    Value<int?> remoteId = const Value.absent(),
   }) => Objective(
     id: id ?? this.id,
     name: name ?? this.name,
     target: target ?? this.target,
     saved: saved ?? this.saved,
     deadline: deadline.present ? deadline.value : this.deadline,
+    dirty: dirty ?? this.dirty,
+    remoteId: remoteId.present ? remoteId.value : this.remoteId,
   );
   Objective copyWithCompanion(ObjectivesCompanion data) {
     return Objective(
@@ -3770,6 +4188,8 @@ class Objective extends DataClass implements Insertable<Objective> {
       target: data.target.present ? data.target.value : this.target,
       saved: data.saved.present ? data.saved.value : this.saved,
       deadline: data.deadline.present ? data.deadline.value : this.deadline,
+      dirty: data.dirty.present ? data.dirty.value : this.dirty,
+      remoteId: data.remoteId.present ? data.remoteId.value : this.remoteId,
     );
   }
 
@@ -3780,13 +4200,16 @@ class Objective extends DataClass implements Insertable<Objective> {
           ..write('name: $name, ')
           ..write('target: $target, ')
           ..write('saved: $saved, ')
-          ..write('deadline: $deadline')
+          ..write('deadline: $deadline, ')
+          ..write('dirty: $dirty, ')
+          ..write('remoteId: $remoteId')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, target, saved, deadline);
+  int get hashCode =>
+      Object.hash(id, name, target, saved, deadline, dirty, remoteId);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3795,7 +4218,9 @@ class Objective extends DataClass implements Insertable<Objective> {
           other.name == this.name &&
           other.target == this.target &&
           other.saved == this.saved &&
-          other.deadline == this.deadline);
+          other.deadline == this.deadline &&
+          other.dirty == this.dirty &&
+          other.remoteId == this.remoteId);
 }
 
 class ObjectivesCompanion extends UpdateCompanion<Objective> {
@@ -3804,12 +4229,16 @@ class ObjectivesCompanion extends UpdateCompanion<Objective> {
   final Value<double> target;
   final Value<double> saved;
   final Value<DateTime?> deadline;
+  final Value<bool> dirty;
+  final Value<int?> remoteId;
   const ObjectivesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.target = const Value.absent(),
     this.saved = const Value.absent(),
     this.deadline = const Value.absent(),
+    this.dirty = const Value.absent(),
+    this.remoteId = const Value.absent(),
   });
   ObjectivesCompanion.insert({
     this.id = const Value.absent(),
@@ -3817,6 +4246,8 @@ class ObjectivesCompanion extends UpdateCompanion<Objective> {
     required double target,
     this.saved = const Value.absent(),
     this.deadline = const Value.absent(),
+    this.dirty = const Value.absent(),
+    this.remoteId = const Value.absent(),
   }) : name = Value(name),
        target = Value(target);
   static Insertable<Objective> custom({
@@ -3825,6 +4256,8 @@ class ObjectivesCompanion extends UpdateCompanion<Objective> {
     Expression<double>? target,
     Expression<double>? saved,
     Expression<DateTime>? deadline,
+    Expression<bool>? dirty,
+    Expression<int>? remoteId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3832,6 +4265,8 @@ class ObjectivesCompanion extends UpdateCompanion<Objective> {
       if (target != null) 'target': target,
       if (saved != null) 'saved': saved,
       if (deadline != null) 'deadline': deadline,
+      if (dirty != null) 'dirty': dirty,
+      if (remoteId != null) 'remote_id': remoteId,
     });
   }
 
@@ -3841,6 +4276,8 @@ class ObjectivesCompanion extends UpdateCompanion<Objective> {
     Value<double>? target,
     Value<double>? saved,
     Value<DateTime?>? deadline,
+    Value<bool>? dirty,
+    Value<int?>? remoteId,
   }) {
     return ObjectivesCompanion(
       id: id ?? this.id,
@@ -3848,6 +4285,8 @@ class ObjectivesCompanion extends UpdateCompanion<Objective> {
       target: target ?? this.target,
       saved: saved ?? this.saved,
       deadline: deadline ?? this.deadline,
+      dirty: dirty ?? this.dirty,
+      remoteId: remoteId ?? this.remoteId,
     );
   }
 
@@ -3869,6 +4308,12 @@ class ObjectivesCompanion extends UpdateCompanion<Objective> {
     if (deadline.present) {
       map['deadline'] = Variable<DateTime>(deadline.value);
     }
+    if (dirty.present) {
+      map['dirty'] = Variable<bool>(dirty.value);
+    }
+    if (remoteId.present) {
+      map['remote_id'] = Variable<int>(remoteId.value);
+    }
     return map;
   }
 
@@ -3879,7 +4324,9 @@ class ObjectivesCompanion extends UpdateCompanion<Objective> {
           ..write('name: $name, ')
           ..write('target: $target, ')
           ..write('saved: $saved, ')
-          ..write('deadline: $deadline')
+          ..write('deadline: $deadline, ')
+          ..write('dirty: $dirty, ')
+          ..write('remoteId: $remoteId')
           ..write(')'))
         .toString();
   }
@@ -3977,6 +4424,30 @@ class $DebtsTable extends Debts with TableInfo<$DebtsTable, Debt> {
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _dirtyMeta = const VerificationMeta('dirty');
+  @override
+  late final GeneratedColumn<bool> dirty = GeneratedColumn<bool>(
+    'dirty',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("dirty" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _remoteIdMeta = const VerificationMeta(
+    'remoteId',
+  );
+  @override
+  late final GeneratedColumn<int> remoteId = GeneratedColumn<int>(
+    'remote_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -3986,6 +4457,8 @@ class $DebtsTable extends Debts with TableInfo<$DebtsTable, Debt> {
     note,
     settled,
     createdAt,
+    dirty,
+    remoteId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -4044,6 +4517,18 @@ class $DebtsTable extends Debts with TableInfo<$DebtsTable, Debt> {
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
     }
+    if (data.containsKey('dirty')) {
+      context.handle(
+        _dirtyMeta,
+        dirty.isAcceptableOrUnknown(data['dirty']!, _dirtyMeta),
+      );
+    }
+    if (data.containsKey('remote_id')) {
+      context.handle(
+        _remoteIdMeta,
+        remoteId.isAcceptableOrUnknown(data['remote_id']!, _remoteIdMeta),
+      );
+    }
     return context;
   }
 
@@ -4081,6 +4566,14 @@ class $DebtsTable extends Debts with TableInfo<$DebtsTable, Debt> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      dirty: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}dirty'],
+      )!,
+      remoteId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}remote_id'],
+      ),
     );
   }
 
@@ -4102,6 +4595,8 @@ class Debt extends DataClass implements Insertable<Debt> {
   final String? note;
   final bool settled;
   final DateTime createdAt;
+  final bool dirty;
+  final int? remoteId;
   const Debt({
     required this.id,
     required this.name,
@@ -4110,6 +4605,8 @@ class Debt extends DataClass implements Insertable<Debt> {
     this.note,
     required this.settled,
     required this.createdAt,
+    required this.dirty,
+    this.remoteId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -4123,6 +4620,10 @@ class Debt extends DataClass implements Insertable<Debt> {
     }
     map['settled'] = Variable<bool>(settled);
     map['created_at'] = Variable<DateTime>(createdAt);
+    map['dirty'] = Variable<bool>(dirty);
+    if (!nullToAbsent || remoteId != null) {
+      map['remote_id'] = Variable<int>(remoteId);
+    }
     return map;
   }
 
@@ -4135,6 +4636,10 @@ class Debt extends DataClass implements Insertable<Debt> {
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       settled: Value(settled),
       createdAt: Value(createdAt),
+      dirty: Value(dirty),
+      remoteId: remoteId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remoteId),
     );
   }
 
@@ -4151,6 +4656,8 @@ class Debt extends DataClass implements Insertable<Debt> {
       note: serializer.fromJson<String?>(json['note']),
       settled: serializer.fromJson<bool>(json['settled']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      dirty: serializer.fromJson<bool>(json['dirty']),
+      remoteId: serializer.fromJson<int?>(json['remoteId']),
     );
   }
   @override
@@ -4164,6 +4671,8 @@ class Debt extends DataClass implements Insertable<Debt> {
       'note': serializer.toJson<String?>(note),
       'settled': serializer.toJson<bool>(settled),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'dirty': serializer.toJson<bool>(dirty),
+      'remoteId': serializer.toJson<int?>(remoteId),
     };
   }
 
@@ -4175,6 +4684,8 @@ class Debt extends DataClass implements Insertable<Debt> {
     Value<String?> note = const Value.absent(),
     bool? settled,
     DateTime? createdAt,
+    bool? dirty,
+    Value<int?> remoteId = const Value.absent(),
   }) => Debt(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -4183,6 +4694,8 @@ class Debt extends DataClass implements Insertable<Debt> {
     note: note.present ? note.value : this.note,
     settled: settled ?? this.settled,
     createdAt: createdAt ?? this.createdAt,
+    dirty: dirty ?? this.dirty,
+    remoteId: remoteId.present ? remoteId.value : this.remoteId,
   );
   Debt copyWithCompanion(DebtsCompanion data) {
     return Debt(
@@ -4193,6 +4706,8 @@ class Debt extends DataClass implements Insertable<Debt> {
       note: data.note.present ? data.note.value : this.note,
       settled: data.settled.present ? data.settled.value : this.settled,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      dirty: data.dirty.present ? data.dirty.value : this.dirty,
+      remoteId: data.remoteId.present ? data.remoteId.value : this.remoteId,
     );
   }
 
@@ -4205,14 +4720,25 @@ class Debt extends DataClass implements Insertable<Debt> {
           ..write('isLent: $isLent, ')
           ..write('note: $note, ')
           ..write('settled: $settled, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('dirty: $dirty, ')
+          ..write('remoteId: $remoteId')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, name, amount, isLent, note, settled, createdAt);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    amount,
+    isLent,
+    note,
+    settled,
+    createdAt,
+    dirty,
+    remoteId,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -4223,7 +4749,9 @@ class Debt extends DataClass implements Insertable<Debt> {
           other.isLent == this.isLent &&
           other.note == this.note &&
           other.settled == this.settled &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.dirty == this.dirty &&
+          other.remoteId == this.remoteId);
 }
 
 class DebtsCompanion extends UpdateCompanion<Debt> {
@@ -4234,6 +4762,8 @@ class DebtsCompanion extends UpdateCompanion<Debt> {
   final Value<String?> note;
   final Value<bool> settled;
   final Value<DateTime> createdAt;
+  final Value<bool> dirty;
+  final Value<int?> remoteId;
   const DebtsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -4242,6 +4772,8 @@ class DebtsCompanion extends UpdateCompanion<Debt> {
     this.note = const Value.absent(),
     this.settled = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.dirty = const Value.absent(),
+    this.remoteId = const Value.absent(),
   });
   DebtsCompanion.insert({
     this.id = const Value.absent(),
@@ -4251,6 +4783,8 @@ class DebtsCompanion extends UpdateCompanion<Debt> {
     this.note = const Value.absent(),
     this.settled = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.dirty = const Value.absent(),
+    this.remoteId = const Value.absent(),
   }) : name = Value(name),
        amount = Value(amount),
        isLent = Value(isLent);
@@ -4262,6 +4796,8 @@ class DebtsCompanion extends UpdateCompanion<Debt> {
     Expression<String>? note,
     Expression<bool>? settled,
     Expression<DateTime>? createdAt,
+    Expression<bool>? dirty,
+    Expression<int>? remoteId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -4271,6 +4807,8 @@ class DebtsCompanion extends UpdateCompanion<Debt> {
       if (note != null) 'note': note,
       if (settled != null) 'settled': settled,
       if (createdAt != null) 'created_at': createdAt,
+      if (dirty != null) 'dirty': dirty,
+      if (remoteId != null) 'remote_id': remoteId,
     });
   }
 
@@ -4282,6 +4820,8 @@ class DebtsCompanion extends UpdateCompanion<Debt> {
     Value<String?>? note,
     Value<bool>? settled,
     Value<DateTime>? createdAt,
+    Value<bool>? dirty,
+    Value<int?>? remoteId,
   }) {
     return DebtsCompanion(
       id: id ?? this.id,
@@ -4291,6 +4831,8 @@ class DebtsCompanion extends UpdateCompanion<Debt> {
       note: note ?? this.note,
       settled: settled ?? this.settled,
       createdAt: createdAt ?? this.createdAt,
+      dirty: dirty ?? this.dirty,
+      remoteId: remoteId ?? this.remoteId,
     );
   }
 
@@ -4318,6 +4860,12 @@ class DebtsCompanion extends UpdateCompanion<Debt> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (dirty.present) {
+      map['dirty'] = Variable<bool>(dirty.value);
+    }
+    if (remoteId.present) {
+      map['remote_id'] = Variable<int>(remoteId.value);
+    }
     return map;
   }
 
@@ -4330,7 +4878,9 @@ class DebtsCompanion extends UpdateCompanion<Debt> {
           ..write('isLent: $isLent, ')
           ..write('note: $note, ')
           ..write('settled: $settled, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('dirty: $dirty, ')
+          ..write('remoteId: $remoteId')
           ..write(')'))
         .toString();
   }
@@ -5938,6 +6488,8 @@ typedef $$WalletsTableCreateCompanionBuilder =
       required String currency,
       Value<double> initialBalance,
       Value<DateTime> createdAt,
+      Value<bool> dirty,
+      Value<int?> remoteId,
     });
 typedef $$WalletsTableUpdateCompanionBuilder =
     WalletsCompanion Function({
@@ -5946,6 +6498,8 @@ typedef $$WalletsTableUpdateCompanionBuilder =
       Value<String> currency,
       Value<double> initialBalance,
       Value<DateTime> createdAt,
+      Value<bool> dirty,
+      Value<int?> remoteId,
     });
 
 final class $$WalletsTableReferences
@@ -6002,6 +6556,16 @@ class $$WalletsTableFilterComposer
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get dirty => $composableBuilder(
+    column: $table.dirty,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get remoteId => $composableBuilder(
+    column: $table.remoteId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6064,6 +6628,16 @@ class $$WalletsTableOrderingComposer
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get dirty => $composableBuilder(
+    column: $table.dirty,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get remoteId => $composableBuilder(
+    column: $table.remoteId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$WalletsTableAnnotationComposer
@@ -6091,6 +6665,12 @@ class $$WalletsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get dirty =>
+      $composableBuilder(column: $table.dirty, builder: (column) => column);
+
+  GeneratedColumn<int> get remoteId =>
+      $composableBuilder(column: $table.remoteId, builder: (column) => column);
 
   Expression<T> transactionsRefs<T extends Object>(
     Expression<T> Function($$TransactionsTableAnnotationComposer a) f,
@@ -6151,12 +6731,16 @@ class $$WalletsTableTableManager
                 Value<String> currency = const Value.absent(),
                 Value<double> initialBalance = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<bool> dirty = const Value.absent(),
+                Value<int?> remoteId = const Value.absent(),
               }) => WalletsCompanion(
                 id: id,
                 name: name,
                 currency: currency,
                 initialBalance: initialBalance,
                 createdAt: createdAt,
+                dirty: dirty,
+                remoteId: remoteId,
               ),
           createCompanionCallback:
               ({
@@ -6165,12 +6749,16 @@ class $$WalletsTableTableManager
                 required String currency,
                 Value<double> initialBalance = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<bool> dirty = const Value.absent(),
+                Value<int?> remoteId = const Value.absent(),
               }) => WalletsCompanion.insert(
                 id: id,
                 name: name,
                 currency: currency,
                 initialBalance: initialBalance,
                 createdAt: createdAt,
+                dirty: dirty,
+                remoteId: remoteId,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -6825,6 +7413,9 @@ typedef $$BudgetsTableCreateCompanionBuilder =
       Value<int> alertPct50,
       Value<int> alertPct80,
       Value<int> alertPct100,
+      Value<DateTime> updatedAt,
+      Value<bool> dirty,
+      Value<int?> remoteId,
     });
 typedef $$BudgetsTableUpdateCompanionBuilder =
     BudgetsCompanion Function({
@@ -6835,6 +7426,9 @@ typedef $$BudgetsTableUpdateCompanionBuilder =
       Value<int> alertPct50,
       Value<int> alertPct80,
       Value<int> alertPct100,
+      Value<DateTime> updatedAt,
+      Value<bool> dirty,
+      Value<int?> remoteId,
     });
 
 final class $$BudgetsTableReferences
@@ -6895,6 +7489,21 @@ class $$BudgetsTableFilterComposer
 
   ColumnFilters<int> get alertPct100 => $composableBuilder(
     column: $table.alertPct100,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get dirty => $composableBuilder(
+    column: $table.dirty,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get remoteId => $composableBuilder(
+    column: $table.remoteId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6961,6 +7570,21 @@ class $$BudgetsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get dirty => $composableBuilder(
+    column: $table.dirty,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get remoteId => $composableBuilder(
+    column: $table.remoteId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$CategoriesTableOrderingComposer get categoryId {
     final $$CategoriesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -7017,6 +7641,15 @@ class $$BudgetsTableAnnotationComposer
     column: $table.alertPct100,
     builder: (column) => column,
   );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get dirty =>
+      $composableBuilder(column: $table.dirty, builder: (column) => column);
+
+  GeneratedColumn<int> get remoteId =>
+      $composableBuilder(column: $table.remoteId, builder: (column) => column);
 
   $$CategoriesTableAnnotationComposer get categoryId {
     final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
@@ -7077,6 +7710,9 @@ class $$BudgetsTableTableManager
                 Value<int> alertPct50 = const Value.absent(),
                 Value<int> alertPct80 = const Value.absent(),
                 Value<int> alertPct100 = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> dirty = const Value.absent(),
+                Value<int?> remoteId = const Value.absent(),
               }) => BudgetsCompanion(
                 id: id,
                 categoryId: categoryId,
@@ -7085,6 +7721,9 @@ class $$BudgetsTableTableManager
                 alertPct50: alertPct50,
                 alertPct80: alertPct80,
                 alertPct100: alertPct100,
+                updatedAt: updatedAt,
+                dirty: dirty,
+                remoteId: remoteId,
               ),
           createCompanionCallback:
               ({
@@ -7095,6 +7734,9 @@ class $$BudgetsTableTableManager
                 Value<int> alertPct50 = const Value.absent(),
                 Value<int> alertPct80 = const Value.absent(),
                 Value<int> alertPct100 = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> dirty = const Value.absent(),
+                Value<int?> remoteId = const Value.absent(),
               }) => BudgetsCompanion.insert(
                 id: id,
                 categoryId: categoryId,
@@ -7103,6 +7745,9 @@ class $$BudgetsTableTableManager
                 alertPct50: alertPct50,
                 alertPct80: alertPct80,
                 alertPct100: alertPct100,
+                updatedAt: updatedAt,
+                dirty: dirty,
+                remoteId: remoteId,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -7359,6 +8004,8 @@ typedef $$RecurringTransactionsTableCreateCompanionBuilder =
       required String period,
       required DateTime nextDue,
       Value<bool> active,
+      Value<bool> dirty,
+      Value<int?> remoteId,
     });
 typedef $$RecurringTransactionsTableUpdateCompanionBuilder =
     RecurringTransactionsCompanion Function({
@@ -7369,6 +8016,8 @@ typedef $$RecurringTransactionsTableUpdateCompanionBuilder =
       Value<String> period,
       Value<DateTime> nextDue,
       Value<bool> active,
+      Value<bool> dirty,
+      Value<int?> remoteId,
     });
 
 final class $$RecurringTransactionsTableReferences
@@ -7441,6 +8090,16 @@ class $$RecurringTransactionsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get dirty => $composableBuilder(
+    column: $table.dirty,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get remoteId => $composableBuilder(
+    column: $table.remoteId,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$CategoriesTableFilterComposer get categoryId {
     final $$CategoriesTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -7504,6 +8163,16 @@ class $$RecurringTransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get dirty => $composableBuilder(
+    column: $table.dirty,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get remoteId => $composableBuilder(
+    column: $table.remoteId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$CategoriesTableOrderingComposer get categoryId {
     final $$CategoriesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -7554,6 +8223,12 @@ class $$RecurringTransactionsTableAnnotationComposer
 
   GeneratedColumn<bool> get active =>
       $composableBuilder(column: $table.active, builder: (column) => column);
+
+  GeneratedColumn<bool> get dirty =>
+      $composableBuilder(column: $table.dirty, builder: (column) => column);
+
+  GeneratedColumn<int> get remoteId =>
+      $composableBuilder(column: $table.remoteId, builder: (column) => column);
 
   $$CategoriesTableAnnotationComposer get categoryId {
     final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
@@ -7625,6 +8300,8 @@ class $$RecurringTransactionsTableTableManager
                 Value<String> period = const Value.absent(),
                 Value<DateTime> nextDue = const Value.absent(),
                 Value<bool> active = const Value.absent(),
+                Value<bool> dirty = const Value.absent(),
+                Value<int?> remoteId = const Value.absent(),
               }) => RecurringTransactionsCompanion(
                 id: id,
                 merchant: merchant,
@@ -7633,6 +8310,8 @@ class $$RecurringTransactionsTableTableManager
                 period: period,
                 nextDue: nextDue,
                 active: active,
+                dirty: dirty,
+                remoteId: remoteId,
               ),
           createCompanionCallback:
               ({
@@ -7643,6 +8322,8 @@ class $$RecurringTransactionsTableTableManager
                 required String period,
                 required DateTime nextDue,
                 Value<bool> active = const Value.absent(),
+                Value<bool> dirty = const Value.absent(),
+                Value<int?> remoteId = const Value.absent(),
               }) => RecurringTransactionsCompanion.insert(
                 id: id,
                 merchant: merchant,
@@ -7651,6 +8332,8 @@ class $$RecurringTransactionsTableTableManager
                 period: period,
                 nextDue: nextDue,
                 active: active,
+                dirty: dirty,
+                remoteId: remoteId,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -7728,6 +8411,8 @@ typedef $$ObjectivesTableCreateCompanionBuilder =
       required double target,
       Value<double> saved,
       Value<DateTime?> deadline,
+      Value<bool> dirty,
+      Value<int?> remoteId,
     });
 typedef $$ObjectivesTableUpdateCompanionBuilder =
     ObjectivesCompanion Function({
@@ -7736,6 +8421,8 @@ typedef $$ObjectivesTableUpdateCompanionBuilder =
       Value<double> target,
       Value<double> saved,
       Value<DateTime?> deadline,
+      Value<bool> dirty,
+      Value<int?> remoteId,
     });
 
 class $$ObjectivesTableFilterComposer
@@ -7769,6 +8456,16 @@ class $$ObjectivesTableFilterComposer
 
   ColumnFilters<DateTime> get deadline => $composableBuilder(
     column: $table.deadline,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get dirty => $composableBuilder(
+    column: $table.dirty,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get remoteId => $composableBuilder(
+    column: $table.remoteId,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -7806,6 +8503,16 @@ class $$ObjectivesTableOrderingComposer
     column: $table.deadline,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get dirty => $composableBuilder(
+    column: $table.dirty,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get remoteId => $composableBuilder(
+    column: $table.remoteId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ObjectivesTableAnnotationComposer
@@ -7831,6 +8538,12 @@ class $$ObjectivesTableAnnotationComposer
 
   GeneratedColumn<DateTime> get deadline =>
       $composableBuilder(column: $table.deadline, builder: (column) => column);
+
+  GeneratedColumn<bool> get dirty =>
+      $composableBuilder(column: $table.dirty, builder: (column) => column);
+
+  GeneratedColumn<int> get remoteId =>
+      $composableBuilder(column: $table.remoteId, builder: (column) => column);
 }
 
 class $$ObjectivesTableTableManager
@@ -7869,12 +8582,16 @@ class $$ObjectivesTableTableManager
                 Value<double> target = const Value.absent(),
                 Value<double> saved = const Value.absent(),
                 Value<DateTime?> deadline = const Value.absent(),
+                Value<bool> dirty = const Value.absent(),
+                Value<int?> remoteId = const Value.absent(),
               }) => ObjectivesCompanion(
                 id: id,
                 name: name,
                 target: target,
                 saved: saved,
                 deadline: deadline,
+                dirty: dirty,
+                remoteId: remoteId,
               ),
           createCompanionCallback:
               ({
@@ -7883,12 +8600,16 @@ class $$ObjectivesTableTableManager
                 required double target,
                 Value<double> saved = const Value.absent(),
                 Value<DateTime?> deadline = const Value.absent(),
+                Value<bool> dirty = const Value.absent(),
+                Value<int?> remoteId = const Value.absent(),
               }) => ObjectivesCompanion.insert(
                 id: id,
                 name: name,
                 target: target,
                 saved: saved,
                 deadline: deadline,
+                dirty: dirty,
+                remoteId: remoteId,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -7921,6 +8642,8 @@ typedef $$DebtsTableCreateCompanionBuilder =
       Value<String?> note,
       Value<bool> settled,
       Value<DateTime> createdAt,
+      Value<bool> dirty,
+      Value<int?> remoteId,
     });
 typedef $$DebtsTableUpdateCompanionBuilder =
     DebtsCompanion Function({
@@ -7931,6 +8654,8 @@ typedef $$DebtsTableUpdateCompanionBuilder =
       Value<String?> note,
       Value<bool> settled,
       Value<DateTime> createdAt,
+      Value<bool> dirty,
+      Value<int?> remoteId,
     });
 
 class $$DebtsTableFilterComposer extends Composer<_$AppDatabase, $DebtsTable> {
@@ -7973,6 +8698,16 @@ class $$DebtsTableFilterComposer extends Composer<_$AppDatabase, $DebtsTable> {
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get dirty => $composableBuilder(
+    column: $table.dirty,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get remoteId => $composableBuilder(
+    column: $table.remoteId,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -8020,6 +8755,16 @@ class $$DebtsTableOrderingComposer
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get dirty => $composableBuilder(
+    column: $table.dirty,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get remoteId => $composableBuilder(
+    column: $table.remoteId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$DebtsTableAnnotationComposer
@@ -8051,6 +8796,12 @@ class $$DebtsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get dirty =>
+      $composableBuilder(column: $table.dirty, builder: (column) => column);
+
+  GeneratedColumn<int> get remoteId =>
+      $composableBuilder(column: $table.remoteId, builder: (column) => column);
 }
 
 class $$DebtsTableTableManager
@@ -8088,6 +8839,8 @@ class $$DebtsTableTableManager
                 Value<String?> note = const Value.absent(),
                 Value<bool> settled = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<bool> dirty = const Value.absent(),
+                Value<int?> remoteId = const Value.absent(),
               }) => DebtsCompanion(
                 id: id,
                 name: name,
@@ -8096,6 +8849,8 @@ class $$DebtsTableTableManager
                 note: note,
                 settled: settled,
                 createdAt: createdAt,
+                dirty: dirty,
+                remoteId: remoteId,
               ),
           createCompanionCallback:
               ({
@@ -8106,6 +8861,8 @@ class $$DebtsTableTableManager
                 Value<String?> note = const Value.absent(),
                 Value<bool> settled = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<bool> dirty = const Value.absent(),
+                Value<int?> remoteId = const Value.absent(),
               }) => DebtsCompanion.insert(
                 id: id,
                 name: name,
@@ -8114,6 +8871,8 @@ class $$DebtsTableTableManager
                 note: note,
                 settled: settled,
                 createdAt: createdAt,
+                dirty: dirty,
+                remoteId: remoteId,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

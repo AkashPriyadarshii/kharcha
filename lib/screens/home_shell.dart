@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -32,11 +33,24 @@ class HomeShell extends ConsumerStatefulWidget {
 
 class _HomeShellState extends ConsumerState<HomeShell> {
   int _index = 0;
+  Timer? _syncTimer;
 
   @override
   void initState() {
     super.initState();
     _drainInbox();
+    // Auto-backup: flush any dirty rows every 30s while the app is open, so a
+    // budget/edit made a minute ago reaches Supabase without waiting for a
+    // trigger. Offline failures no-op (rows stay dirty, retried next tick).
+    _syncTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      unawaited(syncIfSignedIn(widget.container));
+    });
+  }
+
+  @override
+  void dispose() {
+    _syncTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _drainInbox() async {

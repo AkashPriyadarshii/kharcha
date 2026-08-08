@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'remote_feature.dart';
 import 'remote_transaction.dart';
 import 'transaction_repository.dart';
 
@@ -23,6 +24,8 @@ class SyncEngine {
     try {
       await _push();
       await _pull();
+      await _pushFeatures();
+      await _pullFeatures();
     } finally {
       _running = false;
     }
@@ -87,6 +90,73 @@ class SyncEngine {
       // the server yet, but the row must not come back.
       if (remote.id != null && tombstones.contains(remote.id)) continue;
       await _repo.applyRemote(remote);
+    }
+  }
+
+  Future<void> _pushFeatures() async {
+    for (final kind in SyncKind.values) {
+      final rows = await _repo.dirtyRowsFor(kind);
+      for (final row in rows) {
+        // Local-only rows (custom category) can never live on the server.
+        if (!await _repo.featureRowShareable(kind, row)) {
+          await _repo.markFeatureLocalOnly(kind, row.id);
+          continue;
+        }
+        final json = localToRemoteFeatureJson(kind, row, _userId);
+        final table = featureTableFor(kind);
+        try {
+          if (row.remoteId != null) {
+            await _client.from(table).update(json).eq('id', row.remoteId!);
+          } else {
+            final resp = await _client
+                .from(table)
+                .insert(json)
+                .select()
+                .single();
+            await _repo.markFeatureSynced(kind, row.id, resp['id'] as int);
+          }
+        } on PostgrestException catch (e) {
+          if (e.code == '23505') {
+            // Unique (user_id, category_id) on budgets — the remote already
+            // has this budget (retry after a lost ack). Claim its id.
+            final existing = await _client
+                .from(table)
+                .select('id')
+                .eq('category_id', json['category_id'])
+                .maybeSingle();
+            if (existing != null) {
+              await _repo.markFeatureSynced(kind, row.id, existing['id'] as int);
+            }
+          } else {
+            rethrow;
+          }
+        }
+      }
+    }
+  }
+
+  Future<void> _pullFeatures() async {
+    for (final kind in SyncKind.values) {
+      final rows = await _client
+          .from(featureTableFor(kind))
+          .select()
+          .order('id', ascending: false)
+          .limit(500);
+      for (final r in rows) {
+        final remoteId = r['id'] as int;
+        final map = _repo.featureToLocalMap(kind, r);
+        final existing = await _repo.findFeatureByRemoteId(kind, remoteId);
+        if (existing == null) {
+          // Remote rows only reference shared categories (custom never pushed;
+          // shared categories are seeded on every device) — safe to insert.
+          await _repo.insertFeatureFromRemote(kind, map);
+        } else if (!existing.dirty) {
+          // Converged local copy → overwrite with remote (next push wins).
+          // Dirty local rows are left alone: a pending local change must not be
+          // clobbered by a stale pull — the next push converges the remote.
+          await _repo.updateFeatureFromRemote(kind, existing.id, map);
+        }
+      }
     }
   }
 }

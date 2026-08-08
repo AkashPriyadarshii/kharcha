@@ -20,6 +20,7 @@ void main() {
     final monthly = RecurringTransaction(
       id: 1, merchant: 'Netflix', amount: 199, categoryId: null,
       period: 'monthly', nextDue: DateTime(2026, 8, 15), active: true,
+      dirty: true, remoteId: null,
     );
     expect(TransactionRepository.nextDueAfter(monthly, DateTime(2026, 8, 15)), DateTime(2026, 9, 15));
     // Paid late → rolls from the payment date, not the missed due date.
@@ -28,6 +29,7 @@ void main() {
     final weekly = RecurringTransaction(
       id: 2, merchant: 'Zomato Gold', amount: 100, categoryId: null,
       period: 'weekly', nextDue: DateTime(2026, 8, 1), active: true,
+      dirty: true, remoteId: null,
     );
     expect(TransactionRepository.nextDueAfter(weekly, DateTime(2026, 8, 1)), DateTime(2026, 8, 8));
   });
