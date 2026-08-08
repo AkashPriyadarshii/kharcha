@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../core/categorizer.dart';
 import 'database.dart';
@@ -31,6 +32,16 @@ final monthSpendProvider = FutureProvider<List<(Category, double)>>(
 /// Budgets joined with their categories.
 final budgetsProvider = StreamProvider<List<(Budget, Category)>>(
   (ref) => ref.watch(transactionRepositoryProvider).watchBudgets(),
+);
+
+/// Monthly spend trend for the reports chart.
+final monthlyTrendProvider = FutureProvider<List<(String, double)>>(
+  (ref) => ref.watch(transactionRepositoryProvider).monthlyTrend(DateTime.now()),
+);
+
+/// Merchant ranking for the reports list.
+final merchantRankingProvider = FutureProvider<List<(String, double, int)>>(
+  (ref) => ref.watch(transactionRepositoryProvider).merchantRanking(),
 );
 
 /// Throws when a manual transaction is invalid. Message is user-facing.
@@ -230,6 +241,37 @@ class TransactionRepository {
     }
     final list = per.values.toList()..sort((a, b) => b.$2.compareTo(a.$2));
     return list;
+  }
+
+  /// Spend per calendar month over the last [months] months ending at
+  /// [end], oldest first. Returns (monthLabel, total) — for the trend chart.
+  Future<List<(String, double)>> monthlyTrend(DateTime end, {int months = 6}) async {
+    // Scan newest-first, stop once we've covered [months] distinct months.
+    final rows = await (_db.select(_db.transactions)..orderBy([(t) => OrderingTerm.desc(t.txnDate)]))
+        .get();
+    final per = <DateTime, double>{};
+    for (final t in rows) {
+      final m = DateTime(t.txnDate.year, t.txnDate.month);
+      per[m] = (per[m] ?? 0) + t.amount;
+    }
+    final out = <(String, double)>[];
+    var cur = DateTime(end.year, end.month);
+    for (var i = 0; i < months; i++) {
+      out.add((DateFormat('MMM yy').format(cur), per[cur] ?? 0));
+      cur = DateTime(cur.year, cur.month - 1);
+    }
+    return out.reversed.toList();
+  }
+
+  /// Top [n] merchants by spend, newest-first order from [allTransactions].
+  Future<List<(String, double, int)>> merchantRanking({int n = 10}) async {
+    final per = <String, (double, int)>{};
+    for (final (t, _) in await allTransactions()) {
+      final v = per[t.merchant] ?? (0, 0);
+      per[t.merchant] = (v.$1 + t.amount, v.$2 + 1);
+    }
+    final ranked = per.entries.toList()..sort((a, b) => b.value.$1.compareTo(a.value.$1));
+    return ranked.take(n).map((e) => (e.key, e.value.$1, e.value.$2)).toList();
   }
 
   /// Budgets joined with their category.
