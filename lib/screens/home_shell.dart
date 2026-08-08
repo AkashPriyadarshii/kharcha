@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../core/config.dart';
 import '../data/capture_inbox.dart';
 import '../data/sync_engine.dart';
 import '../data/transaction_repository.dart';
@@ -48,7 +49,9 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   }
 
   Future<void> _signOut(BuildContext context) async {
+    authBypass.value = false; // also exit guest mode
     await Supabase.instance.client.auth.signOut();
+    // Router redirects to /auth on session change.
   }
 
   void _quickAdd(BuildContext context) {
