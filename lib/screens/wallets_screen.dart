@@ -109,32 +109,45 @@ class _WalletTile extends ConsumerWidget {
       leading: const Icon(Icons.account_balance_wallet_outlined),
       title: Text(wallet.name),
       subtitle: Text(wallet.currency),
-      trailing: Text(
-        NumberFormat.currency(locale: 'en_IN', symbol: symbol).format(balance + wallet.initialBalance),
-        style: moneyStyle.copyWith(fontSize: 13),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            NumberFormat.currency(locale: 'en_IN', symbol: symbol).format(balance + wallet.initialBalance),
+            style: moneyStyle.copyWith(fontSize: 13),
+          ),
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            tooltip: 'Rename wallet',
+            onPressed: () => _editWallet(context, ref, wallet),
+          ),
+        ],
       ),
-      onTap: () {
-        // Future: wallet detail (per-wallet transactions). For now editing:
-        _editWallet(context, ref, wallet);
-      },
     );
   }
 
   void _editWallet(BuildContext context, WidgetRef ref, Wallet wallet) {
+    final name = TextEditingController(text: wallet.name);
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Edit wallet'),
-        content: Text('Rename / delete ${wallet.name}.'),
+        title: const Text('Rename wallet'),
+        content: TextField(
+          controller: name,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Name'),
+        ),
         actions: [
-          TextButton(
-            onPressed: () async {
-              await ref.read(transactionRepositoryProvider).deleteWallet(wallet.id);
-              if (ctx.mounted) Navigator.of(ctx).pop();
-            },
-            child: const Text('Delete'),
-          ),
           TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () {
+              final n = name.text.trim();
+              if (n.isEmpty) return;
+              ref.read(transactionRepositoryProvider).updateWallet(wallet.copyWith(name: n));
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('Save'),
+          ),
         ],
       ),
     );

@@ -116,6 +116,17 @@ class Transactions extends Table {
   IntColumn get remoteId => integer().nullable()();
 }
 
+/// Rows the user deleted locally that must be deleted on Supabase too.
+/// Keyed by remote_id (the remote row id we already pushed). Synced via
+/// DELETE; cleared once the remote row is gone. Prevents a stale pull from
+/// resurrecting a deleted transaction. v0.2.1.
+class DeletedTransactions extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  /// Supabase row id of the deleted transaction.
+  IntColumn get remoteId => integer()();
+  DateTimeColumn get deletedAt => dateTime().withDefault(currentDateAndTime)();
+}
+
 /// Budgets: per-category monthly limits + alert thresholds.
 class Budgets extends Table {
   IntColumn get id => integer().autoIncrement()();
@@ -127,13 +138,13 @@ class Budgets extends Table {
   IntColumn get alertPct100 => integer().withDefault(const Constant(100))();
 }
 
-@DriftDatabase(tables: [Categories, Merchants, Rules, Transactions, Budgets, Wallets, ExchangeRates, RecurringTransactions, Objectives, Debts])
+@DriftDatabase(tables: [Categories, Merchants, Rules, Transactions, Budgets, Wallets, ExchangeRates, RecurringTransactions, Objectives, Debts, DeletedTransactions])
 class AppDatabase extends _$AppDatabase {
   /// [executor] override lets tests inject `NativeDatabase.memory()`.
   AppDatabase({QueryExecutor? executor}) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -167,6 +178,11 @@ class AppDatabase extends _$AppDatabase {
             // v0.2.0: income support. Existing rows stay expenses (false).
             await m.addColumn(transactions, transactions.isIncome);
             await m.addColumn(categories, categories.isIncome);
+          }
+          if (from < 8) {
+            // v0.2.1: delete sync. Existing rows need no backfill — tombstones
+            // are only written for deletes that happen after the upgrade.
+            await m.createTable(deletedTransactions);
           }
         },
       );

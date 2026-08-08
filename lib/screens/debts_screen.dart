@@ -17,6 +17,26 @@ class DebtsScreen extends ConsumerStatefulWidget {
 }
 
 class _DebtsScreenState extends ConsumerState<DebtsScreen> {
+  Future<void> _confirmDelete(BuildContext context, Debt d) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete entry with ${d.name}?'),
+        content: const Text('This permanently removes the record.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await ref.read(transactionRepositoryProvider).deleteDebt(d.id);
+    }
+  }
+
   Future<void> _showAdd() async {
     final name = TextEditingController();
     final amount = TextEditingController();
@@ -167,7 +187,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                     IconButton(
                       icon: const Icon(Icons.delete_outline),
                       tooltip: 'Delete',
-                      onPressed: () => ref.read(transactionRepositoryProvider).deleteDebt(d.id),
+                      onPressed: () => _confirmDelete(context, d),
                     ),
                   ],
                 ),

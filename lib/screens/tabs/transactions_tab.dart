@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/theme.dart';
@@ -271,7 +272,7 @@ class _FilterDropdown<T> extends StatelessWidget {
   }
 }
 
-class _TransactionList extends StatelessWidget {
+class _TransactionList extends ConsumerWidget {
   const _TransactionList({required this.transactions, required this.categories});
 
   final List<Transaction> transactions;
@@ -284,8 +285,30 @@ class _TransactionList extends StatelessWidget {
     return null;
   }
 
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref, Transaction t) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete "${t.merchant}"?'),
+        content: Text(
+          'This permanently removes the ${t.isIncome ? 'income' : 'expense'} of ${_currency.format(t.amount)}.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await ref.read(transactionRepositoryProvider).deleteTransaction(t.id);
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return ListView.builder(
       padding: const EdgeInsets.only(bottom: 96),
       itemCount: transactions.length,
@@ -293,12 +316,6 @@ class _TransactionList extends StatelessWidget {
         final t = transactions[i];
         final cat = _categoryFor(t.categoryId);
         return ListTile(
-          leading: CircleAvatar(
-            backgroundColor: cat == null
-                ? const Color(0xFF8D99AE)
-                : Color(int.parse('FF${cat.color.replaceFirst('#', '')}', radix: 16)),
-            child: Text(cat?.emoji ?? '📦'),
-          ),
           title: Text(t.merchant),
           subtitle: Text(
             [
@@ -307,12 +324,47 @@ class _TransactionList extends StatelessWidget {
               _dateFormat.format(t.txnDate),
             ].where((s) => s.isNotEmpty).join(' · '),
           ),
-          trailing: Text(
-            '${t.isIncome ? '+ ' : ''}${_currency.format(t.amount)}',
-            style: moneyStyle.copyWith(
-              fontSize: Theme.of(context).textTheme.titleMedium?.fontSize,
-              color: t.isIncome ? incomeGreen : expenseRed,
+            leading: Stack(
+              alignment: Alignment.bottomRight,
+              children: [
+                CircleAvatar(
+                  backgroundColor: cat == null
+                      ? const Color(0xFF8D99AE)
+                      : Color(int.parse('FF${cat.color.replaceFirst('#', '')}', radix: 16)),
+                  child: Text(cat?.emoji ?? '📦'),
+                ),
+                if (t.isIncome)
+                  Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.arrow_downward, size: 12, color: incomeGreen),
+                  ),
+              ],
             ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '${t.isIncome ? '+ ' : ''}${_currency.format(t.amount)}',
+                style: moneyStyle.copyWith(
+                  fontSize: Theme.of(context).textTheme.titleMedium?.fontSize,
+                  color: t.isIncome ? incomeGreen : expenseRed,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.edit_outlined),
+                tooltip: 'Edit',
+                onPressed: () => context.push('/add', extra: t),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline),
+                tooltip: 'Delete',
+                onPressed: () => _confirmDelete(context, ref, t),
+              ),
+            ],
           ),
         );
       },
