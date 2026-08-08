@@ -28,7 +28,7 @@ class UpiNotificationListener : NotificationListenerService() {
     companion object {
         private const val PREFS = "kharcha_inbox"
         private const val LAST_SEEN = "last_seen_utc_ms"
-        private const val UPI_PACKAGES =
+        private val UPI_PACKAGES =
             setOf(
                 "com.google.android.apps.nbu.paisa.user", // Google Pay
                 "net.one97.paytm", // Paytm

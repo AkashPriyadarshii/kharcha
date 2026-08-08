@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthScreen extends StatelessWidget {
@@ -40,6 +41,11 @@ class AuthScreen extends StatelessWidget {
                 onPressed: () => _signIn(context),
                 icon: const Icon(Icons.login),
                 label: const Text('Sign in with Google'),
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () => context.push('/terms'),
+                child: const Text('Terms & Conditions'),
               ),
             ],
           ),
