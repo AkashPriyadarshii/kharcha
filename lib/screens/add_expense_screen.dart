@@ -11,9 +11,12 @@ import '../data/sync_engine.dart';
 import '../data/transaction_repository.dart';
 import '../widgets/income_expense_toggle.dart';
 
-/// Full manual expense entry. Launched from the transactions list.
+/// Full manual expense entry; also used to edit an existing transaction
+/// (pass [transaction] to prefill and save via update).
 class AddExpenseScreen extends ConsumerStatefulWidget {
-  const AddExpenseScreen({super.key});
+  const AddExpenseScreen({super.key, this.transaction});
+
+  final Transaction? transaction;
 
   @override
   ConsumerState<AddExpenseScreen> createState() => _AddExpenseScreenState();
@@ -32,6 +35,24 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   bool _isIncome = false;
   bool _saving = false;
 
+  bool get _editing => widget.transaction != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final t = widget.transaction;
+    if (t != null) {
+      _amount.text = t.amount.toStringAsFixed(2);
+      _merchant.text = t.merchant;
+      _note.text = t.note ?? '';
+      _categoryId = t.categoryId;
+      _walletId = t.walletId;
+      _paymentMethod = t.paymentMethod;
+      _date = t.txnDate;
+      _isIncome = t.isIncome;
+    }
+  }
+
   @override
   void dispose() {
     _amount.dispose();
@@ -45,17 +66,32 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
     setState(() => _saving = true);
     final container = ProviderScope.containerOf(context);
+    final repo = ref.read(transactionRepositoryProvider);
     try {
-      await ref.read(transactionRepositoryProvider).insertManual(
-            amount: double.parse(_amount.text),
-            merchant: _merchant.text,
-            categoryId: _categoryId,
-            walletId: _walletId,
-            note: _note.text,
-            paymentMethod: _paymentMethod,
-            txnDate: _date,
-            isIncome: _isIncome,
-          );
+      final t = widget.transaction;
+      if (t == null) {
+        await repo.insertManual(
+              amount: double.parse(_amount.text),
+              merchant: _merchant.text,
+              categoryId: _categoryId,
+              walletId: _walletId,
+              note: _note.text,
+              paymentMethod: _paymentMethod,
+              txnDate: _date,
+              isIncome: _isIncome,
+            );
+      } else {
+        await repo.updateTransaction(
+              id: t.id,
+              amount: double.parse(_amount.text),
+              merchant: _merchant.text,
+              categoryId: _categoryId,
+              note: _note.text,
+              paymentMethod: _paymentMethod,
+              txnDate: _date,
+              isIncome: _isIncome,
+            );
+      }
       unawaited(syncIfSignedIn(container));
       if (!mounted) return;
       context.pop();
@@ -76,7 +112,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isIncome ? 'Add income' : 'Add expense'),
+        title: Text(_isIncome
+            ? (_editing ? 'Edit income' : 'Add income')
+            : (_editing ? 'Edit expense' : 'Add expense')),
         leading: IconButton(
           icon: const Icon(Icons.close),
           tooltip: 'Cancel',
@@ -131,6 +169,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             DropdownButtonFormField<int>(
               decoration: const InputDecoration(labelText: 'Category'),
               hint: const Text('Uncategorized'),
+              initialValue: _categoryId,
               items: [
                 for (final c in cats)
                   DropdownMenuItem(value: c.id, child: Text('${c.emoji}  ${c.name}')),
@@ -181,7 +220,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : Text(_isIncome ? 'Save income' : 'Save expense'),
+                  : Text(_editing
+                      ? 'Save changes'
+                      : (_isIncome ? 'Save income' : 'Save expense')),
             ),
           ],
         ),

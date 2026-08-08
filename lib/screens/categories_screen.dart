@@ -148,19 +148,54 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           : ListView(
               padding: const EdgeInsets.only(bottom: 96),
               children: [
-                for (final c in categories)
-                  ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: Color(int.parse(c.color.replaceFirst('#', '0xFF'))),
-                      child: Text(c.emoji),
-                    ),
-                    title: Text(c.name),
-                    subtitle: c.isCustom ? null : const Text('Built-in'),
-                    trailing: c.isCustom ? const Icon(Icons.edit_outlined) : null,
-                    onTap: c.isCustom ? () => _showEditor(c) : null,
-                  ),
+                const _SectionHeader('Expense categories'),
+                for (final c in categories.where((c) => !c.isIncome))
+                  _CategoryTile(category: c, onEdit: _showEditor),
+                const SizedBox(height: 16),
+                const _SectionHeader('Income categories'),
+                for (final c in categories.where((c) => c.isIncome))
+                  _CategoryTile(category: c, onEdit: _showEditor),
               ],
             ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader(this.title);
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 16, top: 8, bottom: 4),
+      child: Text(
+        title,
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+      ),
+    );
+  }
+}
+
+class _CategoryTile extends StatelessWidget {
+  const _CategoryTile({required this.category, required this.onEdit});
+
+  final Category category;
+  final ValueChanged<Category> onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = category;
+    return ListTile(
+      leading: CircleAvatar(
+        backgroundColor: Color(int.parse(c.color.replaceFirst('#', '0xFF'))),
+        child: Text(c.emoji),
+      ),
+      title: Text(c.name),
+      subtitle: c.isCustom ? null : const Text('Built-in'),
+      trailing: c.isCustom ? const Icon(Icons.edit_outlined) : null,
+      onTap: c.isCustom ? () => onEdit(c) : null,
     );
   }
 }
