@@ -10,6 +10,7 @@ All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
 - **Release hardening** — Android-only (Windows scaffold removed); Gradle arm64 ABI filter + page-aligned native libs (`useLegacyPackaging=false`) → clean arm64 install (no "package invalid"). APK named `kharcha-armv8a-release.apk` on the v0.2.1 release. CI removed (on-demand build + release).
 - **Cleanup** — removed Windows scaffold, `Platform.isAndroid` branches, Windows-only deps from lockfile; `.codegraph/` gitignored.
 - **Onboarding redesign** — 4-step flow (value prop → capture → summaries → battery) with progress bar, one step at a time, live permission status from a new `getCaptureStatus` channel method (granted/denied visible, auto-advances), skip-all path. No more "Kharcha is set up" lie or fire-and-forget buttons.
+- **Profile / reports / categories UX** — profile: edit-name inline dialog (persists to Supabase `user_metadata`); reports: pie total in center + trend tick out-of-range guard (crash fix); categories: expense/income segmented tabs + Lucide vector icons in tiles; terms screen: consent line + last-updated date; export always lands in Downloads; app lock supports PIN-only devices (`isDeviceSupported`).
 
 ## [v0.2.0] — 2026-08-08
 
