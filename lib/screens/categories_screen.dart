@@ -21,6 +21,8 @@ class CategoriesScreen extends ConsumerStatefulWidget {
 }
 
 class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
+  int _tab = 0; // 0 = expense, 1 = income
+
   Future<void> _showEditor([Category? existing]) async {
     final name = TextEditingController(text: existing?.name);
     var emoji = existing?.emoji ?? '📦';
@@ -146,35 +148,29 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       ),
       body: categories.isEmpty
           ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.only(bottom: 96),
+          : Column(
               children: [
-                const _SectionHeader('Expense categories'),
-                for (final c in categories.where((c) => !c.isIncome))
-                  _CategoryTile(category: c, onEdit: _showEditor),
-                const SizedBox(height: 16),
-                const _SectionHeader('Income categories'),
-                for (final c in categories.where((c) => c.isIncome))
-                  _CategoryTile(category: c, onEdit: _showEditor),
+                SegmentedButton<int>(
+                  segments: const [
+                    ButtonSegment(value: 0, label: Text('Expense'), icon: Icon(Icons.remove_circle_outline)),
+                    ButtonSegment(value: 1, label: Text('Income'), icon: Icon(Icons.add_circle_outline)),
+                  ],
+                  selected: {_tab},
+                  onSelectionChanged: (s) => setState(() => _tab = s.first),
+                ),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.only(bottom: 96, top: 8),
+                    children: [
+                      for (final c in categories.where(
+                        (c) => _tab == 0 ? !c.isIncome : c.isIncome,
+                      ))
+                        _CategoryTile(category: c, onEdit: _showEditor),
+                    ],
+                  ),
+                ),
               ],
             ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader(this.title);
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 16, top: 8, bottom: 4),
-      child: Text(
-        title,
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-      ),
     );
   }
 }
