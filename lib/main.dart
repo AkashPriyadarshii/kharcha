@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -33,9 +32,6 @@ Future<void> main() async {
   await Supabase.initialize(url: SupabaseConfig.url, publishableKey: SupabaseConfig.anonKey);
   await _container.read(appLockControllerProvider.notifier).load();
   onboardingDone.value = await (await OnboardingStore.create()).isDone();
-  // Onboarding is the Android capture setup (notification access, battery
-  // exemption). Nothing to set up on desktop — skip straight to the shell.
-  if (!Platform.isAndroid) onboardingDone.value = true;
   // Pull + push whenever a session appears (login / app resume with a session).
   Supabase.instance.client.auth.onAuthStateChange.listen((state) {
     if (state.session != null) {
