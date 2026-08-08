@@ -7,6 +7,14 @@
 >
 > For non-Claude AI agents (Cursor/Copilot/Cline/Codex/etc.), read `agents.md` — the same contract, adapted.
 
+## CodeGraph — use it first
+
+This repo is indexed by CodeGraph (`.codegraph/` exists). **Before grep/find or reading files to locate code, use CodeGraph:**
+
+- Shell: `codegraph explore "<symbol names or question>"` and `codegraph node <symbol-or-file>` print symbol source + callers.
+- MCP tools (when available): `codegraph_explore`, `codegraph_node`.
+- No `.codegraph/` → skip it; indexing is the owner's decision, don't run it yourself.
+
 ## What this is
 
 Kharcha — India-first UPI expense tracker. Flutter app for Android 12+.
