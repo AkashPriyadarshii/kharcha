@@ -7,7 +7,7 @@ All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
 - Repo `AkashPriyadarshii/kharcha` created (private)
 - Design, PRD, implementation plan, team docs, CLAUDE.md written
 - Scope locked: 16 features (see `docs/prd.md` §7)
-- No code yet — scaffold pending
+- Full app code (2026-08-08): Google sign-in, Drift local DB + seed, manual entry + quick-add, rule-based categorization, UPI notification capture (Kotlin), Supabase sync, daily/weekly Hinglish notifications, 5-tab shell (Home / Transactions / Budget / Reports / Profile) with search + filters, charts, export CSV/JSON, app lock
 
 ---
 
