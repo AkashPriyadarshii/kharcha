@@ -78,6 +78,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   bool _capture = false;
   bool _notifications = false;
   bool _battery = false;
+  Timer? _statusTimer;
 
   /// Best-effort platform call; failures show a snackbar, never block setup.
   Future<void> _invoke(String method, {String fallback = 'Could not complete that step.'}) async {
@@ -109,6 +110,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void initState() {
     super.initState();
     _refreshStatus();
+    // Realtime: poll permission state so a grant/deny made in system settings
+    // reflects immediately — the channel has no event stream to listen on.
+    _statusTimer = Timer.periodic(const Duration(seconds: 2), (_) => _refreshStatus());
+  }
+
+  @override
+  void dispose() {
+    _statusTimer?.cancel();
+    super.dispose();
   }
 
   bool get _stepDone {
