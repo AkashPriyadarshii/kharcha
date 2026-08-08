@@ -40,8 +40,9 @@ class AppLock {
 
   final LocalAuthentication _auth;
 
-  /// True when the device can authenticate (has enrolled biometrics / PIN).
-  Future<bool> canAuthenticate() => _auth.canCheckBiometrics;
+  /// True when the device can authenticate (biometrics OR device credential —
+  /// a PIN/pattern counts, so PIN-only phones aren't locked out).
+  Future<bool> canAuthenticate() => _auth.isDeviceSupported();
 
   /// Shows the OS auth prompt. Returns true when the user passed.
   Future<bool> authenticate({String reason = 'Kharcha is locked'}) async {

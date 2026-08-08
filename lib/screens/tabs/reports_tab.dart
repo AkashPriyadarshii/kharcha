@@ -58,26 +58,41 @@ class _CategoryPie extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final total = categories.fold(0.0, (s, c) => s + c.$2);
     return Column(
       children: [
         SizedBox(
           height: 220,
-          child: PieChart(
-            PieChartData(
-              sectionsSpace: 2,
-              centerSpaceRadius: 40,
-              sections: [
-                for (final (cat, amount) in categories)
-                  PieChartSectionData(
-                    value: amount,
-                    color: categoryColor(cat),
-                    radius: 54,
-                    title: total <= 0 ? '' : '${(amount / total * 100).round()}%',
-                    titleStyle: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              PieChart(
+                PieChartData(
+                  sectionsSpace: 2,
+                  centerSpaceRadius: 48,
+                  sections: [
+                    for (final (cat, amount) in categories)
+                      PieChartSectionData(
+                        value: amount,
+                        color: categoryColor(cat),
+                        radius: 54,
+                        title: '',
+                      ),
+                  ],
+                ),
+              ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Total', style: theme.textTheme.labelSmall),
+                  Text(
+                    _currency.format(total),
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                   ),
-              ],
-            ),
+                ],
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 8),
@@ -91,7 +106,11 @@ class _CategoryPie extends StatelessWidget {
                 children: [
                   Container(width: 10, height: 10, decoration: BoxDecoration(color: categoryColor(cat), shape: BoxShape.circle)),
                   const SizedBox(width: 4),
-                  Text('${cat.name} · ${_currency.format(amount)}', style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    '${cat.name} · ${_currency.format(amount)}'
+                    '${total > 0 ? ' (${(amount / total * 100).round()}%)' : ''}',
+                    style: theme.textTheme.bodySmall,
+                  ),
                 ],
               ),
           ],
@@ -124,10 +143,15 @@ class _MonthlyTrendLine extends StatelessWidget {
               sideTitles: SideTitles(
                 showTitles: true,
                 interval: 1,
-                getTitlesWidget: (v, _) => Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(trend[v.toInt()].$1, style: Theme.of(context).textTheme.labelSmall),
-                ),
+                getTitlesWidget: (v, _) {
+                  final i = v.toInt();
+                  // fl_chart can tick outside the data range — skip those.
+                  if (i < 0 || i >= trend.length) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(trend[i].$1, style: Theme.of(context).textTheme.labelSmall),
+                  );
+                },
               ),
             ),
           ),
