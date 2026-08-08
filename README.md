@@ -20,6 +20,9 @@ flutter run -d <device-id>     # Android 12+ device/emulator
 #   OR
 flutter build apk --debug      # sideload APK
 
+# 4b. Run on Windows (dev/debug, manual entry + CSV import only — no UPI capture)
+flutter run -d windows         # needs Developer Mode ON (Start → Settings → Developer Mode)
+
 # Notes:
 # - UPI auto-capture is Android-only (NotificationListenerService)
 # - Guest mode: "Continue as guest" on auth → local-only, no Supabase sync
