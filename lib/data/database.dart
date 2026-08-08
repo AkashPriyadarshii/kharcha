@@ -35,7 +35,7 @@ class Rules extends Table {
 }
 
 /// Wallets: separate balances + per-wallet currency (offline-first; exchange
-/// rates are manual). v0.1.1.
+/// rates are manual). v0.1.1. Synced to Supabase (schema v9).
 class Wallets extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text().withLength(min: 1, max: 40)();
@@ -43,6 +43,8 @@ class Wallets extends Table {
   /// Opening balance (positive = money already in the wallet before tracking).
   RealColumn get initialBalance => real().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  BoolColumn get dirty => boolean().withDefault(const Constant(true))();
+  IntColumn get remoteId => integer().nullable()();
 }
 
 /// Manual exchange rates (ISO → ISO), used to convert wallet balances to the
@@ -57,7 +59,7 @@ class ExchangeRates extends Table {
 
 /// Recurring subscriptions: amount, merchant, cadence, next-due date. The app
 /// lists due/overdue subscriptions and can add them as transactions in one tap.
-/// v0.1.1.
+/// v0.1.1. Synced to Supabase (schema v9).
 class RecurringTransactions extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get merchant => text().withLength(min: 1, max: 80)();
@@ -68,10 +70,13 @@ class RecurringTransactions extends Table {
   /// Next due date (local). Today/overdue = due now.
   DateTimeColumn get nextDue => dateTime()();
   BoolColumn get active => boolean().withDefault(const Constant(true))();
+  BoolColumn get dirty => boolean().withDefault(const Constant(true))();
+  IntColumn get remoteId => integer().nullable()();
 }
 
 /// Savings goals: name, target, deadline. Progress is funded by a one-off
-/// allocation (saved amount) tracked on the goal itself. v0.1.1.
+/// allocation (saved amount) tracked on the goal itself. v0.1.1. Synced to
+/// Supabase (schema v9).
 class Objectives extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text().withLength(min: 1, max: 60)();
@@ -79,9 +84,12 @@ class Objectives extends Table {
   /// How much has been saved toward the goal so far.
   RealColumn get saved => real().withDefault(const Constant(0))();
   DateTimeColumn? get deadline => dateTime().nullable()();
+  BoolColumn get dirty => boolean().withDefault(const Constant(true))();
+  IntColumn get remoteId => integer().nullable()();
 }
 
 /// Credit/debt ledger: money lent to or borrowed from someone. v0.1.1.
+/// Synced to Supabase (schema v9).
 class Debts extends Table {
   IntColumn get id => integer().autoIncrement()();
   /// The person you lent to / borrowed from.
@@ -92,6 +100,8 @@ class Debts extends Table {
   TextColumn get note => text().withLength(min: 0, max: 200).nullable()();
   BoolColumn get settled => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  BoolColumn get dirty => boolean().withDefault(const Constant(true))();
+  IntColumn get remoteId => integer().nullable()();
 }
 
 /// Transactions mirror the Supabase `transactions` table.
@@ -127,7 +137,9 @@ class DeletedTransactions extends Table {
   DateTimeColumn get deletedAt => dateTime().withDefault(currentDateAndTime)();
 }
 
-/// Budgets: per-category monthly limits + alert thresholds.
+/// Budgets: per-category monthly limits + alert thresholds. Synced to Supabase
+/// (schema v9); category_id is the shared seeded category id (custom-category
+/// budgets stay local-only — their categories aren't on the server).
 class Budgets extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get categoryId => integer().references(Categories, #id)();
@@ -136,6 +148,9 @@ class Budgets extends Table {
   IntColumn get alertPct50 => integer().withDefault(const Constant(50))();
   IntColumn get alertPct80 => integer().withDefault(const Constant(80))();
   IntColumn get alertPct100 => integer().withDefault(const Constant(100))();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  BoolColumn get dirty => boolean().withDefault(const Constant(true))();
+  IntColumn get remoteId => integer().nullable()();
 }
 
 @DriftDatabase(tables: [Categories, Merchants, Rules, Transactions, Budgets, Wallets, ExchangeRates, RecurringTransactions, Objectives, Debts, DeletedTransactions])
@@ -144,7 +159,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase({QueryExecutor? executor}) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -183,6 +198,22 @@ class AppDatabase extends _$AppDatabase {
             // v0.2.1: delete sync. Existing rows need no backfill — tombstones
             // are only written for deletes that happen after the upgrade.
             await m.createTable(deletedTransactions);
+          }
+          if (from < 9) {
+            // v0.2.1: sync feature tables (budgets, wallets, recurring,
+            // objectives, debts). Default dirty=true marks every existing row
+            // for a one-time push → full backup. No data rewrite.
+            await m.addColumn(wallets, wallets.dirty);
+            await m.addColumn(wallets, wallets.remoteId);
+            await m.addColumn(recurringTransactions, recurringTransactions.dirty);
+            await m.addColumn(recurringTransactions, recurringTransactions.remoteId);
+            await m.addColumn(objectives, objectives.dirty);
+            await m.addColumn(objectives, objectives.remoteId);
+            await m.addColumn(debts, debts.dirty);
+            await m.addColumn(debts, debts.remoteId);
+            await m.addColumn(budgets, budgets.updatedAt);
+            await m.addColumn(budgets, budgets.dirty);
+            await m.addColumn(budgets, budgets.remoteId);
           }
         },
       );
