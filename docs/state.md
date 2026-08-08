@@ -4,7 +4,7 @@
 
 ## Current status
 
-**Phase: v0.2.1 — shipped.** Transactions edit/delete + tombstone sync, UX audit, arm64 release APK live on the v0.2.1 GitHub release. Android-only (Windows scaffold added back for Priyaranjan's local run, with platform guards). Gradle arm64 ABI filter + page-aligned native libs (no "package invalid"). CI removed (on-demand build + release). UX pass: onboarding 4-step flow + live permission status, profile edit-name, reports pie total/trend guard, categories segmented tabs + vector icons, terms consent+date, export→Downloads, app lock PIN-only. `flutter analyze` clean. Full `flutter test` still blocked on this Windows host (sqlite3 native-assets, `docs/troubleshooting.md`). Next: on-device verify.
+**Phase: v0.2.1 — shipped.** Transactions edit/delete + tombstone sync, UX audit, arm64 release APK live on the v0.2.1 GitHub release. Android-only (Windows scaffold added back for Priyaranjan's local run, with platform guards). Gradle arm64 ABI filter + page-aligned native libs (no "package invalid"). CI removed (on-demand build + release). UX pass: onboarding 4-step flow + live permission status, profile edit-name, reports pie total/trend guard, categories segmented tabs + vector icons, terms consent+date, export→Downloads, app lock PIN-only. **Full backup sync** — budgets/wallets/recurring/objectives/debts now sync to Supabase (schema v9, migration 0002), auto-backup timer flushes every 30s. `flutter analyze` clean. Full `flutter test` still blocked on this Windows host (sqlite3 native-assets, `docs/troubleshooting.md`). Next: on-device verify.
 
 **Phase: v0.2.0 — income support shipped.** Income is live end-to-end: per-transaction + per-category `is_income` (schema v7, Supabase mirrored), income/expense toggle on both add forms, built-in income categories, home hero income/spend split (green income, red spend), transactions tab income filter, spend aggregates exclude income, sync round-trip, CSV/JSON export `type` column + import. Permissions pass: full manifest set, onboarding asks notification + battery exemption in-app (no manual settings). Manifest now declares INTERNET/ACCESS_NETWORK_STATE (release builds need it for Supabase sync — debug got it injected). `flutter analyze` clean. Full `flutter test` still blocked on Windows host (sqlite3 native-assets, `docs/troubleshooting.md`). CI removed (on-demand release). Next: on-device verify + publish.
 
@@ -57,4 +57,4 @@
 ## Next up
 
 1. On-device verify (Akash) — sideload `kharcha-armv8a-release.apk` from v0.2.1 release: new screens (wallets/subscriptions/objectives/split/categories), UPI capture re-check.
-2. Supabase schema mirror for new tables (wallets, recurring, objectives) — currently local-only.
+2. On-device verify the new sync (budget set on device A → restored on device B).
