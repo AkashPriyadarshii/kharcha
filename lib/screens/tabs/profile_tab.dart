@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_lock.dart';
 import '../../core/theme.dart';
@@ -133,6 +134,25 @@ class ProfileTab extends ConsumerWidget {
           trailing: const Icon(Icons.chevron_right),
           onTap: () => context.push('/terms'),
         ),
+        const SizedBox(height: 24),
+        const SectionTitle('About'),
+        const SizedBox(height: 8),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.person_outline),
+          title: const Text('Akash Priyadarshi'),
+          subtitle: const Text('Developer · @AkashPriyadarshii'),
+          trailing: const Icon(Icons.open_in_new, size: 18),
+          onTap: () => _launch(context, 'https://github.com/AkashPriyadarshii'),
+        ),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.code),
+          title: const Text('Kharcha on GitHub'),
+          subtitle: const Text('Open source · github.com/AkashPriyadarshii/kharcha'),
+          trailing: const Icon(Icons.open_in_new, size: 18),
+          onTap: () => _launch(context, 'https://github.com/AkashPriyadarshii/kharcha'),
+        ),
       ],
     );
   }
@@ -182,6 +202,15 @@ class ProfileTab extends ConsumerWidget {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Import failed: $e')),
+      );
+    }
+  }
+
+  Future<void> _launch(BuildContext context, String url) async {
+    final ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open link.')),
       );
     }
   }

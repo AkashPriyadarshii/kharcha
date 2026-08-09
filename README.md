@@ -4,29 +4,6 @@
 
 India-first UPI expense tracker for Android. Every UPI payment from GPay, PhonePe, or Paytm auto-appears as an expense — no manual entry. Offline-first, rule-based automation (no AI), Supabase sync. Built with Flutter/Dart, Drift/SQLite.
 
-## 🤖 For AI agents — quick clone & run
-
-```bash
-# 1. Clone
-git clone https://github.com/AkashPriyadarshii/kharcha.git
-cd kharcha
-
-# 2. Deps
-flutter pub get
-
-# 3. Verify (no test on Windows host — see troubleshooting.md)
-flutter analyze
-
-# 4. Run on Android (full features: UPI capture, notifications, battery exemption)
-flutter run -d <device-id>     # Android 12+ device/emulator
-#   OR
-flutter build apk --release --split-per-abi   # arm64 APK (see CLAUDE.md)
-
-# Notes:
-# - Android-only target. UPI auto-capture needs NotificationListenerService.
-# - Guest mode: "Continue as guest" on auth → local-only, no Supabase sync
-```
-
 ## Product
 
 - **Auto-capture** — reads UPI push notifications (GPay, PhonePe, Paytm) → parses amount/merchant/date → saves expense. Play-legal, no SMS permission.
