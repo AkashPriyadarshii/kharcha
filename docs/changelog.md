@@ -2,6 +2,16 @@
 
 All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
 
+## [v0.2.2] — 2026-08-09
+
+- **Real release signing** — generated `kharcha-release.jks` keystore, wired via gitignored `android/key.properties`. Release builds sign with it (debug fallback only when key.properties absent). Fixes reinstall-over-upgrade failures; survives the Android 16 24h sideload wait.
+- **Money precision audit** — every amount boundary routes through `parseAmount` (2dp rounding): add/quick-add expense, budget limit, wallet balance, savings goal target + add, debt amount, subscription amount, CSV import, and the UPI/bank notification parser (was raw `double.parse`, comma bug fixed). New `test/money_test.dart`.
+- **Terms screen reachable pre-login** — router redirect whitelisted `/terms` so signed-out users aren't bounced to `/auth`.
+- **Profile About section** — Akash Priyadarshi + GitHub profile/repo links (opens externally). `url_launcher` promoted to direct dep.
+- **Android 16 prep** — SafeArea (bottom) on wallets/objectives/subscriptions pushed screens (gesture-nav bar can't clip the last item). AGP 8.11.1 / Gradle 8.14 / Kotlin 2.2.20 / Flutter 3.44.9 already satisfy the 16KB-page + targetSdk requirements.
+- **Repo hygiene** — tracked `android/build/reports/*.html` artifact removed + `/android/build/` gitignored (was inflating GitHub language stats); README "For AI agents" quick-clone block removed.
+- **Backup audit** — all user-entered tables sync (transactions, custom categories, budgets, wallets, recurring, objectives, debts). `rules`/`merchants`/`exchange_rates` + app-lock/onboarding flags stay local by design.
+
 ## [unreleased]
 
 - **Capture everything** — any app's notification with a ₹ amount is captured (UPI + bank + messaging); Dart parser gates on payment keywords so "bhej de ₹200" chats don't become expenses. Money IN captured too (income transactions). Schema v10, parser rework + tests.
