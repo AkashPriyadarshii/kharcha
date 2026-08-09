@@ -157,8 +157,17 @@ flutter build apk --release --split-per-abi
   `--split-per-abi` ("Conflicting configuration: 'arm64-v8a' in ndk abiFilters
   cannot be present when splits abi filters are set").
 - Release upload: replace `kharcha-armv8a-release.apk` on the latest GitHub
-  release (delete-asset + upload --clobber). Size sanity: ~24-26MB. Debug-signed
-  (buildTypes.release uses debug signingConfig) — fine for sideload.
+  release (delete-asset + upload --clobber). Size sanity: ~24-26MB.
+- **Signing — MUST stay debug-signed for sideload.** `buildTypes.release` falls
+  back to debug signing when `android/key.properties` is absent. This is
+  REQUIRED: the debug key signed every released APK since v0.2.1, and Android
+  refuses to install over an app signed with a different key. A release keystore
+  was generated (2026-08-09) but is PARKED at `android/key.properties.release` —
+  do NOT restore `key.properties` while sideloading or every device hits
+  "package conflicts with existing package" until uninstall. Re-enable it only
+  when publishing to Play Store (which requires real signing), and accept the
+  one-time uninstall across devices. Keystore + password in `android/BACKUP_KEYS.txt`
+  (gitignored).
 
 ## Git workflow
 
