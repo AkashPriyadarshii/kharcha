@@ -6,11 +6,12 @@ import 'package:intl/intl.dart';
 import '../../core/theme.dart';
 import '../../data/database.dart';
 import '../../data/transaction_repository.dart';
-import 'home_tab.dart' show categoryColor;
+import '../../widgets/income_expense_toggle.dart';
+import 'home_tab.dart' show categoryColor, homeSummaryProvider;
 
 final _currency = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
 
-/// Reports: spend by category (pie), monthly trend (line), merchant ranking.
+/// Reports: income/spend/net summary, category pie, monthly trend, merchants.
 class ReportsTab extends ConsumerWidget {
   const ReportsTab({super.key});
 
@@ -19,9 +20,15 @@ class ReportsTab extends ConsumerWidget {
     final month = ref.watch(monthSpendProvider);
     final trend = ref.watch(monthlyTrendProvider);
     final merchants = ref.watch(merchantRankingProvider);
+    final home = ref.watch(homeSummaryProvider);
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       children: [
+        _MonthSummary(
+          income: home.value?.income ?? 0,
+          spend: (month.value ?? const []).fold(0.0, (s, c) => s + c.$2),
+        ),
+        const SizedBox(height: 24),
         const SectionTitle('This month by category'),
         const SizedBox(height: 8),
         if (month.value == null)
@@ -46,6 +53,64 @@ class ReportsTab extends ConsumerWidget {
           Text('No merchants yet.', style: Theme.of(context).textTheme.bodyMedium)
         else
           for (final (name, amount, count) in merchants.value!) _MerchantRow(name: name, amount: amount, count: count),
+      ],
+    );
+  }
+}
+
+/// Income / spent / net summary row — the whole month at a glance.
+class _MonthSummary extends StatelessWidget {
+  const _MonthSummary({required this.income, required this.spend});
+
+  final double income;
+  final double spend;
+
+  @override
+  Widget build(BuildContext context) {
+    final net = income - spend;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Expanded(
+              child: _ColumnStat(label: 'Income', amount: income, color: incomeGreen),
+            ),
+            Expanded(
+              child: _ColumnStat(label: 'Spent', amount: spend, color: expenseRed),
+            ),
+            Expanded(
+              child: _ColumnStat(
+                label: 'Net',
+                amount: net,
+                color: net >= 0 ? incomeGreen : expenseRed,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ColumnStat extends StatelessWidget {
+  const _ColumnStat({required this.label, required this.amount, required this.color});
+
+  final String label;
+  final double amount;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      children: [
+        Text(label, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+        const SizedBox(height: 4),
+        Text(
+          _currency.format(amount),
+          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800, color: color),
+        ),
       ],
     );
   }
@@ -77,7 +142,8 @@ class _CategoryPie extends StatelessWidget {
                         value: amount,
                         color: categoryColor(cat),
                         radius: 54,
-                        title: '',
+                        title: total > 0 ? '${(amount / total * 100).round()}%' : '',
+                        titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
                       ),
                   ],
                 ),

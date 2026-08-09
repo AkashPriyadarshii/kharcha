@@ -8,7 +8,7 @@ India-first UPI expense tracker for Android. Every UPI payment from GPay, PhoneP
 
 | | |
 |---|---|
-| **Latest release** | **v0.2.3** |
+| **Latest release** | **v0.2.4** |
 | **APK** | [`kharcha-armv8a-release.apk`](https://github.com/AkashPriyadarshii/kharcha/releases/latest) (~25 MB) |
 | **Requirements** | Android 12+ (arm64) |
 
@@ -24,6 +24,11 @@ India-first UPI expense tracker for Android. Every UPI payment from GPay, PhoneP
 - **Budget alerts** — 50/80/100% per-category.
 - **App lock** — biometric/PIN.
 - **Max tracking, never sold** — collects granular spend data (that's the product); data is never sold, never ad-targeted.
+
+## What's new in v0.2.4
+
+- **Home redesign** — a proper greeting with your name, Income vs Spent cards side by side, and a 6-month spend trend chart right on the dashboard.
+- **Reports upgrade** — Income/Spent/Net at a glance; category pie now shows percentage labels.
 
 ## What's new in v0.2.3
 

@@ -2,6 +2,11 @@
 
 All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
 
+## [v0.2.4] — 2026-08-09
+
+- **Home redesign** (Cashew-inspired) — greeting header with your name ("Good evening, Akash"); Income this month + Spent today as sibling colored cards (mint income / red expense); compact 6-month spend trend card under the hero. Hero keeps the count-up ₹ panel, now with amber over-budget state.
+- **Reports upgrade** — Income / Spent / Net summary strip at top (Net colors by sign); category pie slices show bold white percentage labels; month total in the pie center. Same data, read at a glance.
+
 ## [v0.2.3] — 2026-08-09
 
 - **Auto-update** — app checks GitHub releases once per app open (throttled to **once/day auto + 3/hr manual** from Profile); prompts to download + install when a newer release with a real `kharcha-armv8a-release.apk` asset exists. `REQUEST_INSTALL_PACKAGES` + FileProvider in AndroidManifest, `installApk` + `getVersion` channel in MainActivity, `update_checker.dart` (semver compare, asset-size verify, silent-fail on 429/offline). `test/update_checker_test.dart` covers version comparison. Trigger = pubspec version bump; no bump = no prompt. Rate caps keep 1000 devices under GitHub's per-IP limit.
