@@ -59,12 +59,11 @@ India-first UPI expense tracker for Android. Every UPI payment from GPay, PhoneP
 ## Team
 
 - Akash (`AkashPriyadarshii`) — owner
+- Priyaranjan (`priyaranjan122002`) — co-dev
 
 ## License
 
 Source-available. All rights reserved. This code is public for viewing only — no use, reproduction, or derivative works permitted. See LICENSE for full terms.
-
-## SEO & Metadata
 
 **Site:** [https://AkashPriyadarshii.github.io/kharcha/](https://AkashPriyadarshii.github.io/kharcha/)
 
