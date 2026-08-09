@@ -51,27 +51,6 @@ India-first UPI expense tracker for Android. Every UPI payment from GPay, PhoneP
 | Notifications | flutter_local_notifications |
 | App lock | local_auth |
 
-## Getting started (developers)
-
-```bash
-flutter pub get
-flutter analyze
-flutter test test/update_checker_test.dart   # run test files individually — full suite crashes on Windows (sqlite3 bug)
-flutter run          # on Android 12+ device/emulator
-```
-
-## Docs
-
-- `CLAUDE.md` — team contract, standards, anti-slop rules
-- `docs/prd.md` — product requirements
-- `docs/design.md` — architecture, data model, design direction
-- `docs/implementation-plan.md` — build order
-- `docs/contributors.md` — who's who
-- `docs/state.md` — current status
-- `docs/handoff.md` — handoff notes
-- `docs/changelog.md` — version history
-- `docs/ponytail.md` — the ponytail method (coding philosophy, required reading)
-
 ## Team
 
 - Akash (`AkashPriyadarshii`) — owner
