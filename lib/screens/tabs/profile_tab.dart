@@ -149,7 +149,7 @@ class ProfileTab extends ConsumerWidget {
           contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.code),
           title: const Text('Kharcha on GitHub'),
-          subtitle: const Text('Open source · github.com/AkashPriyadarshii/kharcha'),
+          subtitle: const Text('Source · github.com/AkashPriyadarshii/kharcha'),
           trailing: const Icon(Icons.open_in_new, size: 18),
           onTap: () => _launch(context, 'https://github.com/AkashPriyadarshii/kharcha'),
         ),

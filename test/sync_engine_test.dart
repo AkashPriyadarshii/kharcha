@@ -1,6 +1,7 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kharcha/data/database.dart';
+import 'package:kharcha/data/remote_feature.dart';
 import 'package:kharcha/data/remote_transaction.dart';
 import 'package:kharcha/data/transaction_repository.dart';
 
@@ -196,6 +197,74 @@ void main() {
       expect(rows, hasLength(1));
       expect(rows.single.remoteId, 77);
       expect(rows.single.dirty, isFalse);
+    });
+  });
+
+  group('feature delete sync', () {
+    test('deleting a pushed feature writes a tombstone and clears on drain', () async {
+      final wallet = await repo.insertWallet(name: 'Cash', currency: 'INR');
+      await repo.markFeatureSynced(SyncKind.wallets, wallet.id, 42);
+
+      await repo.deleteWallet(wallet.id);
+      var deletes = await repo.deletedFeatureRemoteIds();
+      expect(deletes, hasLength(1));
+      expect(deletes.single.kind, 'wallets');
+      expect(deletes.single.remoteId, 42);
+
+      await repo.clearDeletedFeature('wallets', 42);
+      expect(await repo.deletedFeatureRemoteIds(), isEmpty);
+    });
+
+    test('deleting an unsynced feature leaves no tombstone', () async {
+      final w = await repo.insertWallet(name: 'Cash', currency: 'INR');
+      await repo.deleteWallet(w.id);
+      expect(await repo.deletedFeatureRemoteIds(), isEmpty);
+    });
+
+    test('each feature kind tombstones only when it was pushed', () async {
+      // Recurring pushed → tombstone; objective unsynced → none.
+      final r = await repo.insertRecurring(
+        merchant: 'Netflix',
+        amount: 199,
+        period: 'monthly',
+        nextDue: DateTime(2026, 9, 1),
+      );
+      await repo.markFeatureSynced(SyncKind.recurring, r.id, 7);
+      final o = await repo.insertObjective(name: 'Bike', target: 50000);
+
+      await repo.deleteRecurring(r.id);
+      await repo.deleteObjective(o.id);
+
+      final deletes = await repo.deletedFeatureRemoteIds();
+      expect(deletes, hasLength(1));
+      expect(deletes.single.kind, 'recurring');
+      expect(deletes.single.remoteId, 7);
+    });
+
+    test('deleteBudget/deleteDebt/deleteCategory tombstone pushed rows', () async {
+      await repo.upsertBudget(categoryId: 1, amount: 1000);
+      final budgetRow = await db.select(db.budgets).getSingle();
+      await repo.markFeatureSynced(SyncKind.budgets, budgetRow.id, 11);
+      await repo.deleteBudget(budgetRow.id);
+
+      await repo.insertDebt(name: 'Ravi', amount: 500, isLent: true);
+      final debtRow = await db.select(db.debts).getSingle();
+      await repo.markFeatureSynced(SyncKind.debts, debtRow.id, 22);
+      await repo.deleteDebt(debtRow.id);
+
+      final cat = await repo.insertCategory(name: 'MyCat', emoji: '⭐', color: '#123456');
+      await repo.markCategorySynced(cat, 33);
+      await repo.deleteCategory(cat);
+
+      final kinds = (await repo.deletedFeatureRemoteIds())
+          .map((d) => '${d.kind}:${d.remoteId}')
+          .toSet();
+      expect(kinds, {'budgets:11', 'debts:22', 'categories:33'});
+    });
+
+    test('deleteCategory on a builtin leaves no tombstone', () async {
+      await repo.deleteCategory(1); // Food, seeded builtin
+      expect(await repo.deletedFeatureRemoteIds(), isEmpty);
     });
   });
 }

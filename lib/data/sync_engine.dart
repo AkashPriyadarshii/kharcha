@@ -135,9 +135,11 @@ class SyncEngine {
 
   /// Pulls the user's custom categories so a fresh device can restore budgets
   /// referencing them (server id → local id happens in the feature pull).
-  /// ponytail: a category deleted locally resurrects on the next pull — no
-  /// tombstone yet. Add a deleted-category table if deletes must stay dead.
   Future<void> _pullCategories() async {
+    final tombstones = (await _repo.deletedFeatureRemoteIds())
+        .where((d) => d.kind == 'categories')
+        .map((d) => d.remoteId)
+        .toSet();
     final rows = await _client
         .from('categories')
         .select()
@@ -146,6 +148,9 @@ class SyncEngine {
         .limit(500);
     for (final r in rows) {
       final remoteId = r['id'] as int;
+      // Locally deleted but the DELETE hasn't reached the server yet — the
+      // row must not come back.
+      if (tombstones.contains(remoteId)) continue;
       final map = <String, Object?>{
         'id': r['id'],
         'name': r['name'],
@@ -165,6 +170,17 @@ class SyncEngine {
   }
 
   Future<void> _pushFeatures() async {
+    // Deletes first: removes remote rows before anything could re-pull them.
+    // A tombstone survives any failure and retries next sync; it clears only
+    // when the DELETE succeeded (a no-op on an already-gone row also succeeds).
+    final featureDeletes = await _repo.deletedFeatureRemoteIds();
+    for (final d in featureDeletes) {
+      final table = d.kind == 'categories'
+          ? 'categories'
+          : featureTableFor(SyncKind.values.firstWhere((k) => k.name == d.kind));
+      await _client.from(table).delete().eq('id', d.remoteId);
+      await _repo.clearDeletedFeature(d.kind, d.remoteId);
+    }
     for (final kind in SyncKind.values) {
       final rows = await _repo.dirtyRowsFor(kind);
       for (final row in rows) {
@@ -208,6 +224,10 @@ class SyncEngine {
   }
 
   Future<void> _pullFeatures() async {
+    final tombstones = (await _repo.deletedFeatureRemoteIds()).fold<Set<String>>(
+      <String>{},
+      (set, d) => set..add('${d.kind}:${d.remoteId}'),
+    );
     for (final kind in SyncKind.values) {
       final rows = await _client
           .from(featureTableFor(kind))
@@ -216,6 +236,9 @@ class SyncEngine {
           .limit(500);
       for (final r in rows) {
         final remoteId = r['id'] as int;
+        // Locally deleted but the DELETE hasn't reached the server yet — the
+        // row must not come back.
+        if (tombstones.contains('${kind.name}:$remoteId')) continue;
         final map = _repo.featureToLocalMap(kind, r);
         // Custom-category refs: translate server → local id (budgets/recurring).
         final remoteCatId = map['categoryId'] as int?;

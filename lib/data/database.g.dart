@@ -5245,6 +5245,310 @@ class DeletedTransactionsCompanion extends UpdateCompanion<DeletedTransaction> {
   }
 }
 
+class $DeletedFeaturesTable extends DeletedFeatures
+    with TableInfo<$DeletedFeaturesTable, DeletedFeature> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DeletedFeaturesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 16,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _remoteIdMeta = const VerificationMeta(
+    'remoteId',
+  );
+  @override
+  late final GeneratedColumn<int> remoteId = GeneratedColumn<int>(
+    'remote_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, kind, remoteId, deletedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'deleted_features';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DeletedFeature> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('remote_id')) {
+      context.handle(
+        _remoteIdMeta,
+        remoteId.isAcceptableOrUnknown(data['remote_id']!, _remoteIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_remoteIdMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DeletedFeature map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DeletedFeature(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      remoteId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}remote_id'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DeletedFeaturesTable createAlias(String alias) {
+    return $DeletedFeaturesTable(attachedDatabase, alias);
+  }
+}
+
+class DeletedFeature extends DataClass implements Insertable<DeletedFeature> {
+  final int id;
+
+  /// Which table the remote row belongs to (SyncKind.name or 'categories').
+  final String kind;
+
+  /// Supabase row id of the deleted feature row.
+  final int remoteId;
+  final DateTime deletedAt;
+  const DeletedFeature({
+    required this.id,
+    required this.kind,
+    required this.remoteId,
+    required this.deletedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['kind'] = Variable<String>(kind);
+    map['remote_id'] = Variable<int>(remoteId);
+    map['deleted_at'] = Variable<DateTime>(deletedAt);
+    return map;
+  }
+
+  DeletedFeaturesCompanion toCompanion(bool nullToAbsent) {
+    return DeletedFeaturesCompanion(
+      id: Value(id),
+      kind: Value(kind),
+      remoteId: Value(remoteId),
+      deletedAt: Value(deletedAt),
+    );
+  }
+
+  factory DeletedFeature.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DeletedFeature(
+      id: serializer.fromJson<int>(json['id']),
+      kind: serializer.fromJson<String>(json['kind']),
+      remoteId: serializer.fromJson<int>(json['remoteId']),
+      deletedAt: serializer.fromJson<DateTime>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'kind': serializer.toJson<String>(kind),
+      'remoteId': serializer.toJson<int>(remoteId),
+      'deletedAt': serializer.toJson<DateTime>(deletedAt),
+    };
+  }
+
+  DeletedFeature copyWith({
+    int? id,
+    String? kind,
+    int? remoteId,
+    DateTime? deletedAt,
+  }) => DeletedFeature(
+    id: id ?? this.id,
+    kind: kind ?? this.kind,
+    remoteId: remoteId ?? this.remoteId,
+    deletedAt: deletedAt ?? this.deletedAt,
+  );
+  DeletedFeature copyWithCompanion(DeletedFeaturesCompanion data) {
+    return DeletedFeature(
+      id: data.id.present ? data.id.value : this.id,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      remoteId: data.remoteId.present ? data.remoteId.value : this.remoteId,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeletedFeature(')
+          ..write('id: $id, ')
+          ..write('kind: $kind, ')
+          ..write('remoteId: $remoteId, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, kind, remoteId, deletedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DeletedFeature &&
+          other.id == this.id &&
+          other.kind == this.kind &&
+          other.remoteId == this.remoteId &&
+          other.deletedAt == this.deletedAt);
+}
+
+class DeletedFeaturesCompanion extends UpdateCompanion<DeletedFeature> {
+  final Value<int> id;
+  final Value<String> kind;
+  final Value<int> remoteId;
+  final Value<DateTime> deletedAt;
+  const DeletedFeaturesCompanion({
+    this.id = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.remoteId = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+  });
+  DeletedFeaturesCompanion.insert({
+    this.id = const Value.absent(),
+    required String kind,
+    required int remoteId,
+    this.deletedAt = const Value.absent(),
+  }) : kind = Value(kind),
+       remoteId = Value(remoteId);
+  static Insertable<DeletedFeature> custom({
+    Expression<int>? id,
+    Expression<String>? kind,
+    Expression<int>? remoteId,
+    Expression<DateTime>? deletedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (kind != null) 'kind': kind,
+      if (remoteId != null) 'remote_id': remoteId,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+    });
+  }
+
+  DeletedFeaturesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? kind,
+    Value<int>? remoteId,
+    Value<DateTime>? deletedAt,
+  }) {
+    return DeletedFeaturesCompanion(
+      id: id ?? this.id,
+      kind: kind ?? this.kind,
+      remoteId: remoteId ?? this.remoteId,
+      deletedAt: deletedAt ?? this.deletedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (remoteId.present) {
+      map['remote_id'] = Variable<int>(remoteId.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeletedFeaturesCompanion(')
+          ..write('id: $id, ')
+          ..write('kind: $kind, ')
+          ..write('remoteId: $remoteId, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -5261,6 +5565,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $DebtsTable debts = $DebtsTable(this);
   late final $DeletedTransactionsTable deletedTransactions =
       $DeletedTransactionsTable(this);
+  late final $DeletedFeaturesTable deletedFeatures = $DeletedFeaturesTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -5277,6 +5584,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     objectives,
     debts,
     deletedTransactions,
+    deletedFeatures,
   ];
 }
 
@@ -9213,6 +9521,187 @@ typedef $$DeletedTransactionsTableProcessedTableManager =
       DeletedTransaction,
       PrefetchHooks Function()
     >;
+typedef $$DeletedFeaturesTableCreateCompanionBuilder =
+    DeletedFeaturesCompanion Function({
+      Value<int> id,
+      required String kind,
+      required int remoteId,
+      Value<DateTime> deletedAt,
+    });
+typedef $$DeletedFeaturesTableUpdateCompanionBuilder =
+    DeletedFeaturesCompanion Function({
+      Value<int> id,
+      Value<String> kind,
+      Value<int> remoteId,
+      Value<DateTime> deletedAt,
+    });
+
+class $$DeletedFeaturesTableFilterComposer
+    extends Composer<_$AppDatabase, $DeletedFeaturesTable> {
+  $$DeletedFeaturesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get remoteId => $composableBuilder(
+    column: $table.remoteId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DeletedFeaturesTableOrderingComposer
+    extends Composer<_$AppDatabase, $DeletedFeaturesTable> {
+  $$DeletedFeaturesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get remoteId => $composableBuilder(
+    column: $table.remoteId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DeletedFeaturesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DeletedFeaturesTable> {
+  $$DeletedFeaturesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<int> get remoteId =>
+      $composableBuilder(column: $table.remoteId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+}
+
+class $$DeletedFeaturesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DeletedFeaturesTable,
+          DeletedFeature,
+          $$DeletedFeaturesTableFilterComposer,
+          $$DeletedFeaturesTableOrderingComposer,
+          $$DeletedFeaturesTableAnnotationComposer,
+          $$DeletedFeaturesTableCreateCompanionBuilder,
+          $$DeletedFeaturesTableUpdateCompanionBuilder,
+          (
+            DeletedFeature,
+            BaseReferences<
+              _$AppDatabase,
+              $DeletedFeaturesTable,
+              DeletedFeature
+            >,
+          ),
+          DeletedFeature,
+          PrefetchHooks Function()
+        > {
+  $$DeletedFeaturesTableTableManager(
+    _$AppDatabase db,
+    $DeletedFeaturesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DeletedFeaturesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DeletedFeaturesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DeletedFeaturesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<int> remoteId = const Value.absent(),
+                Value<DateTime> deletedAt = const Value.absent(),
+              }) => DeletedFeaturesCompanion(
+                id: id,
+                kind: kind,
+                remoteId: remoteId,
+                deletedAt: deletedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String kind,
+                required int remoteId,
+                Value<DateTime> deletedAt = const Value.absent(),
+              }) => DeletedFeaturesCompanion.insert(
+                id: id,
+                kind: kind,
+                remoteId: remoteId,
+                deletedAt: deletedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DeletedFeaturesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DeletedFeaturesTable,
+      DeletedFeature,
+      $$DeletedFeaturesTableFilterComposer,
+      $$DeletedFeaturesTableOrderingComposer,
+      $$DeletedFeaturesTableAnnotationComposer,
+      $$DeletedFeaturesTableCreateCompanionBuilder,
+      $$DeletedFeaturesTableUpdateCompanionBuilder,
+      (
+        DeletedFeature,
+        BaseReferences<_$AppDatabase, $DeletedFeaturesTable, DeletedFeature>,
+      ),
+      DeletedFeature,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -9239,4 +9728,6 @@ class $AppDatabaseManager {
       $$DebtsTableTableManager(_db, _db.debts);
   $$DeletedTransactionsTableTableManager get deletedTransactions =>
       $$DeletedTransactionsTableTableManager(_db, _db.deletedTransactions);
+  $$DeletedFeaturesTableTableManager get deletedFeatures =>
+      $$DeletedFeaturesTableTableManager(_db, _db.deletedFeatures);
 }

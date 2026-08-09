@@ -142,6 +142,21 @@ class DeletedTransactions extends Table {
   DateTimeColumn get deletedAt => dateTime().withDefault(currentDateAndTime)();
 }
 
+/// Tombstones for feature-table deletes (budgets, wallets, recurring,
+/// objectives, debts, custom categories). Keyed by kind + remote_id — feature
+/// tables have separate identity columns, so a shared id needs the kind to
+/// disambiguate. Same contract as [DeletedTransactions]: synced via DELETE,
+/// cleared once the remote row is gone, prevents a stale pull from
+/// resurrecting a deleted row. v0.2.2.
+class DeletedFeatures extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  /// Which table the remote row belongs to (SyncKind.name or 'categories').
+  TextColumn get kind => text().withLength(min: 1, max: 16)();
+  /// Supabase row id of the deleted feature row.
+  IntColumn get remoteId => integer()();
+  DateTimeColumn get deletedAt => dateTime().withDefault(currentDateAndTime)();
+}
+
 /// Budgets: per-category monthly limits + alert thresholds. Synced to Supabase
 /// (schema v9); category_id is the shared seeded category id. Custom categories
 /// now sync too (v10) — budgets reference their remote id on the server.
@@ -158,13 +173,13 @@ class Budgets extends Table {
   IntColumn get remoteId => integer().nullable()();
 }
 
-@DriftDatabase(tables: [Categories, Merchants, Rules, Transactions, Budgets, Wallets, ExchangeRates, RecurringTransactions, Objectives, Debts, DeletedTransactions])
+@DriftDatabase(tables: [Categories, Merchants, Rules, Transactions, Budgets, Wallets, ExchangeRates, RecurringTransactions, Objectives, Debts, DeletedTransactions, DeletedFeatures])
 class AppDatabase extends _$AppDatabase {
   /// [executor] override lets tests inject `NativeDatabase.memory()`.
   AppDatabase({QueryExecutor? executor}) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -226,6 +241,12 @@ class AppDatabase extends _$AppDatabase {
             // dirty=true but the engine skips them (shared reference data).
             await m.addColumn(categories, categories.dirty);
             await m.addColumn(categories, categories.remoteId);
+          }
+          if (from < 11) {
+            // v0.2.2: feature delete sync. Tombstones for budget/wallet/
+            // recurring/objective/debt/category deletes so a stale pull can't
+            // resurrect them. No backfill needed — only future deletes write.
+            await m.createTable(deletedFeatures);
           }
         },
       );

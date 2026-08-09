@@ -92,6 +92,15 @@ final debtsProvider = StreamProvider<List<Debt>>(
   (ref) => ref.watch(transactionRepositoryProvider).watchDebts(),
 );
 
+/// A record of a locally-deleted feature row that must be deleted on Supabase
+/// too. [kind] is a [SyncKind.name]; 'categories' covers custom-category
+/// deletes (no SyncKind). The engine drains these as DELETEs, then clears them.
+class FeatureDelete {
+  const FeatureDelete({required this.kind, required this.remoteId});
+  final String kind;
+  final int remoteId;
+}
+
 /// Throws when a manual transaction is invalid. Message is user-facing.
 class TransactionValidationException implements Exception {
   TransactionValidationException(this.message);
@@ -242,6 +251,9 @@ class TransactionRepository {
     // Null out wallet_id on its transactions so they don't disappear.
     await (_db.update(_db.transactions)..where((t) => t.walletId.equals(id)))
         .write(const TransactionsCompanion(walletId: Value(null)));
+    final row = await (_db.select(_db.wallets)..where((w) => w.id.equals(id))).getSingleOrNull();
+    if (row == null) return;
+    await _deleteFeature('wallets', row.remoteId);
     await (_db.delete(_db.wallets)..where((w) => w.id.equals(id))).go();
   }
 
@@ -306,8 +318,15 @@ class TransactionRepository {
         ));
   }
 
-  Future<void> deleteRecurring(int id) =>
-      (_db.delete(_db.recurringTransactions)..where((r) => r.id.equals(id))).go();
+  /// Deletes a recurring subscription. If it was pushed, a tombstone records
+  /// the remote row for deletion on the next sync (no server resurrection).
+  Future<void> deleteRecurring(int id) async {
+    final row = await (_db.select(_db.recurringTransactions)..where((r) => r.id.equals(id)))
+        .getSingleOrNull();
+    if (row == null) return;
+    await _deleteFeature('recurring', row.remoteId);
+    await (_db.delete(_db.recurringTransactions)..where((r) => r.id.equals(id))).go();
+  }
 
   Future<void> setRecurringActive(int id, bool active) =>
       (_db.update(_db.recurringTransactions)..where((r) => r.id.equals(id)))
@@ -378,8 +397,12 @@ class TransactionRepository {
     ));
   }
 
-  Future<void> deleteObjective(int id) =>
-      (_db.delete(_db.objectives)..where((o) => o.id.equals(id))).go();
+  Future<void> deleteObjective(int id) async {
+    final row = await (_db.select(_db.objectives)..where((o) => o.id.equals(id))).getSingleOrNull();
+    if (row == null) return;
+    await _deleteFeature('objectives', row.remoteId);
+    await (_db.delete(_db.objectives)..where((o) => o.id.equals(id))).go();
+  }
 
   Stream<List<Debt>> watchDebts() => _db.select(_db.debts).watch();
 
@@ -398,7 +421,12 @@ class TransactionRepository {
         dirty: const Value(true),
       ));
 
-  Future<void> deleteDebt(int id) => (_db.delete(_db.debts)..where((d) => d.id.equals(id))).go();
+  Future<void> deleteDebt(int id) async {
+    final row = await (_db.select(_db.debts)..where((d) => d.id.equals(id))).getSingleOrNull();
+    if (row == null) return;
+    await _deleteFeature('debts', row.remoteId);
+    await (_db.delete(_db.debts)..where((d) => d.id.equals(id))).go();
+  }
 
   /// Category id for [name], case-insensitive. Null when no match.
   Future<int?> categoryIdByName(String name) async {
@@ -436,11 +464,20 @@ class TransactionRepository {
           ));
 
   /// Deletes a category and detaches its transactions (they become uncategorized).
-  Future<void> deleteCategory(int id) => _db.transaction(() async {
-        await (_db.update(_db.transactions)..where((t) => t.categoryId.equals(id)))
-            .write(TransactionsCompanion(categoryId: const Value(null)));
-        await (_db.delete(_db.categories)..where((c) => c.id.equals(id))).go();
-      });
+  /// Custom categories with a server mirror are tombstoned for remote delete;
+  /// builtins are shared reference data and never pushed (no tombstone).
+  Future<void> deleteCategory(int id) async {
+    final row = await (_db.select(_db.categories)..where((c) => c.id.equals(id))).getSingleOrNull();
+    if (row == null) return;
+    await _db.transaction(() async {
+      if (row.isCustom) {
+        await _deleteFeature('categories', row.remoteId);
+      }
+      await (_db.update(_db.transactions)..where((t) => t.categoryId.equals(id)))
+          .write(TransactionsCompanion(categoryId: const Value(null)));
+      await (_db.delete(_db.categories)..where((c) => c.id.equals(id))).go();
+    });
+  }
 
   /// Inserts a row read from an import file (source = import).
   /// Returns null when a row with the same [upiRef] is already stored (dedupe).
@@ -1014,8 +1051,11 @@ class TransactionRepository {
     }
   }
 
-  Future<void> deleteBudget(int id) {
-    return (_db.delete(_db.budgets)..where((b) => b.id.equals(id))).go();
+  Future<void> deleteBudget(int id) async {
+    final row = await (_db.select(_db.budgets)..where((b) => b.id.equals(id))).getSingleOrNull();
+    if (row == null) return;
+    await _deleteFeature('budgets', row.remoteId);
+    await (_db.delete(_db.budgets)..where((b) => b.id.equals(id))).go();
   }
 
   /// All transactions newest-first, with their category name (null when
@@ -1103,6 +1143,30 @@ class TransactionRepository {
   /// Clears a tombstone once its remote row is deleted (or gone).
   Future<void> clearDeletedRow(int remoteId) {
     return (_db.delete(_db.deletedTransactions)..where((t) => t.remoteId.equals(remoteId))).go();
+  }
+
+  /// Writes a feature-delete tombstone. [remoteId] null = row was never pushed
+  /// (no server copy to delete) — the local delete is enough.
+  Future<void> _deleteFeature(String kind, int? remoteId) async {
+    if (remoteId == null) return;
+    await _db.into(_db.deletedFeatures).insert(
+      DeletedFeaturesCompanion.insert(kind: kind, remoteId: remoteId),
+    );
+  }
+
+  /// Feature deletes still pending on Supabase, oldest first.
+  Future<List<FeatureDelete>> deletedFeatureRemoteIds() async {
+    final rows = await (_db.select(_db.deletedFeatures)
+          ..orderBy([(f) => OrderingTerm.asc(f.id)]))
+        .get();
+    return [for (final r in rows) FeatureDelete(kind: r.kind, remoteId: r.remoteId)];
+  }
+
+  /// Clears a feature-delete tombstone once its remote row is deleted.
+  Future<void> clearDeletedFeature(String kind, int remoteId) {
+    return (_db.delete(_db.deletedFeatures)
+          ..where((f) => f.kind.equals(kind) & f.remoteId.equals(remoteId)))
+        .go();
   }
 
   Future<Transaction?> findByUpiRef(String upiRef) {
