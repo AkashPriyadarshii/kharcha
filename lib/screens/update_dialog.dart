@@ -1,0 +1,188 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
+
+import '../core/update_checker.dart';
+
+/// ponytail: whole-APK download (~26MB), no delta. Play Store publish
+/// supersedes this whole path — swap for `in_app_update` then.
+/// Rate caps: 1 auto-check/day, 3 manual checks/hour. GitHub's unauth limit
+/// is 60/hr per IP, so 1000 users never flag the account — 429 just fails
+/// silent and retries next time.
+
+/// Auto-check once per app open (throttled to once/day on disk). Silent unless
+/// a newer release with a real APK asset exists.
+Future<void> checkForUpdate(BuildContext context) async {
+  String versionName;
+  try {
+    versionName = await const MethodChannel('com.kharcha.app/update')
+            .invokeMethod<String>('getVersion') ??
+        '0.0.0';
+  } catch (_) {
+    versionName = '0.0.0';
+  }
+
+  final info = await fetchLatestRelease(versionName: versionName);
+  if (info == null || !info.available || info.apkUrl == null) return; // silent
+  if (!context.mounted) return;
+
+  // Throttle: never prompt more than once a day.
+  final last = await _lastPrompted();
+  if (last != null &&
+      DateTime.now().difference(last) < const Duration(hours: 24)) {
+    return;
+  }
+  if (!context.mounted) return;
+
+  await _promptAndInstall(context, info);
+}
+
+/// Manual "Check for updates" from Profile. Same flow, but capped at 3/hour
+/// (user-initiated, so it skips the daily gate — hitting the cap shows a
+/// snackbar rather than silently doing nothing).
+Future<void> manualCheckForUpdate(BuildContext context) async {
+  final recent = await _recentManualChecks();
+  recent.retainWhere(
+      (t) => DateTime.now().difference(t) < const Duration(hours: 1));
+  if (recent.length >= 3) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You\'ve checked recently — try again in an hour.')),
+      );
+    }
+    return;
+  }
+  await _recordManualCheck();
+
+  String versionName;
+  try {
+    versionName = await const MethodChannel('com.kharcha.app/update')
+            .invokeMethod<String>('getVersion') ??
+        '0.0.0';
+  } catch (_) {
+    versionName = '0.0.0';
+  }
+  final info = await fetchLatestRelease(versionName: versionName);
+  if (info == null || !info.available || info.apkUrl == null) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You\'re on the latest version.')),
+      );
+    }
+    return;
+  }
+  if (!context.mounted) return;
+  await _promptAndInstall(context, info);
+}
+
+Future<void> _promptAndInstall(BuildContext context, UpdateInfo info) async {
+  final doUpdate = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Update available'),
+      content: const Text('A newer version of Kharcha is ready. Download now?'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Not now'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Update'),
+        ),
+      ],
+    ),
+  );
+  if (doUpdate != true) return;
+  await recordPrompt(); // only after the user said yes / no
+
+  final ok = await _downloadAndInstall(info.apkUrl!, info.apkSize!);
+  if (!ok && context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Update failed — try again later.')),
+    );
+  }
+}
+
+/// Downloads to `cache/kharcha-update.apk`, size-checks it, then hands off to
+/// the OS installer. Returns false on any failure (corrupt / size mismatch).
+Future<bool> _downloadAndInstall(String url, int expectedSize) async {
+  final cacheDir = await getTemporaryDirectory(); // getCacheDir() on Android
+  final apk = File('${cacheDir.path}/kharcha-update.apk');
+  try {
+    final req = await HttpClient().getUrl(Uri.parse(url))
+      ..headers.set('User-Agent', 'Kharcha-updater');
+    final res = await req.close();
+    if (res.statusCode != 200) return false;
+    final sink = apk.openWrite();
+    await res.pipe(sink); // streamed — no RAM blowup on 26MB
+    await sink.close();
+    if (await apk.length() != expectedSize) {
+      await apk.delete(); // truncated/corrupt — never hand a bad APK to the installer
+      return false;
+    }
+    await const MethodChannel('com.kharcha.app/update')
+        .invokeMethod<void>('installApk', {'path': apk.path});
+    return true;
+  } catch (_) {
+    try {
+      await apk.delete();
+    } catch (_) {}
+    return false;
+  }
+}
+
+// ---- throttle state (device-local JSON) ----
+Future<File> get _promptFile async => File(
+    '${(await getApplicationDocumentsDirectory()).path}/update_last_prompted.json');
+
+Future<DateTime?> _lastPrompted() async {
+  try {
+    final f = await _promptFile;
+    if (!await f.exists()) return null;
+    return DateTime.tryParse(await f.readAsString());
+  } catch (_) {
+    return null;
+  }
+}
+
+Future<void> recordPrompt() async {
+  try {
+    await (await _promptFile).writeAsString(DateTime.now().toIso8601String());
+  } catch (_) {}
+}
+
+Future<File> get _manualFile async => File(
+    '${(await getApplicationDocumentsDirectory()).path}/update_manual_checks.json');
+
+/// Timestamps of recent manual checks (for the 3/hr cap).
+Future<List<DateTime>> _recentManualChecks() async {
+  try {
+    final f = await _manualFile;
+    if (!await f.exists()) return [];
+    final list = (jsonDecode(await f.readAsString()) as List)
+        .whereType<String>()
+        .map(DateTime.tryParse)
+        .whereType<DateTime>()
+        .toList();
+    return list;
+  } catch (_) {
+    return [];
+  }
+}
+
+Future<void> _recordManualCheck() async {
+  try {
+    final f = await _manualFile;
+    final recent = (await _recentManualChecks())
+        .where((t) => DateTime.now().difference(t) < const Duration(hours: 1))
+        .toList()
+      ..add(DateTime.now());
+    await f.writeAsString(jsonEncode(
+      recent.map((t) => t.toIso8601String()).toList(),
+    ));
+  } catch (_) {}
+}

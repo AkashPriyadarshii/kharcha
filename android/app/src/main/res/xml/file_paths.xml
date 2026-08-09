@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Auto-update: the downloaded APK lives in the app cache dir; expose it to
+     the system installer via FileProvider. -->
+<paths>
+    <cache-path name="update_cache" path="." />
+</paths>

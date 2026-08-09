@@ -14,6 +14,7 @@ import '../../core/theme.dart';
 import '../../data/exporter.dart';
 import '../../data/importer.dart';
 import '../../data/transaction_repository.dart';
+import '../update_dialog.dart';
 
 final _currency = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
 
@@ -99,6 +100,13 @@ class ProfileTab extends ConsumerWidget {
           subtitle: const Text('Re-run onboarding: capture, notifications, battery'),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => context.push('/onboarding'),
+        ),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.system_update_alt),
+          title: const Text('Check for updates'),
+          subtitle: const Text('Auto-checks daily; tap to check now (3/hr)'),
+          onTap: () => manualCheckForUpdate(context),
         ),
         ListTile(
           contentPadding: EdgeInsets.zero,
