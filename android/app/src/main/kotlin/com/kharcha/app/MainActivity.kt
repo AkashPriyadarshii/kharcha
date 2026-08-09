@@ -9,9 +9,11 @@ import android.os.PowerManager
 import android.provider.Settings
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.io.File
 
 class MainActivity : FlutterFragmentActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -78,6 +80,39 @@ class MainActivity : FlutterFragmentActivity() {
                                 "battery" to pm.isIgnoringBatteryOptimizations(packageName),
                             )
                         )
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+        // Auto-update: expose installed version + install a downloaded APK via
+        // the system installer (FileProvider, so it works with a debug-signed
+        // sideload build).
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.kharcha.app/update")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "getVersion" -> {
+                        result.success(packageManager.getPackageInfo(packageName, 0).versionName)
+                    }
+                    "installApk" -> {
+                        val path = call.argument<String>("path")
+                        if (path == null) {
+                            result.error("no_path", "APK path missing", null)
+                            return@setMethodCallHandler
+                        }
+                        val apk = File(path)
+                        if (!apk.exists() || apk.length() == 0L) {
+                            result.error("missing_apk", "APK not found or empty", null)
+                            return@setMethodCallHandler
+                        }
+                        // Sanity: refuses any update not signed with this app's
+                        // cert — protects against a truncated/mismatched APK.
+                        val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", apk)
+                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(uri, "application/vnd.android.package-archive")
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        startActivity(intent)
+                        result.success(null)
                     }
                     else -> result.notImplemented()
                 }

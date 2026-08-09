@@ -69,7 +69,7 @@ flutter test           # MUST pass before any PR
 flutter build apk      # sanity check before merge to main
 ```
 
-**CI:** none (removed 2026-08-06 — free-tier Actions not reliable). Test gate = local `flutter analyze` + `flutter test`. Note: `flutter test` is blocked on Windows hosts by a sqlite3 native-assets Flutter tool bug (see `docs/troubleshooting.md`).
+**CI:** none (removed 2026-08-06 — free-tier Actions not reliable). Test gate = local `flutter analyze` + `flutter test`. **Do NOT run the full `flutter test` suite** — it crashes on Windows hosts via a sqlite3 native-assets Flutter tool bug (see `docs/troubleshooting.md`). Test individual files or a named batch instead, e.g. `flutter test test/update_checker_test.dart` or `flutter test test/money_test.dart test/update_checker_test.dart`.
 
 ## Data & privacy stance (product decision)
 
@@ -148,6 +148,14 @@ flutter build apk --release --split-per-abi
 # 3. Arm64 APK → build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
 ```
 
+- **Auto-update trigger = version bump.** The in-app update checker compares
+  installed `versionName` to the latest GitHub release tag and only prompts when
+  a newer release with a `kharcha-armv8a-release.apk` asset exists. If you push
+  a fix without bumping `version` in `pubspec.yaml`, users never update. Every
+  release = bump `version:` first, upload the APK to the same-tag release.
+- **Rate caps (in-app): 1 auto-check/day + 3 manual checks/hour** per device.
+  GitHub's unauthenticated limit is 60 req/hr per IP, so 1000 devices never
+  flag the account; 429 fails silent. Do not raise these.
 - **Always `--split-per-abi`.** `--target-platform android-arm64` produced a
   broken universal APK ("package is invalid" on install).
 - **`packaging { jniLibs { useLegacyPackaging = false } }`** in
