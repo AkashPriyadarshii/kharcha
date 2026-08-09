@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'money.dart';
+
 /// A UPI/bank payment parsed from a notification's text. Rule-based, no AI.
 /// Covers UPI apps, bank apps, and messaging apps (amount + payment keyword).
 class ParsedUpiPayment {
@@ -57,8 +59,8 @@ ParsedUpiPayment? parseUpiNotification(String text) {
 
   final amountMatch = _amountRe.firstMatch(text);
   if (amountMatch == null) return null;
-  final amount = double.parse(amountMatch.group(1)!.replaceAll(',', ''));
-  if (amount <= 0) return null;
+  final amount = parseAmount(amountMatch.group(1)!.replaceAll(',', ''));
+  if (amount == null || amount <= 0) return null;
 
   final isIncome = _receiveRe.hasMatch(text);
   final isSpend = _spendRe.hasMatch(text);
