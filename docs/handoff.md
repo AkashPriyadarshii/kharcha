@@ -12,7 +12,7 @@
 
 ## Current handoff (as of 2026-08-09)
 
-**To: whoever picks up next.** v0.2.3 live-bug fixes are in. **Critical: UPI capture was dead since v0.1.1** — Kotlin wrote `cacheDir/upi_inbox.jsonl`, Dart read `getApplicationCacheDirectory()` (`code_cache/`) — different dirs, inbox never drained. Dart now reads `getTemporaryDirectory()` (= getCacheDir). Capture now also drains every 30s (real-time while open). Feature deletes now tombstone-sync (schema v11 `deleted_features`); app lock fixed via `FlutterFragmentActivity`; profile label "Source" not "Open source" (LICENSE is all-rights-reserved). Next: on-device verify capture + lock + push, apply Supabase migrations 0002-0004 if not applied. Full context in `docs/state.md`.
+**To: whoever picks up next.** v0.2.2 live-bug fixes are in. **Critical: UPI capture was dead since v0.1.1** — Kotlin wrote `cacheDir/upi_inbox.jsonl`, Dart read `getApplicationCacheDirectory()` (`code_cache/`) — different dirs, inbox never drained. Dart now reads `getTemporaryDirectory()` (= getCacheDir). Capture now also drains every 30s (real-time while open). Feature deletes now tombstone-sync (schema v11 `deleted_features`); app lock fixed via `FlutterFragmentActivity`; profile label "Source" not "Open source" (LICENSE is all-rights-reserved). Next: on-device verify capture + lock + push, apply Supabase migrations 0002-0004 if not applied. Full context in `docs/state.md`.
 
 ## Known gotchas
 
