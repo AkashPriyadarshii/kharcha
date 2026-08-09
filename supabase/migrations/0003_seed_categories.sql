@@ -7,6 +7,7 @@
 begin;
 
 insert into public.categories (id, name, emoji, color, is_custom, sort_order, is_income)
+overriding system value
 select v.id, v.name, v.emoji, v.color, false, v.sort_order, v.is_income
 from (values
   (1,  'Food',           '🍔', '#E86A17', 0, false),

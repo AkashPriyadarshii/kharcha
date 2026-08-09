@@ -14,6 +14,20 @@ String featureTableFor(SyncKind kind) => switch (kind) {
       SyncKind.debts => 'debts',
     };
 
+/// A custom category as stored on Supabase (user-scoped). Builtins are shared
+/// reference data (seeded everywhere) and never sent. The server id is read
+/// back after insert — local id ≠ server id, so budgets/recurring translate
+/// category_id through remoteId.
+Map<String, dynamic> customCategoryToRemoteJson(Category c, String userId) => {
+      'user_id': userId,
+      'name': c.name,
+      'emoji': c.emoji,
+      'color': c.color,
+      'is_custom': true,
+      'sort_order': c.sortOrder,
+      'is_income': c.isIncome,
+    };
+
 /// Local feature row → Supabase payload (snake_case, user-scoped). The local
 /// `id` is omitted — remote identity is the identity column. Local-only rows
 /// (custom categories) are filtered by the engine before this is reached.

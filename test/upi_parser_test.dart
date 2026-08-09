@@ -21,8 +21,24 @@ void main() {
       expect(p.upiRef, '9876543210');
     });
 
-    test('money received → null (no capture of income)', () {
-      expect(parseUpiNotification('₹5000 received from Akash. UPI Ref 123456789012'), isNull);
+    test('money received → captured as income', () {
+      final p = parseUpiNotification('₹5000 received from Akash. UPI Ref 123456789012');
+      expect(p, isNotNull);
+      expect(p!.amount, 5000);
+      expect(p.isIncome, isTrue);
+      expect(p.upiRef, '123456789012');
+    });
+
+    test('no payment keyword → null (casual chat)', () {
+      expect(parseUpiNotification('Bhai ₹200 bhej de'), isNull);
+    });
+
+    test('bank debit message → captured', () {
+      final p = parseUpiNotification('Rs. 2,500.00 debited from A/c XX1234 at Amazon on 09-Aug-26');
+      expect(p, isNotNull);
+      expect(p!.amount, 2500);
+      expect(p.isIncome, isFalse);
+      expect(p.merchant, 'Amazon');
     });
 
     test('no amount → null', () {
@@ -34,6 +50,14 @@ void main() {
       expect(p, isNotNull);
       expect(p!.merchant, 'Unknown');
       expect(p.upiRef, '1111111111');
+    });
+
+    test('GPay money-sent format → captured, merchant parsed', () {
+      final p = parseUpiNotification('Money sent · ₹200 · Swiggy · UPI Ref 987654321012');
+      expect(p, isNotNull);
+      expect(p!.amount, 200);
+      expect(p.merchant, 'Swiggy');
+      expect(p.upiRef, '987654321012');
     });
   });
 

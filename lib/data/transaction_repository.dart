@@ -178,11 +178,13 @@ class TransactionRepository {
 
   /// Inserts a notification-captured payment (source = notification).
   /// Skips when [upiRef] is already stored — dedupe. Returns null when skipped.
+  /// [isIncome] true → money in (received/credited); categorized to income.
   Future<Transaction?> insertCaptured({
     required double amount,
     required String merchant,
     String? upiRef,
     required DateTime txnDate,
+    bool isIncome = false,
   }) async {
     final trimmedRef = upiRef?.trim();
     if (trimmedRef != null && trimmedRef.isNotEmpty && await existsUpiRef(trimmedRef)) {
@@ -193,6 +195,14 @@ class TransactionRepository {
       merchant: merchant,
       rules: await _db.select(_db.rules).get(),
     );
+    // Income rows get the first builtin income category ("Other income").
+    if (isIncome) {
+      final income = await (_db.select(_db.categories)
+            ..where((c) => c.isIncome.equals(true))
+            ..orderBy([(t) => OrderingTerm(expression: t.sortOrder)]))
+          .getSingleOrNull();
+      categoryId = income?.id ?? categoryId;
+    }
 
     final id = await _db.into(_db.transactions).insert(
           TransactionsCompanion.insert(
@@ -204,6 +214,7 @@ class TransactionRepository {
             upiRef: Value(trimmedRef),
             source: 'notification',
             txnDate: txnDate,
+            isIncome: Value(isIncome),
           ),
         );
     final row = await (_db.select(_db.transactions)..where((t) => t.id.equals(id))).getSingle();
@@ -417,7 +428,12 @@ class TransactionRepository {
 
   Future<void> updateCategory(int id, {required String name, required String emoji, required String color}) =>
       (_db.update(_db.categories)..where((c) => c.id.equals(id)))
-          .write(CategoriesCompanion(name: Value(name), emoji: Value(emoji), color: Value(color)));
+          .write(CategoriesCompanion(
+            name: Value(name),
+            emoji: Value(emoji),
+            color: Value(color),
+            dirty: const Value(true), // edits re-push (custom cats only — builtins read-only)
+          ));
 
   /// Deletes a category and detaches its transactions (they become uncategorized).
   Future<void> deleteCategory(int id) => _db.transaction(() async {
@@ -707,35 +723,60 @@ class TransactionRepository {
     }
   }
 
-  /// Whether a local feature row is shareable to Supabase. Rows referencing a
-  /// custom category (no server mirror) stay local — the remote has no such id.
-  Future<bool> featureRowShareable(SyncKind kind, dynamic row) async {
-    final categoryId = switch (kind) {
-      SyncKind.budgets => (row as Budget).categoryId,
-      SyncKind.recurring => (row as RecurringTransaction).categoryId,
-      _ => null,
-    };
-    if (categoryId == null) return true;
-    final cat = await (_db.select(_db.categories)..where((c) => c.id.equals(categoryId)))
-        .getSingleOrNull();
-    return cat != null && !cat.isCustom;
+  /// Custom categories pending push. Builtins are shared reference data
+  /// (seeded identically everywhere) — never pushed.
+  Future<List<Category>> dirtyCustomCategories() {
+    return (_db.select(_db.categories)
+          ..where((c) => c.isCustom.equals(true) & c.dirty.equals(true)))
+        .get();
   }
 
-  /// Records that [id] is local-only (custom category) and stops retrying.
-  Future<void> markFeatureLocalOnly(SyncKind kind, int id) {
-    switch (kind) {
-      case SyncKind.budgets:
-        return (_db.update(_db.budgets)..where((b) => b.id.equals(id)))
-            .write(const BudgetsCompanion(dirty: Value(false)));
-      case SyncKind.recurring:
-        return (_db.update(_db.recurringTransactions)..where((r) => r.id.equals(id)))
-            .write(const RecurringTransactionsCompanion(dirty: Value(false)));
-      case SyncKind.wallets:
-      case SyncKind.objectives:
-      case SyncKind.debts:
-        return Future.value();
-    }
+  /// Marks [id] pushed: server id recorded, no longer dirty.
+  Future<void> markCategorySynced(int id, int remoteId) =>
+      (_db.update(_db.categories)..where((c) => c.id.equals(id)))
+          .write(CategoriesCompanion(dirty: const Value(false), remoteId: Value(remoteId)));
+
+  /// Local category id → server id. Null for builtins (shared, same id on
+  /// both sides — caller uses the local id directly) or unsynced customs.
+  Future<int?> categoryRemoteId(int localCategoryId) async {
+    final c = await (_db.select(_db.categories)..where((x) => x.id.equals(localCategoryId)))
+        .getSingleOrNull();
+    return (c == null || !c.isCustom) ? null : c.remoteId;
   }
+
+  /// Server category id → local custom category id. Null when no local custom
+  /// has that remote id (builtins share ids — caller keeps the raw id).
+  Future<int?> categoryLocalId(int remoteCategoryId) async {
+    final c = await (_db.select(_db.categories)..where((x) => x.remoteId.equals(remoteCategoryId)))
+        .getSingleOrNull();
+    return c?.id;
+  }
+
+  Future<Category?> findCategoryByRemoteId(int remoteId) =>
+      (_db.select(_db.categories)..where((c) => c.remoteId.equals(remoteId))).getSingleOrNull();
+
+  Future<void> insertCategoryFromRemote(Map<String, Object?> map) =>
+      _db.into(_db.categories).insert(CategoriesCompanion(
+            id: Value(map['id']! as int),
+            name: Value(map['name']! as String),
+            emoji: Value(map['emoji']! as String),
+            color: Value(map['color']! as String),
+            isCustom: Value(map['isCustom']! as bool),
+            sortOrder: Value(map['sortOrder']! as int),
+            isIncome: Value(map['isIncome']! as bool),
+            dirty: const Value(false),
+            remoteId: Value(map['id']! as int),
+          ));
+
+  Future<void> updateCategoryFromRemote(int localId, Map<String, Object?> map) =>
+      (_db.update(_db.categories)..where((c) => c.id.equals(localId))).write(CategoriesCompanion(
+            name: Value(map['name']! as String),
+            emoji: Value(map['emoji']! as String),
+            color: Value(map['color']! as String),
+            sortOrder: Value(map['sortOrder']! as int),
+            dirty: const Value(false),
+            remoteId: Value(map['id']! as int),
+          ));
 
   /// A remote feature row → local payload. [SyncKind] chooses the table.
   ///

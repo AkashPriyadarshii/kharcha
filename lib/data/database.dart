@@ -16,6 +16,11 @@ class Categories extends Table {
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   /// Income category (Salary, Bonus…) — only offered when adding income.
   BoolColumn get isIncome => boolean().withDefault(const Constant(false))();
+  /// Sync state (schema v10): custom categories push to Supabase (server id
+  /// differs from local → remoteId); builtins are shared reference data and
+  /// never pushed (seeded identically on every device + server).
+  BoolColumn get dirty => boolean().withDefault(const Constant(true))();
+  IntColumn get remoteId => integer().nullable()();
 }
 
 /// Merchants: normalized name + default category.
@@ -138,8 +143,8 @@ class DeletedTransactions extends Table {
 }
 
 /// Budgets: per-category monthly limits + alert thresholds. Synced to Supabase
-/// (schema v9); category_id is the shared seeded category id (custom-category
-/// budgets stay local-only — their categories aren't on the server).
+/// (schema v9); category_id is the shared seeded category id. Custom categories
+/// now sync too (v10) — budgets reference their remote id on the server.
 class Budgets extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get categoryId => integer().references(Categories, #id)();
@@ -159,7 +164,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase({QueryExecutor? executor}) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -214,6 +219,13 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(budgets, budgets.updatedAt);
             await m.addColumn(budgets, budgets.dirty);
             await m.addColumn(budgets, budgets.remoteId);
+          }
+          if (from < 10) {
+            // v0.2.1: categories sync. Custom categories now back up to
+            // Supabase (server id ≠ local id → remoteId). Builtins default
+            // dirty=true but the engine skips them (shared reference data).
+            await m.addColumn(categories, categories.dirty);
+            await m.addColumn(categories, categories.remoteId);
           }
         },
       );
