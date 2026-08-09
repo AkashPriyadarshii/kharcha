@@ -38,11 +38,30 @@ android {
         }
     }
 
+    signingConfigs {
+        // Real release keystore — generated 2026-08-09, back up
+        // android/app/kharcha-release.jks + android/key.properties. Losing
+        // either means you can't update already-installed builds.
+        create("release") {
+            val props = java.util.Properties().apply {
+                val f = rootProject.file("key.properties")
+                if (f.exists()) f.inputStream().use { load(it) }
+            }
+            storeFile = if (props.containsKey("storeFile")) {
+                rootProject.file(props.getProperty("storeFile"))
+            } else null
+            storePassword = props.getProperty("storePassword") ?: ""
+            keyAlias = props.getProperty("keyAlias") ?: ""
+            keyPassword = props.getProperty("keyPassword") ?: ""
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Falls back to debug signing if key.properties is missing
+            // (CI, fresh clone) so `flutter run --release` still works.
+            val hasKey = rootProject.file("key.properties").exists()
+            signingConfig = if (hasKey) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
         }
     }
 }
