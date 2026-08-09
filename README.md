@@ -75,4 +75,4 @@ flutter run          # on Android 12+ device/emulator
 
 ## License
 
-Private. Not published.
+Source-available. All rights reserved. This code is public for viewing only — no use, reproduction, or derivative works permitted. See LICENSE for full terms.
