@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -43,12 +45,12 @@ android {
         // android/app/kharcha-release.jks + android/key.properties. Losing
         // either means you can't update already-installed builds.
         create("release") {
-            val props = java.util.Properties().apply {
+            val props = Properties().apply {
                 val f = rootProject.file("key.properties")
                 if (f.exists()) f.inputStream().use { load(it) }
             }
             storeFile = if (props.containsKey("storeFile")) {
-                rootProject.file(props.getProperty("storeFile"))
+                file(props.getProperty("storeFile")) // app module dir → android/app/
             } else null
             storePassword = props.getProperty("storePassword") ?: ""
             keyAlias = props.getProperty("keyAlias") ?: ""
