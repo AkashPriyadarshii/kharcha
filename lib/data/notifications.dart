@@ -28,10 +28,14 @@ class Notifications {
   /// Channel + permission + timezone once. Must run before any schedule.
   Future<void> init() async {
     tz.initializeTimeZones();
-    // Best-effort device tz; stays UTC when the lookup fails (rare).
     try {
-      tz.setLocalLocation(tz.getLocation((await FlutterTimezone.getLocalTimezone()).identifier));
-    } catch (_) {}
+      tz.setLocalLocation(
+          tz.getLocation((await FlutterTimezone.getLocalTimezone()).identifier));
+    } catch (_) {
+      // India-first: a failed lookup must not shift 9PM by 5.5h (UTC). The
+      // repeat component keeps the schedule daily/weekly from this anchor.
+      tz.setLocalLocation(tz.getLocation('Asia/Kolkata'));
+    }
     await _plugin.initialize(const InitializationSettings(
       android: AndroidInitializationSettings('@mipmap/ic_launcher'),
     ));
@@ -89,22 +93,10 @@ class Notifications {
   }
 
   /// Next occurrence of [hour]:00 — today if still ahead, else tomorrow.
-  tz.TZDateTime _nextAt({required int hour}) {
-    final now = tz.TZDateTime.now(tz.local);
-    var at = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour);
-    if (!at.isAfter(now)) {
-      at = at.add(const Duration(days: 1));
-    }
-    return at;
-  }
+  tz.TZDateTime _nextAt({required int hour}) => nextDailyAt(tz.TZDateTime.now(tz.local), hour: hour);
 
-  /// Next Sunday 21:00.
-  tz.TZDateTime _nextSunday() {
-    final now = tz.TZDateTime.now(tz.local);
-    final daysToSunday = (DateTime.sunday - now.weekday) % 7;
-    final sunday = now.add(Duration(days: daysToSunday));
-    return tz.TZDateTime(tz.local, sunday.year, sunday.month, sunday.day, 21);
-  }
+  /// Next Sunday 21:00 still in the future.
+  tz.TZDateTime _nextSunday() => nextSundayAt(tz.TZDateTime.now(tz.local));
 
   static const _details = NotificationDetails(
     android: AndroidNotificationDetails(
@@ -115,6 +107,30 @@ class Notifications {
       priority: Priority.high,
     ),
   );
+}
+
+/// Next occurrence of [hour]:00 — today if still ahead, else tomorrow. Pure,
+/// takes [now] so tests don't depend on the wall clock.
+tz.TZDateTime nextDailyAt(tz.TZDateTime now, {required int hour}) {
+  var at = tz.TZDateTime(now.location, now.year, now.month, now.day, hour);
+  if (!at.isAfter(now)) {
+    at = at.add(const Duration(days: 1));
+  }
+  return at;
+}
+
+/// Next Sunday [hour]:00 still in the future. `(x % 7)` can yield 0 — today
+/// 21:00 — which is already past on a Sunday evening and makes `zonedSchedule`
+/// throw (schedule then silently lost until a restart). Pure, takes [now].
+tz.TZDateTime nextSundayAt(tz.TZDateTime now, {int hour = 21}) {
+  var daysToSunday = (DateTime.sunday - now.weekday) % 7;
+  var at = tz.TZDateTime(now.location, now.year, now.month, now.day + daysToSunday, hour);
+  if (!at.isAfter(now)) {
+    // Today is Sunday but the hour already passed → jump a full week ahead.
+    daysToSunday += 7;
+    at = tz.TZDateTime(now.location, now.year, now.month, now.day + daysToSunday, hour);
+  }
+  return at;
 }
 
 /// Daily summary body. Pure — unit-testable.
