@@ -10,6 +10,7 @@ import '../data/capture_inbox.dart';
 import '../data/sync_engine.dart';
 import '../data/transaction_repository.dart';
 import 'quick_add_dialog.dart';
+import 'update_dialog.dart';
 import 'tabs/budget_tab.dart';
 import 'tabs/home_tab.dart';
 import 'tabs/profile_tab.dart';
@@ -39,10 +40,14 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     super.initState();
     _drainInbox();
     // Auto-backup: flush any dirty rows every 30s while the app is open, so a
-    // budget/edit made a minute ago reaches Supabase without waiting for a
+    // budget/edit made a minute ago reaches Supabase without reaching a
     // trigger. Offline failures no-op (rows stay dirty, retried next tick).
     _syncTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       unawaited(_drainInbox());
+    });
+    // Auto-update: check once per open, silent unless a real newer APK exists.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(checkForUpdate(context));
     });
   }
 

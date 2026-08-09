@@ -2,8 +2,9 @@
 
 All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
 
-## [Unreleased]
+## [v0.2.3] — 2026-08-09
 
+- **Auto-update** — app checks GitHub releases once per app open (throttled to **once/day auto + 3/hr manual** from Profile); prompts to download + install when a newer release with a real `kharcha-armv8a-release.apk` asset exists. `REQUEST_INSTALL_PACKAGES` + FileProvider in AndroidManifest, `installApk` + `getVersion` channel in MainActivity, `update_checker.dart` (semver compare, asset-size verify, silent-fail on 429/offline). `test/update_checker_test.dart` covers version comparison. Trigger = pubspec version bump; no bump = no prompt. Rate caps keep 1000 devices under GitHub's per-IP limit.
 - **Name fix** — display name now reads `name` OR `full_name` from Supabase user metadata (Google OAuth stores `full_name`; the in-app edit writes `name`). Previously always fell back to "Kharcha user".
 - **App lock fix** — returning from the biometric prompt no longer re-locks the screen; the lifecycle observer distinguishes the auth prompt's own background from a real user background (`_wasLockedAtPause`).
 - **Home UX pass** — removed the misleading bell icon (it opened capture *settings*, not notifications); new pencil icon in the AppBar opens a manage sheet (categories, wallets, subscriptions, goals, credit/debt, split) without digging through Profile; Profile gains an **Auto-capture setup** tile that re-runs onboarding (capture/notifications/battery) anytime; sign-out now asks for confirmation before leaving.
