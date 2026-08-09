@@ -51,6 +51,8 @@ class AppLock {
       options: const AuthenticationOptions(
         biometricOnly: false,
         useErrorDialogs: true,
+        // stickyAuth keeps the prompt up across background/foreground — without
+        // it the biometric dialog's own backgrounding can cancel auth.
         stickyAuth: true,
       ),
     );

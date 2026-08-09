@@ -2,6 +2,12 @@
 
 All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
 
+## [Unreleased]
+
+- **Name fix** — display name now reads `name` OR `full_name` from Supabase user metadata (Google OAuth stores `full_name`; the in-app edit writes `name`). Previously always fell back to "Kharcha user".
+- **App lock fix** — returning from the biometric prompt no longer re-locks the screen; the lifecycle observer distinguishes the auth prompt's own background from a real user background (`_wasLockedAtPause`).
+- **Home UX pass** — removed the misleading bell icon (it opened capture *settings*, not notifications); new pencil icon in the AppBar opens a manage sheet (categories, wallets, subscriptions, goals, credit/debt, split) without digging through Profile; Profile gains an **Auto-capture setup** tile that re-runs onboarding (capture/notifications/battery) anytime; sign-out now asks for confirmation before leaving.
+
 ## [v0.2.2] — 2026-08-09
 
 - **Real release signing** — generated `kharcha-release.jks` keystore, wired via gitignored `android/key.properties`. Release builds sign with it (debug fallback only when key.properties absent). Fixes reinstall-over-upgrade failures; survives the Android 16 24h sideload wait.
