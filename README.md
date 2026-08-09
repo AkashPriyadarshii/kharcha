@@ -1,6 +1,6 @@
 # Kharcha — India's UPI Expense Tracker for Android
 
-**by Akash Priyadarshi** · [github.com/AkashPriyadarshii](https://github.com/AkashPriyadarshii) · [akashpriyadarshi.vercel.app](https://akashpriyadarshi.vercel.app)
+**by Akash Priyadarshi & Priyaranjan** · [github.com/AkashPriyadarshii](https://github.com/AkashPriyadarshii) · [github.com/priyaranjan122002](https://github.com/priyaranjan122002) · [akashpriyadarshi.vercel.app](https://akashpriyadarshi.vercel.app)
 
 **🌐 Website:** [**kharcha.github.io**](https://AkashPriyadarshii.github.io/kharcha/) — features, screenshots, FAQ, direct download.
 
