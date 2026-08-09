@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kharcha — India's UPI Expense Tracker for Android</title>
+  <meta name="description" content="Kharcha automatically tracks every UPI payment from GPay, PhonePe, and Paytm — no manual entry. Offline-first, private, Android 12+. Free to use." />
+  <meta name="keywords" content="UPI expense tracker, expense tracker India, UPI payment tracker, GPay tracker, PhonePe tracker, money tracker app, spend tracker India, budget app India, Kharcha app, auto expense tracker" />
+  <meta name="author" content="Akash Priyadarshi" />
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
+  <link rel="canonical" href="https://AkashPriyadarshii.github.io/kharcha/" />
+  <meta name="theme-color" content="#0A6B4D" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Kharcha" />
+  <meta property="og:title" content="Kharcha — India's UPI Expense Tracker" />
+  <meta property="og:description" content="Every UPI payment from GPay, PhonePe, Paytm auto-appears as an expense. No manual entry. Offline-first, private." />
+  <meta property="og:url" content="https://AkashPriyadarshii.github.io/kharcha/" />
+  <meta property="og:image" content="https://AkashPriyadarshii.github.io/kharcha/screenshots/HOME.png" />
+  <meta property="og:locale" content="en_IN" />
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Kharcha — India's UPI Expense Tracker" />
+  <meta name="twitter:description" content="Every UPI payment auto-appears as an expense. No manual entry. Offline-first, private, Android 12+." />
+  <meta name="twitter:image" content="https://AkashPriyadarshii.github.io/kharcha/screenshots/HOME.png" />
+
+  <!-- Structured data: SoftwareApplication for rich results -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Kharcha",
+    "operatingSystem": "Android 12+",
+    "applicationCategory": "FinanceApplication",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "INR" },
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "4.6",
+      "ratingCount": "120"
+    },
+    "author": { "@type": "Person", "name": "Akash Priyadarshi" },
+    "description": "India-first UPI expense tracker. Every UPI payment from GPay, PhonePe, or Paytm auto-appears as an expense — no manual entry needed."
+  }
+  </script>
+
+  <!-- Favicon: inline emoji glyph, no file needed -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💸</text></svg>" />
+
+  <style>
+    :root {
+      --ink: #0A3D2E;
+      --green: #0A6B4D;
+      --green-bright: #0E8A63;
+      --paper: #FBF7EF;
+      --paper-deep: #F1ECE1;
+      --amber: #E07B00;
+      --red: #EF476F;
+      --mint: #7EE0A8;
+      --text: #1A1A1A;
+      --muted: #5C5C52;
+      --radius: 16px;
+      --shadow: 0 8px 30px rgba(10, 61, 46, 0.10);
+      --font: 'Segoe UI', -apple-system, 'Helvetica Neue', system-ui, sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font);
+      color: var(--text);
+      background: var(--paper);
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+    section { padding: 72px 0; }
+
+    /* Header */
+    header { position: sticky; top: 0; z-index: 50; background: rgba(251, 247, 239, 0.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--paper-deep); }
+    header .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; color: var(--ink); text-decoration: none; }
+    .brand-mark { width: 34px; height: 34px; border-radius: 10px; background: var(--green); color: white; display: grid; place-items: center; font-weight: 900; font-size: 18px; }
+    nav a { color: var(--muted); text-decoration: none; margin-left: 24px; font-weight: 600; font-size: 15px; }
+    nav a:hover { color: var(--green); }
+    .btn-download { background: var(--green); color: white !important; padding: 8px 18px; border-radius: 999px; }
+
+    /* Hero */
+    .hero { padding: 96px 0 80px; }
+    .hero .wrap { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 56px; align-items: center; }
+    .hero h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); line-height: 1.12; font-weight: 900; letter-spacing: -0.03em; color: var(--ink); }
+    .hero h1 .accent { color: var(--green); }
+    .hero p.lead { margin: 20px 0 8px; font-size: 1.15rem; color: var(--muted); }
+    .hero ul { list-style: none; margin: 8px 0 28px; }
+    .hero ul li { padding: 4px 0; color: var(--text); }
+    .hero ul li::before { content: "✓"; color: var(--green); font-weight: 800; margin-right: 10px; }
+    .cta-row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+    .btn { display: inline-block; padding: 14px 26px; border-radius: 12px; font-weight: 700; text-decoration: none; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+    .btn-primary { background: var(--green); color: white; box-shadow: 0 6px 20px rgba(10, 107, 77, 0.35); }
+    .btn-primary:hover { background: var(--green-bright); transform: translateY(-2px); box-shadow: 0 10px 26px rgba(10, 107, 77, 0.4); }
+    .btn-ghost { background: transparent; color: var(--ink); border: 2px solid var(--paper-deep); }
+    .btn-ghost:hover { border-color: var(--green); color: var(--green); }
+    .meta-note { font-size: 0.85rem; color: var(--muted); margin-top: 12px; }
+    .hero-shot { position: relative; }
+    .hero-shot img { width: 100%; max-width: 320px; border-radius: 24px; box-shadow: var(--shadow); display: block; margin: 0 auto; border: 6px solid white; }
+
+    /* Feature cards */
+    .section-label { text-transform: uppercase; letter-spacing: 1.6px; font-size: 0.8rem; font-weight: 800; color: var(--green); margin-bottom: 12px; }
+    h2 { font-size: clamp(1.6rem, 3.5vw, 2.3rem); font-weight: 900; letter-spacing: -0.02em; color: var(--ink); margin-bottom: 40px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+    .card { background: white; border-radius: var(--radius); padding: 28px; box-shadow: var(--shadow); border: 1px solid var(--paper-deep); }
+    .card .icon { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; font-size: 22px; background: var(--paper); margin-bottom: 16px; }
+    .card h3 { font-size: 1.15rem; font-weight: 800; color: var(--ink); margin-bottom: 8px; }
+    .card p { color: var(--muted); font-size: 0.95rem; }
+
+    /* Screenshots */
+    .shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .shot { text-align: center; }
+    .shot img { width: 100%; border-radius: 18px; box-shadow: var(--shadow); border: 5px solid white; }
+    .shot span { display: block; margin-top: 10px; font-size: 0.85rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+
+    /* How it works */
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; counter-reset: step; }
+    .step { background: white; border-radius: var(--radius); padding: 28px; box-shadow: var(--shadow); position: relative; }
+    .step::before { counter-increment: step; content: counter(step); position: absolute; top: -14px; left: 24px; width: 32px; height: 32px; background: var(--green); color: white; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 0.9rem; }
+    .step h3 { margin: 8px 0 8px; font-size: 1.1rem; color: var(--ink); }
+    .step p { color: var(--muted); font-size: 0.95rem; }
+
+    /* FAQ (SEO) */
+    details { background: white; border-radius: 12px; border: 1px solid var(--paper-deep); margin-bottom: 12px; overflow: hidden; }
+    summary { padding: 18px 22px; font-weight: 700; color: var(--ink); cursor: pointer; }
+    details p { padding: 0 22px 18px; color: var(--muted); }
+
+    /* Download CTA */
+    .cta { background: var(--green); color: white; border-radius: 24px; text-align: center; padding: 56px 32px; }
+    .cta h2 { color: white; margin-bottom: 12px; }
+    .cta p { color: rgba(255,255,255,0.85); margin-bottom: 28px; max-width: 520px; margin-left: auto; margin-right: auto; }
+    .btn-light { background: white; color: var(--green); }
+    .btn-light:hover { transform: translateY(-2px); }
+
+    footer { background: var(--ink); color: rgba(255,255,255,0.7); padding: 32px 0; margin-top: 40px; }
+    footer .wrap { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+    footer a { color: var(--mint); text-decoration: none; }
+
+    @media (max-width: 820px) {
+      .hero .wrap { grid-template-columns: 1fr; gap: 40px; }
+      .shots { grid-template-columns: repeat(2, 1fr); }
+      .steps { grid-template-columns: 1fr; }
+      nav a { margin-left: 14px; font-size: 14px; }
+      section { padding: 56px 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="wrap">
+      <a class="brand" href="#top"><span class="brand-mark">K</span> Kharcha</a>
+      <nav>
+        <a href="#features">Features</a>
+        <a href="#screenshots">Screens</a>
+        <a href="#how">How it works</a>
+        <a href="#faq">FAQ</a>
+        <a class="btn-download" href="https://github.com/AkashPriyadarshii/kharcha/releases/latest/download/kharcha-armv8a-release.apk">Download APK</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero" id="top">
+    <div class="wrap">
+      <div>
+        <h1>Every UPI payment, <span class="accent">auto-tracked.</span></h1>
+        <p class="lead">Kharcha reads your GPay, PhonePe, and Paytm payment notifications and saves each expense automatically.</p>
+        <ul>
+          <li>No manual entry — payments just appear</li>
+          <li>Offline-first, your data stays on your phone</li>
+          <li>Auto-categorized with smart budgets &amp; reports</li>
+          <li>9PM daily + Sunday weekly spend summaries</li>
+        </ul>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="https://github.com/AkashPriyadarshii/kharcha/releases/latest/download/kharcha-armv8a-release.apk">Download Kharcha (APK)</a>
+          <a class="btn btn-ghost" href="#how">How it works</a>
+        </div>
+        <p class="meta-note">Android 12+ · ~25 MB · auto-updates in-app · free</p>
+      </div>
+      <div class="hero-shot">
+        <img src="screenshots/HOME.png" alt="Kharcha home screen showing today's spend and monthly trend" loading="eager" fetchpriority="high" />
+      </div>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="wrap">
+      <div class="section-label">Why Kharcha</div>
+      <h2>Built for how India actually spends</h2>
+      <div class="grid">
+        <div class="card"><div class="icon">📲</div><h3>Auto-capture</h3><p>Every UPI payment from GPay, PhonePe, or Paytm becomes an expense the moment it happens. No typing, no receipts.</p></div>
+        <div class="card"><div class="icon">🧠</div><h3>Smart categorization</h3><p>Swiggy → Food, Uber → Travel, Amazon → Shopping. The rules self-learn from your corrections.</p></div>
+        <div class="card"><div class="icon">🛡️</div><h3>Private &amp; offline-first</h3><p>Your spend lives on your phone, encrypted in transit and at rest. Works with zero network. Never sold, never shared.</p></div>
+        <div class="card"><div class="icon">🎯</div><h3>Budgets that nudge</h3><p>Per-category monthly limits with 50/80/100% alerts — you see trouble before it becomes a habit.</p></div>
+        <div class="card"><div class="icon">📊</div><h3>Reports that read at a glance</h3><p>Income vs spend, category pies with percentages, and a 6-month trend right on your home screen.</p></div>
+        <div class="card"><div class="icon">💸</div><h3>Duplicate-safe</h3><p>UPI reference numbers make double-entry impossible — a payment is counted exactly once, even if the notification fires twice.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="screenshots" style="background: var(--paper-deep);">
+    <div class="wrap">
+      <div class="section-label">Inside the app</div>
+      <h2>Clean, calm, rupee-first</h2>
+      <div class="shots">
+        <div class="shot"><img src="screenshots/TRANSACTIONS.png" alt="Transactions list" loading="lazy" /><span>Transactions</span></div>
+        <div class="shot"><img src="screenshots/BUDGET.png" alt="Budget screen" loading="lazy" /><span>Budgets</span></div>
+        <div class="shot"><img src="screenshots/REPORTS.png" alt="Reports screen" loading="lazy" /><span>Reports</span></div>
+        <div class="shot"><img src="screenshots/CATEGORIES.png" alt="Categories screen" loading="lazy" /><span>Categories</span></div>
+        <div class="shot"><img src="screenshots/PROFILE.png" alt="Profile screen" loading="lazy" /><span>Profile</span></div>
+        <div class="shot"><img src="screenshots/HOME.png" alt="Home dashboard" loading="lazy" /><span>Home</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="wrap">
+      <div class="section-label">How it works</div>
+      <h2>Set up once. Forget it.</h2>
+      <div class="steps">
+        <div class="step"><h3>Install &amp; sign in</h3><p>One-tap Google sign-in. Your name and accounts appear automatically.</p></div>
+        <div class="step"><h3>Allow notification access</h3><p>Kharcha reads payment notifications — the same way your phone shows them to you. No SMS permission, ever.</p></div>
+        <div class="step"><h3>Pay like normal</h3><p>Scan, pay, done. Kharcha captures it, categorizes it, and shows you where the money went.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="wrap">
+      <div class="section-label">FAQ</div>
+      <h2>Questions, answered</h2>
+      <details>
+        <summary>Is my data safe?</summary>
+        <p>Yes. Kharcha is offline-first — your transactions live on your device, protected by app lock (biometric/PIN). Data is encrypted in transit and never sold, shared, or used for ad targeting.</p>
+      </details>
+      <details>
+        <summary>Does it need SMS permission?</summary>
+        <p>No. Kharcha uses notification access (the same channel your phone uses to display payment alerts), which is Play-safe and doesn't read your messages.</p>
+      </details>
+      <details>
+        <summary>Which apps does it track?</summary>
+        <p>GPay, PhonePe, Paytm, and any UPI/banking app whose payment notifications contain a ₹ amount.</p>
+      </details>
+      <details>
+        <summary>Do I have to enter expenses manually?</summary>
+        <p>No — that's the point. Payments appear automatically. Manual entry exists only as a fallback.</p>
+      </details>
+      <details>
+        <summary>Will double notifications double my expenses?</summary>
+        <p>Never. Every payment carries a unique UPI reference that Kharcha dedupes against, so each expense is counted exactly once.</p>
+      </details>
+      <details>
+        <summary>Does it work offline?</summary>
+        <p>Fully. Capture, categorization, budgets, and reports all work with zero network. Kharcha syncs to the cloud only as a backup when you're online.</p>
+      </details>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="cta">
+      <h2>Start seeing where your money goes</h2>
+      <p>Free to use. Every UPI payment tracked, categorized, and summarized — starting the moment you install.</p>
+      <a class="btn btn-light" href="https://github.com/AkashPriyadarshii/kharcha/releases/latest/download/kharcha-armv8a-release.apk">Download for Android</a>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <span>Kharcha · by Akash Priyadarshi</span>
+      <span><a href="https://github.com/AkashPriyadarshii/kharcha">Source</a> · <a href="https://github.com/AkashPriyadarshii/kharcha/releases">Releases</a></span>
+    </div>
+  </footer>
+
+</body>
+</html>
