@@ -9,7 +9,8 @@
   <meta name="author" content="Akash Priyadarshi" />
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
   <link rel="canonical" href="https://AkashPriyadarshii.github.io/kharcha/" />
-  <meta name="theme-color" content="#0A6B4D" />
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#0A6B4D" />
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0E120F" />
 
   <!-- Open Graph -->
   <meta property="og:type" content="website" />
@@ -54,15 +55,38 @@
       --green: #0A6B4D;
       --green-bright: #0E8A63;
       --paper: #FBF7EF;
-      --paper-deep: #F1ECE1;
+      --paper-deep: #EAE3D4;
       --amber: #E07B00;
       --red: #EF476F;
-      --mint: #7EE0A8;
-      --text: #1A1A1A;
-      --muted: #5C5C52;
+      --mint: #2E9E6B;
+      --text: #0F0F0C;
+      --muted: #4A4A41;
+      --card: #FFFFFF;
+      --card-border: #E3DCCB;
+      --img-border: #FFFFFF;
+      --header-bg: rgba(251, 247, 239, 0.92);
+      --toggle: #1A1A1A;
       --radius: 16px;
-      --shadow: 0 8px 30px rgba(10, 61, 46, 0.10);
+      --shadow: 0 8px 30px rgba(10, 61, 46, 0.14);
       --font: 'Segoe UI', -apple-system, 'Helvetica Neue', system-ui, sans-serif;
+    }
+    [data-theme="dark"] {
+      --ink: #C9F0DC;
+      --green: #2FBF8F;
+      --green-bright: #4CD9A8;
+      --paper: #0E120F;
+      --paper-deep: #1A211B;
+      --amber: #F2A83B;
+      --red: #FF5C7A;
+      --mint: #7EE0A8;
+      --text: #ECEFEB;
+      --muted: #A9B2AB;
+      --card: #171C18;
+      --card-border: #26312A;
+      --img-border: #1E2620;
+      --header-bg: rgba(14, 18, 15, 0.92);
+      --toggle: #0E120F;
+      --shadow: 0 8px 30px rgba(0, 0, 0, 0.55);
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html { scroll-behavior: smooth; }
@@ -77,13 +101,14 @@
     section { padding: 72px 0; }
 
     /* Header */
-    header { position: sticky; top: 0; z-index: 50; background: rgba(251, 247, 239, 0.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--paper-deep); }
+    header { position: sticky; top: 0; z-index: 50; background: var(--header-bg); backdrop-filter: blur(8px); border-bottom: 1px solid var(--card-border); }
     header .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; }
     .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; color: var(--ink); text-decoration: none; }
     .brand-mark { width: 34px; height: 34px; border-radius: 10px; background: var(--green); color: white; display: grid; place-items: center; font-weight: 900; font-size: 18px; }
     nav a { color: var(--muted); text-decoration: none; margin-left: 24px; font-weight: 600; font-size: 15px; }
     nav a:hover { color: var(--green); }
     .btn-download { background: var(--green); color: white !important; padding: 8px 18px; border-radius: 999px; }
+    .theme-toggle { background: var(--card); color: var(--text); border: 1px solid var(--card-border); border-radius: 999px; width: 38px; height: 38px; margin-left: 14px; cursor: pointer; font-size: 17px; line-height: 1; display: grid; place-items: center; }
 
     /* Hero */
     .hero { padding: 96px 0 80px; }
@@ -108,26 +133,26 @@
     .section-label { text-transform: uppercase; letter-spacing: 1.6px; font-size: 0.8rem; font-weight: 800; color: var(--green); margin-bottom: 12px; }
     h2 { font-size: clamp(1.6rem, 3.5vw, 2.3rem); font-weight: 900; letter-spacing: -0.02em; color: var(--ink); margin-bottom: 40px; }
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
-    .card { background: white; border-radius: var(--radius); padding: 28px; box-shadow: var(--shadow); border: 1px solid var(--paper-deep); }
-    .card .icon { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; font-size: 22px; background: var(--paper); margin-bottom: 16px; }
+    .card { background: var(--card); border-radius: var(--radius); padding: 28px; box-shadow: var(--shadow); border: 1px solid var(--card-border); }
+    .card .icon { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; font-size: 22px; background: var(--paper-deep); margin-bottom: 16px; }
     .card h3 { font-size: 1.15rem; font-weight: 800; color: var(--ink); margin-bottom: 8px; }
     .card p { color: var(--muted); font-size: 0.95rem; }
 
     /* Screenshots */
     .shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
     .shot { text-align: center; }
-    .shot img { width: 100%; border-radius: 18px; box-shadow: var(--shadow); border: 5px solid white; }
+    .shot img { width: 100%; border-radius: 18px; box-shadow: var(--shadow); border: 5px solid var(--img-border); }
     .shot span { display: block; margin-top: 10px; font-size: 0.85rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
 
     /* How it works */
     .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; counter-reset: step; }
-    .step { background: white; border-radius: var(--radius); padding: 28px; box-shadow: var(--shadow); position: relative; }
+    .step { background: var(--card); border-radius: var(--radius); padding: 28px; box-shadow: var(--shadow); position: relative; }
     .step::before { counter-increment: step; content: counter(step); position: absolute; top: -14px; left: 24px; width: 32px; height: 32px; background: var(--green); color: white; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 0.9rem; }
     .step h3 { margin: 8px 0 8px; font-size: 1.1rem; color: var(--ink); }
     .step p { color: var(--muted); font-size: 0.95rem; }
 
     /* FAQ (SEO) */
-    details { background: white; border-radius: 12px; border: 1px solid var(--paper-deep); margin-bottom: 12px; overflow: hidden; }
+    details { background: var(--card); border-radius: 12px; border: 1px solid var(--card-border); margin-bottom: 12px; overflow: hidden; }
     summary { padding: 18px 22px; font-weight: 700; color: var(--ink); cursor: pointer; }
     details p { padding: 0 22px 18px; color: var(--muted); }
 
@@ -135,7 +160,7 @@
     .cta { background: var(--green); color: white; border-radius: 24px; text-align: center; padding: 56px 32px; }
     .cta h2 { color: white; margin-bottom: 12px; }
     .cta p { color: rgba(255,255,255,0.85); margin-bottom: 28px; max-width: 520px; margin-left: auto; margin-right: auto; }
-    .btn-light { background: white; color: var(--green); }
+    .btn-light { background: var(--card); color: var(--green); }
     .btn-light:hover { transform: translateY(-2px); }
 
     footer { background: var(--ink); color: rgba(255,255,255,0.7); padding: 32px 0; margin-top: 40px; }
@@ -162,6 +187,7 @@
         <a href="#how">How it works</a>
         <a href="#faq">FAQ</a>
         <a class="btn-download" href="https://github.com/AkashPriyadarshii/kharcha/releases/latest/download/kharcha-armv8a-release.apk">Download APK</a>
+        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">🌙</button>
       </nav>
     </div>
   </header>
@@ -276,6 +302,31 @@
       <span><a href="https://github.com/AkashPriyadarshii/kharcha">Source</a> · <a href="https://github.com/AkashPriyadarshii/kharcha/releases">Releases</a></span>
     </div>
   </footer>
+
+  <script>
+    // No-FOUC: apply saved/system theme before first paint.
+    (function () {
+      try {
+        var saved = localStorage.getItem('theme');
+        if (saved === 'dark' || (saved !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      } catch (e) {}
+    })();
+    var toggle = document.getElementById('theme-toggle');
+    if (toggle) {
+      toggle.addEventListener('click', function () {
+        var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+        if (dark) {
+          document.documentElement.removeAttribute('data-theme');
+          localStorage.setItem('theme', 'light');
+        } else {
+          document.documentElement.setAttribute('data-theme', 'dark');
+          localStorage.setItem('theme', 'dark');
+        }
+      });
+    }
+  </script>
 
 </body>
 </html>
