@@ -4,6 +4,7 @@ All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
 
 ## [unreleased]
 
+- **Android-only** — `windows/` scaffold removed permanently (single platform, README updated).
 - **Full backup sync** — every feature table now syncs to Supabase (schema v9): budgets, wallets, recurring subscriptions, savings objectives, credit/debt ledger all get `dirty`/`remoteId` columns and push/pull with LWW. Budgets gain an `updated_at` LWW clock. Supabase migration 0002 adds the four new tables + RLS. SyncEngine pushes/pulls features after transactions; custom-category rows (no server mirror) stay local-only. Auto-backup timer in HomeShell — flushes dirty rows every 30s while the app is open, so a budget/edit reaches Supabase without waiting for a trigger.
 - **UX audit pass** — categories grouped into expense/income sections; wallets tap no longer silently deletes (rename-only via edit); subscriptions gain delete-with-confirm + actionable empty state; debts/objectives deletes confirmed; transactions list shows income with a glyph badge (not color-only).
 - **Vector Icons & App Launcher Redesign** — added `lucide_icons_flutter` (^3.1.15) for high-performance in-app category vector icons (`CategoryIcon` widget, fallback to emoji); redesigned launcher icon with an elite geometric **K+₹ Monogram Emblem** (3D chiseled off-white on `#0A6B4D` deep ink green) saved at `assets/icon/app_icon.png`. Authored by Antigravity AI Agent for Akash.
