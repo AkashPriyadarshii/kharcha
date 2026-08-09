@@ -41,9 +41,8 @@ android {
     }
 
     signingConfigs {
-        // Real release keystore — generated 2026-08-09, back up
-        // android/app/kharcha-release.jks + android/key.properties. Losing
-        // either means you can't update already-installed builds.
+        // Play-Store-only. Keystore parked (android/key.properties.release) —
+        // sideload MUST stay debug-signed or installs conflict on every device.
         create("release") {
             val props = Properties().apply {
                 val f = rootProject.file("key.properties")
