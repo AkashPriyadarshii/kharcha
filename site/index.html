@@ -18,14 +18,14 @@
   <meta property="og:title" content="Kharcha — India's UPI Expense Tracker" />
   <meta property="og:description" content="Every UPI payment from GPay, PhonePe, Paytm auto-appears as an expense. No manual entry. Offline-first, private." />
   <meta property="og:url" content="https://AkashPriyadarshii.github.io/kharcha/" />
-  <meta property="og:image" content="https://AkashPriyadarshii.github.io/kharcha/screenshots/HOME.png" />
+  <meta property="og:image" content="https://AkashPriyadarshii.github.io/kharcha/site/social-card.jpg" />
   <meta property="og:locale" content="en_IN" />
 
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Kharcha — India's UPI Expense Tracker" />
   <meta name="twitter:description" content="Every UPI payment auto-appears as an expense. No manual entry. Offline-first, private, Android 12+." />
-  <meta name="twitter:image" content="https://AkashPriyadarshii.github.io/kharcha/screenshots/HOME.png" />
+  <meta name="twitter:image" content="https://AkashPriyadarshii.github.io/kharcha/site/social-card.jpg" />
 
   <!-- Structured data: SoftwareApplication for rich results -->
   <script type="application/ld+json">
@@ -101,14 +101,18 @@
     section { padding: 72px 0; }
 
     /* Header */
-    header { position: sticky; top: 0; z-index: 50; background: var(--header-bg); backdrop-filter: blur(8px); border-bottom: 1px solid var(--card-border); }
-    header .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+    header { position: sticky; top: 0; z-index: 50; background: var(--header-bg); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); border-bottom: 1px solid var(--card-border); }
+    header .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 12px; }
     .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; color: var(--ink); text-decoration: none; }
     .brand-mark { width: 34px; height: 34px; border-radius: 10px; background: var(--green); color: white; display: grid; place-items: center; font-weight: 900; font-size: 18px; }
+    .header-actions { display: flex; align-items: center; gap: 10px; }
+    .nav-toggle { display: none; width: 44px; height: 44px; border: none; background: none; color: var(--ink); font-size: 22px; cursor: pointer; border-radius: 12px; place-items: center; }
+    .nav-toggle:hover { background: var(--paper-deep); }
+    nav { display: flex; align-items: center; }
     nav a { color: var(--muted); text-decoration: none; margin-left: 24px; font-weight: 600; font-size: 15px; }
     nav a:hover { color: var(--green); }
-    .btn-download { background: var(--green); color: white !important; padding: 8px 18px; border-radius: 999px; }
-    .theme-toggle { background: var(--card); color: var(--text); border: 1px solid var(--card-border); border-radius: 999px; width: 38px; height: 38px; margin-left: 14px; cursor: pointer; font-size: 17px; line-height: 1; display: grid; place-items: center; }
+    .btn-download { background: var(--green); color: white !important; padding: 10px 20px; border-radius: 999px; }
+    .theme-toggle { background: var(--card); color: var(--text); border: 1px solid var(--card-border); border-radius: 999px; width: 44px; height: 44px; cursor: pointer; font-size: 17px; line-height: 1; display: grid; place-items: center; }
 
     /* Hero */
     .hero { padding: 96px 0 80px; }
@@ -127,7 +131,7 @@
     .btn-ghost:hover { border-color: var(--green); color: var(--green); }
     .meta-note { font-size: 0.85rem; color: var(--muted); margin-top: 12px; }
     .hero-shot { position: relative; }
-    .hero-shot img { width: 100%; max-width: 320px; border-radius: 24px; box-shadow: var(--shadow); display: block; margin: 0 auto; border: 6px solid white; }
+    .hero-shot img { width: 100%; max-width: 320px; border-radius: 24px; box-shadow: var(--shadow); display: block; margin: 0 auto; border: 6px solid var(--img-border); }
 
     /* Feature cards */
     .section-label { text-transform: uppercase; letter-spacing: 1.6px; font-size: 0.8rem; font-weight: 800; color: var(--green); margin-bottom: 12px; }
@@ -169,10 +173,22 @@
 
     @media (max-width: 820px) {
       .hero .wrap { grid-template-columns: 1fr; gap: 40px; }
-      .shots { grid-template-columns: repeat(2, 1fr); }
+      .shots { grid-template-columns: repeat(2, 1fr); gap: 14px; }
       .steps { grid-template-columns: 1fr; }
-      nav a { margin-left: 14px; font-size: 14px; }
+      .nav-toggle { display: grid; }
+      nav { display: none; position: fixed; top: 64px; left: 0; right: 0; flex-direction: column; align-items: stretch; background: var(--header-bg); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); border-bottom: 1px solid var(--card-border); padding: 8px 0 16px; box-shadow: var(--shadow); }
+      nav.open { display: flex; }
+      nav a { margin: 0; padding: 14px 24px; font-size: 16px; }
+      .btn-download { margin: 10px 24px 0; text-align: center; }
       section { padding: 56px 0; }
+    }
+    @media (max-width: 520px) {
+      .shots { grid-template-columns: 1fr; }
+      .shot img { max-width: 280px; margin: 0 auto; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .btn, .btn:hover { transition: none; transform: none; box-shadow: none; }
     }
   </style>
 </head>
@@ -181,14 +197,17 @@
   <header>
     <div class="wrap">
       <a class="brand" href="#top"><span class="brand-mark">K</span> Kharcha</a>
-      <nav>
+      <nav id="nav">
         <a href="#features">Features</a>
         <a href="#screenshots">Screens</a>
         <a href="#how">How it works</a>
         <a href="#faq">FAQ</a>
         <a class="btn-download" href="https://github.com/AkashPriyadarshii/kharcha/releases/latest/download/kharcha-armv8a-release.apk">Download APK</a>
-        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">🌙</button>
       </nav>
+      <div class="header-actions">
+        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">🌙</button>
+        <button id="nav-toggle" class="nav-toggle" aria-label="Toggle menu" aria-expanded="false" aria-controls="nav">☰</button>
+      </div>
     </div>
   </header>
 
@@ -210,7 +229,7 @@
         <p class="meta-note">Android 12+ · ~25 MB · auto-updates in-app · free</p>
       </div>
       <div class="hero-shot">
-        <img src="screenshots/HOME.png" alt="Kharcha home screen showing today's spend and monthly trend" loading="eager" fetchpriority="high" />
+        <img src="screenshots/HOME-480.webp" srcset="screenshots/HOME-480.webp 480w, screenshots/HOME-900.webp 900w" sizes="(min-width: 821px) 420px, 90vw" alt="Kharcha home screen showing today's spend and monthly trend" width="320" height="569" loading="eager" fetchpriority="high" />
       </div>
     </div>
   </section>
@@ -235,12 +254,12 @@
       <div class="section-label">Inside the app</div>
       <h2>Clean, calm, rupee-first</h2>
       <div class="shots">
-        <div class="shot"><img src="screenshots/TRANSACTIONS.png" alt="Transactions list" loading="lazy" /><span>Transactions</span></div>
-        <div class="shot"><img src="screenshots/BUDGET.png" alt="Budget screen" loading="lazy" /><span>Budgets</span></div>
-        <div class="shot"><img src="screenshots/REPORTS.png" alt="Reports screen" loading="lazy" /><span>Reports</span></div>
-        <div class="shot"><img src="screenshots/CATEGORIES.png" alt="Categories screen" loading="lazy" /><span>Categories</span></div>
-        <div class="shot"><img src="screenshots/PROFILE.png" alt="Profile screen" loading="lazy" /><span>Profile</span></div>
-        <div class="shot"><img src="screenshots/HOME.png" alt="Home dashboard" loading="lazy" /><span>Home</span></div>
+        <div class="shot"><img src="screenshots/TRANSACTIONS-660.webp" alt="Transactions list" loading="lazy" width="660" height="1173" /><span>Transactions</span></div>
+        <div class="shot"><img src="screenshots/BUDGET-660.webp" alt="Budget screen" loading="lazy" width="660" height="1173" /><span>Budgets</span></div>
+        <div class="shot"><img src="screenshots/REPORTS-660.webp" alt="Reports screen" loading="lazy" width="660" height="1173" /><span>Reports</span></div>
+        <div class="shot"><img src="screenshots/CATEGORIES-660.webp" alt="Categories screen" loading="lazy" width="660" height="1173" /><span>Categories</span></div>
+        <div class="shot"><img src="screenshots/PROFILE-660.webp" alt="Profile screen" loading="lazy" width="660" height="1173" /><span>Profile</span></div>
+        <div class="shot"><img src="screenshots/HOME-660.webp" alt="Home dashboard" loading="lazy" width="660" height="1173" /><span>Home</span></div>
       </div>
     </div>
   </section>
@@ -323,6 +342,30 @@
         } else {
           document.documentElement.setAttribute('data-theme', 'dark');
           localStorage.setItem('theme', 'dark');
+        }
+      });
+    }
+    // Mobile nav: hamburger opens/closes the panel; Esc or a link click closes it.
+    var navToggle = document.getElementById('nav-toggle');
+    var nav = document.getElementById('nav');
+    if (navToggle && nav) {
+      navToggle.addEventListener('click', function () {
+        var open = nav.classList.toggle('open');
+        navToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        navToggle.textContent = open ? '✕' : '☰';
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && nav.classList.contains('open')) {
+          nav.classList.remove('open');
+          navToggle.setAttribute('aria-expanded', 'false');
+          navToggle.textContent = '☰';
+        }
+      });
+      nav.addEventListener('click', function (e) {
+        if (e.target.tagName === 'A') {
+          nav.classList.remove('open');
+          navToggle.setAttribute('aria-expanded', 'false');
+          navToggle.textContent = '☰';
         }
       });
     }
