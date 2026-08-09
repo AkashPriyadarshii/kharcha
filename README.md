@@ -8,11 +8,18 @@ India-first UPI expense tracker for Android. Every UPI payment from GPay, PhoneP
 
 | | |
 |---|---|
-| **Latest release** | **v0.2.4** |
+| **Latest release** | **v0.2.5** |
 | **APK** | [`kharcha-armv8a-release.apk`](https://github.com/AkashPriyadarshii/kharcha/releases/latest/download/kharcha-armv8a-release.apk) (~25 MB) |
 | **Requirements** | Android 12+ (arm64) |
 
-**Install:** download the APK → open it → allow "Install unknown apps" if prompted → done. App auto-updates itself after that — every release is checked and offered in-app, no sideloading needed again.
+**Install:** download the APK → open it → allow "Install unknown apps" if prompted → done. The app then auto-updates itself — every release is checked and offered in-app, no sideloading again.
+
+## Screenshots
+
+| | | |
+|---|---|---|
+| ![Home](screenshots/HOME.png) | ![Transactions](screenshots/TRANSACTIONS.png) | ![Budget](screenshots/BUDGET.png) |
+| ![Reports](screenshots/REPORTS.png) | ![Categories](screenshots/CATEGORIES.png) | ![Profile](screenshots/PROFILE.png) |
 
 ## Product
 
@@ -25,16 +32,12 @@ India-first UPI expense tracker for Android. Every UPI payment from GPay, PhoneP
 - **App lock** — biometric/PIN.
 - **Max tracking, never sold** — collects granular spend data (that's the product); data is never sold, never ad-targeted.
 
-## What's new in v0.2.4
+## What's new in v0.2.5
 
-- **Home redesign** — a proper greeting with your name, Income vs Spent cards side by side, and a 6-month spend trend chart right on the dashboard.
-- **Reports upgrade** — Income/Spent/Net at a glance; category pie now shows percentage labels.
-
-## What's new in v0.2.3
-
-- **Auto-update** — app checks for updates daily and installs them in one tap. No more manual APK hunting.
-- **Home UX pass** — pencil button for one-tap access to categories, wallets, subscriptions & more; sign-out is confirm-gated now.
-- **Name + app-lock fixes** — your name shows correctly after Google sign-in; the lock screen no longer traps you after a fingerprint.
+- **Notification fixes** — daily/weekly summaries now fire at the right time on every device (timezone fallback), and the weekly recap is no longer silently lost when it lands on a Sunday evening.
+- **Name fix** — your Google name now shows correctly after sign-in (was missing for many accounts).
+- **Home redesign** — greeting with your name, Income vs Spent cards, and a 6-month spend trend right on the dashboard.
+- **Reports upgrade** — Income/Spent/Net at a glance; category pie shows percentage labels.
 
 ## Tech stack
 
