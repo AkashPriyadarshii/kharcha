@@ -18,16 +18,11 @@ flutter analyze
 # 4. Run on Android (full features: UPI capture, notifications, battery exemption)
 flutter run -d <device-id>     # Android 12+ device/emulator
 #   OR
-flutter build apk --debug      # sideload APK
-
-# 4b. Run on Windows (dev/debug, manual entry + CSV import only — no UPI capture)
-flutter run -d windows         # needs Developer Mode ON (Start → Settings → Developer Mode)
+flutter build apk --release --split-per-abi   # arm64 APK (see CLAUDE.md)
 
 # Notes:
-# - UPI auto-capture is Android-only (NotificationListenerService)
+# - Android-only target. UPI auto-capture needs NotificationListenerService.
 # - Guest mode: "Continue as guest" on auth → local-only, no Supabase sync
-# - `flutter test` blocked on Windows host by sqlite3 native-assets (Flutter bug)
-#   — recoverable: kill dart/flutter_tester + rm build/native_assets + flutter clean
 ```
 
 ## Product
