@@ -39,41 +39,44 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen> {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          if (due.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Text(
-                '${due.length} due now',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Theme.of(context).colorScheme.error),
+      body: SafeArea(
+        top: false,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+              if (due.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  '${due.length} due now',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Theme.of(context).colorScheme.error),
+                ),
               ),
-            ),
-          if (shown.isEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 40),
-              child: Column(
-                children: [
-                  const Text('🔁', style: TextStyle(fontSize: 44)),
-                  const SizedBox(height: 12),
-                  Text('No subscriptions yet.', style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 4),
-                  Text('Track Netflix, gym, rent — anything that recurs.',
-                      style: Theme.of(context).textTheme.bodySmall),
-                  const SizedBox(height: 24),
-                  FilledButton.icon(
-                    onPressed: () => _add(context),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add subscription'),
-                  ),
-                ],
-              ),
-            )
-          else
-            for (final r in shown)
-              _RecurringTile(recurring: r, due: r.active && !r.nextDue.isAfter(now)),
-        ],
+            if (shown.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 40),
+                child: Column(
+                  children: [
+                    const Text('🔁', style: TextStyle(fontSize: 44)),
+                    const SizedBox(height: 12),
+                    Text('No subscriptions yet.', style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 4),
+                    Text('Track Netflix, gym, rent — anything that recurs.',
+                        style: Theme.of(context).textTheme.bodySmall),
+                    const SizedBox(height: 24),
+                    FilledButton.icon(
+                      onPressed: () => _add(context),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add subscription'),
+                    ),
+                  ],
+                ),
+              )
+            else
+              for (final r in shown)
+                _RecurringTile(recurring: r, due: r.active && !r.nextDue.isAfter(now)),
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _add(context),

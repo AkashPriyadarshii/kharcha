@@ -23,10 +23,12 @@ class _ObjectivesScreenState extends ConsumerState<ObjectivesScreen> {
     final goals = ref.watch(objectivesProvider).value ?? const <Objective>[];
     return Scaffold(
       appBar: AppBar(title: const Text('Savings goals')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          if (goals.isEmpty)
+      body: SafeArea(
+        top: false,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            if (goals.isEmpty)
             Center(
               child: Padding(
                 padding: const EdgeInsets.only(top: 48),
@@ -47,9 +49,10 @@ class _ObjectivesScreenState extends ConsumerState<ObjectivesScreen> {
                 ),
               ),
             )
-          else
-            for (final g in goals) _GoalCard(goal: g),
-        ],
+            else
+              for (final g in goals) _GoalCard(goal: g),
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _add(context),

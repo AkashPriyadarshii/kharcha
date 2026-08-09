@@ -23,16 +23,19 @@ class _WalletsScreenState extends ConsumerState<WalletsScreen> {
     final wallets = ref.watch(walletsProvider).value ?? const <Wallet>[];
     return Scaffold(
       appBar: AppBar(title: const Text('Wallets')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          if (wallets.isEmpty)
-            Text('No wallets yet. Add one to track balances per account.',
-                style: Theme.of(context).textTheme.bodyMedium)
-          else
-            for (final w in wallets)
-              _WalletTile(wallet: w),
-        ],
+      body: SafeArea(
+        top: false,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            if (wallets.isEmpty)
+              Text('No wallets yet. Add one to track balances per account.',
+                  style: Theme.of(context).textTheme.bodyMedium)
+            else
+              for (final w in wallets)
+                _WalletTile(wallet: w),
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _addWallet(context),
