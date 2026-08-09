@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../core/money.dart';
 import '../core/theme.dart';
 import '../data/database.dart';
 import '../data/transaction_repository.dart';
@@ -82,7 +83,7 @@ class _ObjectivesScreenState extends ConsumerState<ObjectivesScreen> {
           FilledButton(
             onPressed: () {
               final n = name.text.trim();
-              final t = double.tryParse(target.text.trim());
+              final t = parseAmount(target.text);
               if (n.isEmpty || t == null || t <= 0) return;
               ref.read(transactionRepositoryProvider).insertObjective(name: n, target: t);
               Navigator.of(ctx).pop();
@@ -162,7 +163,7 @@ class _GoalCard extends ConsumerWidget {
                         TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
                         FilledButton(
                           onPressed: () {
-                            final a = double.tryParse(amount.text.trim());
+                            final a = parseAmount(amount.text);
                             if (a != null && a > 0) {
                               ref.read(transactionRepositoryProvider).addToObjective(goal.id, a);
                             }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../core/money.dart';
 import '../core/theme.dart';
 import '../data/database.dart';
 import '../data/transaction_repository.dart';
@@ -82,7 +83,7 @@ class _WalletsScreenState extends ConsumerState<WalletsScreen> {
                 ref.read(transactionRepositoryProvider).insertWallet(
                       name: n,
                       currency: currency,
-                      initialBalance: double.tryParse(balance.text.trim()) ?? 0,
+                      initialBalance: parseAmount(balance.text) ?? 0,
                     );
                 Navigator.of(ctx).pop();
               },

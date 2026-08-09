@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../core/money.dart';
 import '../core/theme.dart';
 import '../data/database.dart';
 import '../data/transaction_repository.dart';
@@ -137,7 +138,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen> {
             FilledButton(
               onPressed: () {
                 final m = merchant.text.trim();
-                final a = double.tryParse(amount.text.trim());
+                final a = parseAmount(amount.text);
                 if (m.isEmpty || a == null || a <= 0) return;
                 ref.read(transactionRepositoryProvider).insertRecurring(
                       merchant: m,

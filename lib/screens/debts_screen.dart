@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../core/money.dart';
 import '../core/theme.dart';
 import '../data/database.dart';
 import '../data/transaction_repository.dart';
@@ -81,7 +82,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
             TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
             FilledButton(
               onPressed: () async {
-                final a = double.tryParse(amount.text.trim());
+                final a = parseAmount(amount.text);
                 if (name.text.trim().isEmpty || a == null || a <= 0) return;
                 await ref.read(transactionRepositoryProvider).insertDebt(
                       name: name.text.trim(),
