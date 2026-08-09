@@ -58,8 +58,8 @@ India-first UPI expense tracker for Android. Every UPI payment from GPay, PhoneP
 
 ## Team
 
-- Akash (`AkashPriyadarshii`) — owner
-- Priyaranjan (`priyaranjan122002`) — co-dev
+- Akash (`AkashPriyadarshii`)
+- Priyaranjan (`priyaranjan122002`)
 
 ## License
 
