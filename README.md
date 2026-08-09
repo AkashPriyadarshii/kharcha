@@ -20,8 +20,8 @@ India-first UPI expense tracker for Android. Every UPI payment from GPay, PhoneP
 
 | | | |
 |---|---|---|
-| ![Home](screenshots/HOME.png) | ![Transactions](screenshots/TRANSACTIONS.png) | ![Budget](screenshots/BUDGET.png) |
-| ![Reports](screenshots/REPORTS.png) | ![Categories](screenshots/CATEGORIES.png) | ![Profile](screenshots/PROFILE.png) |
+| ![Home](screenshots/HOME-660.webp) | ![Transactions](screenshots/TRANSACTIONS-660.webp) | ![Budget](screenshots/BUDGET-660.webp) |
+| ![Reports](screenshots/REPORTS-660.webp) | ![Categories](screenshots/CATEGORIES-660.webp) | ![Profile](screenshots/PROFILE-660.webp) |
 
 ## Product
 

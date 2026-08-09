@@ -2,6 +2,19 @@
 
 All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
 
+## [Site] — 2026-08-09
+
+- **Mobile UI/UX pass (marketing site)** — the landing page (`site/index.html`, GitHub Pages) is now genuinely mobile-first:
+  - **Mobile nav** — hamburger menu (≤820px) with slide-down panel, close on link tap / Esc, `aria-expanded`/`aria-controls`. Previously the 5-link nav + theme toggle overflowed a phone-width header.
+  - **~99% lighter screenshots** — six 2048×3640 PNGs (~11.6 MB total) → responsive WebP (~10–30 KB each) with `srcset`/`sizes`. Hero `HOME` gets 480/900 w candidates, gallery uses 660 w.
+  - **Readable on phones** — screenshot grid goes 2 columns at ≤820px and single column (max 280px) at ≤520px, so the screenshots are actually legible.
+  - **Touch targets** — theme toggle 38→44px, nav toggle is 44px.
+  - **Dark-mode consistency** — hero phone border now uses `--img-border` (was hard-coded white in dark mode).
+  - **iOS Safari blur** — `-webkit-backdrop-filter` added for the sticky header + mobile nav.
+  - **Social share** — new 1200×630 `site/social-card.jpg` (27 KB) replaces the 1.9 MB PNG for `og:image`/`twitter:image`.
+  - **Reduced motion** — `prefers-reduced-motion` disables hover transforms + smooth scroll.
+  - README screenshot table updated to WebP. Deploy unchanged (`.github/workflows/pages-deploy.yml` already stages `site/` + `screenshots/`).
+
 ## [v0.2.6] — 2026-08-09
 
 - **Dark theme + theme mode** — full dark theme (warm near-black surfaces, same ₹-green identity) plus a Theme picker in Profile → Settings (Follow system / Light / Dark). Choice persists per-device in a JSON file (`theme_mode.json`, same pattern as app lock); startup loads it, `MaterialApp` wires `darkTheme` + `themeMode`. `lib/core/theme.dart` gains `kharchaDarkTheme()`; hardcoded whites replaced with scheme containers so both themes read correctly. `test/theme_mode_test.dart`.
