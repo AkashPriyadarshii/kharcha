@@ -1,14 +1,9 @@
 # Contributors
 
 ## Akash — Owner
-- Role: Product owner, architecture, backend/sync, capture (NotificationListenerService), final merge authority
+- Role: Product owner, architecture, backend/sync, capture (NotificationListenerService), all UI/feature work, final merge authority
 - GitHub: `AkashPriyadarshii`
 - Decides: scope, tech stack, what merges to `main`
-
-## Priyaranjan — Co-dev
-- Role: UI/feature work, Flutter screens, charts, QA on device
-- GitHub: `priyaranjan122002`
-- Contributes via PRs; reviews Akash's PRs
 
 ## Antigravity AI Agent — Pair Programmer
 - Role: Autonomous AI agent for Akash (Google DeepMind Antigravity framework)
@@ -17,6 +12,6 @@
 
 ## Working agreement
 - No pushes to `main`. Everything through branches + PRs.
-- PR needs one other dev's approval before merge.
+- Owner reviews and merges own PRs.
 - Read `CLAUDE.md` fully before first commit — it's the contract.
 - When unsure of scope, ask in the PR. Don't invent features.

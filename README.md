@@ -2,7 +2,7 @@
 
 **India-first UPI expense tracker.** Every UPI payment auto-appears as an expense — no manual entry. Offline-first, rule-based automation (no AI), Supabase sync.
 
-## 🤖 For Priyaranjan / AI agents — quick clone & run
+## 🤖 For AI agents — quick clone & run
 
 ```bash
 # 1. Clone
@@ -72,7 +72,6 @@ flutter run          # on Android 12+ device/emulator
 ## Team
 
 - Akash (`AkashPriyadarshii`) — owner
-- Priyaranjan (`priyaranjan122002`) — co-dev
 
 ## License
 

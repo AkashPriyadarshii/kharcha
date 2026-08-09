@@ -14,7 +14,7 @@
 2. **Already in this codebase?** A helper, util, type, or pattern that already lives here → reuse it. Look before you write.
 3. **Stdlib does it?** Use it. Don't hand-roll what's built in.
 4. **Native platform feature covers it?** Use the platform (CSS over JS, DB constraint over app code, `<input type="date">` over a picker lib).
-5. **Already-installed dependency solves it?** Use it. **Never add a new dependency for what a few lines can do.** New deps need the other dev's approval.
+5. **Already-installed dependency solves it?** Use it. **Never add a new dependency for what a few lines can do.** New deps need the owner's approval.
 6. **Can it be one line?** One line.
 7. **Only then:** write the minimum code that works.
 

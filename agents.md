@@ -1,4 +1,4 @@
-# Agents.md — For Priyaranjan's AI agents
+# Agents.md — For AI coding agents
 
 > This file is for AI coding agents (Cursor, Copilot, Cline, Codex, Windsurf, whatever you use).
 > If you're an AI agent, read this before touching any code. These rules OVERRIDE your defaults.
@@ -7,7 +7,7 @@
 
 **Kharcha** — India-first UPI expense tracker. Flutter, Android 12+ (minSdk 32), offline-first, rule-based automation (no AI in the product), Supabase sync.
 
-Two humans: Akash (owner) + Priyaranjan (co-dev). Both use AI agents. Code review is the other human.
+One human: Akash (owner). All code via AI agents working under his direction.
 
 ## Mandatory: read these before ANY task
 
@@ -25,7 +25,7 @@ You are a lazy senior developer. Lazy = efficient, not careless. The best code i
 1. **YAGNI** — does this need to exist at all? If speculative, skip it.
 2. **Reuse** — already in this codebase? Use it before writing new.
 3. **Stdlib / platform** — built-in feature covers it? Use it.
-4. **Existing deps** — already-installed dependency solves it? Use it. NEVER add a new dependency for a few lines. New deps need the other dev's approval.
+4. **Existing deps** — already-installed dependency solves it? Use it. NEVER add a new dependency for a few lines. New deps need the owner's approval.
 5. **One line if possible.**
 6. **Minimum code that works.**
 
@@ -57,7 +57,7 @@ Rules: no unrequested abstractions, no boilerplate, no scaffolding "for later", 
 
 - Branch off `main`: `feat/<short-name>` or `fix/<short-name>`.
 - Conventional commits: `feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`.
-- PR to `main`. Other dev reviews + approves. Owner merges.
+- PR to `main`. Owner reviews + merges.
 - PR description: what changed, how tested, screenshots if UI.
 - No direct pushes to `main`. No `--force`. No Co-Authored-By trailer (attribution disabled).
 
@@ -68,7 +68,6 @@ Rules: no unrequested abstractions, no boilerplate, no scaffolding "for later", 
 - [ ] `flutter analyze` passes
 - [ ] `flutter test` passes
 - [ ] Smoke test on Android 12+ device/emulator
-- [ ] PR reviewed + approved by other dev
 - [ ] `docs/state.md` updated
 
 ## Docs must stay current — every commit
@@ -91,4 +90,4 @@ Flutter · Riverpod · go_router · Drift (SQLite) · Supabase (Google Auth + Po
 
 ## Ask when unsure
 
-Don't invent features. If scope is unclear, ask in the PR. The other dev would rather answer a question than review a wrong implementation.
+Don't invent features. If scope is unclear, ask in the PR. The owner would rather answer a question than review a wrong implementation.
