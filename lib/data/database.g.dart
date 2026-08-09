@@ -103,6 +103,30 @@ class $CategoriesTable extends Categories
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _dirtyMeta = const VerificationMeta('dirty');
+  @override
+  late final GeneratedColumn<bool> dirty = GeneratedColumn<bool>(
+    'dirty',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("dirty" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _remoteIdMeta = const VerificationMeta(
+    'remoteId',
+  );
+  @override
+  late final GeneratedColumn<int> remoteId = GeneratedColumn<int>(
+    'remote_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -112,6 +136,8 @@ class $CategoriesTable extends Categories
     isCustom,
     sortOrder,
     isIncome,
+    dirty,
+    remoteId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -170,6 +196,18 @@ class $CategoriesTable extends Categories
         isIncome.isAcceptableOrUnknown(data['is_income']!, _isIncomeMeta),
       );
     }
+    if (data.containsKey('dirty')) {
+      context.handle(
+        _dirtyMeta,
+        dirty.isAcceptableOrUnknown(data['dirty']!, _dirtyMeta),
+      );
+    }
+    if (data.containsKey('remote_id')) {
+      context.handle(
+        _remoteIdMeta,
+        remoteId.isAcceptableOrUnknown(data['remote_id']!, _remoteIdMeta),
+      );
+    }
     return context;
   }
 
@@ -207,6 +245,14 @@ class $CategoriesTable extends Categories
         DriftSqlType.bool,
         data['${effectivePrefix}is_income'],
       )!,
+      dirty: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}dirty'],
+      )!,
+      remoteId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}remote_id'],
+      ),
     );
   }
 
@@ -226,6 +272,12 @@ class Category extends DataClass implements Insertable<Category> {
 
   /// Income category (Salary, Bonus…) — only offered when adding income.
   final bool isIncome;
+
+  /// Sync state (schema v10): custom categories push to Supabase (server id
+  /// differs from local → remoteId); builtins are shared reference data and
+  /// never pushed (seeded identically on every device + server).
+  final bool dirty;
+  final int? remoteId;
   const Category({
     required this.id,
     required this.name,
@@ -234,6 +286,8 @@ class Category extends DataClass implements Insertable<Category> {
     required this.isCustom,
     required this.sortOrder,
     required this.isIncome,
+    required this.dirty,
+    this.remoteId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -245,6 +299,10 @@ class Category extends DataClass implements Insertable<Category> {
     map['is_custom'] = Variable<bool>(isCustom);
     map['sort_order'] = Variable<int>(sortOrder);
     map['is_income'] = Variable<bool>(isIncome);
+    map['dirty'] = Variable<bool>(dirty);
+    if (!nullToAbsent || remoteId != null) {
+      map['remote_id'] = Variable<int>(remoteId);
+    }
     return map;
   }
 
@@ -257,6 +315,10 @@ class Category extends DataClass implements Insertable<Category> {
       isCustom: Value(isCustom),
       sortOrder: Value(sortOrder),
       isIncome: Value(isIncome),
+      dirty: Value(dirty),
+      remoteId: remoteId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remoteId),
     );
   }
 
@@ -273,6 +335,8 @@ class Category extends DataClass implements Insertable<Category> {
       isCustom: serializer.fromJson<bool>(json['isCustom']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
       isIncome: serializer.fromJson<bool>(json['isIncome']),
+      dirty: serializer.fromJson<bool>(json['dirty']),
+      remoteId: serializer.fromJson<int?>(json['remoteId']),
     );
   }
   @override
@@ -286,6 +350,8 @@ class Category extends DataClass implements Insertable<Category> {
       'isCustom': serializer.toJson<bool>(isCustom),
       'sortOrder': serializer.toJson<int>(sortOrder),
       'isIncome': serializer.toJson<bool>(isIncome),
+      'dirty': serializer.toJson<bool>(dirty),
+      'remoteId': serializer.toJson<int?>(remoteId),
     };
   }
 
@@ -297,6 +363,8 @@ class Category extends DataClass implements Insertable<Category> {
     bool? isCustom,
     int? sortOrder,
     bool? isIncome,
+    bool? dirty,
+    Value<int?> remoteId = const Value.absent(),
   }) => Category(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -305,6 +373,8 @@ class Category extends DataClass implements Insertable<Category> {
     isCustom: isCustom ?? this.isCustom,
     sortOrder: sortOrder ?? this.sortOrder,
     isIncome: isIncome ?? this.isIncome,
+    dirty: dirty ?? this.dirty,
+    remoteId: remoteId.present ? remoteId.value : this.remoteId,
   );
   Category copyWithCompanion(CategoriesCompanion data) {
     return Category(
@@ -315,6 +385,8 @@ class Category extends DataClass implements Insertable<Category> {
       isCustom: data.isCustom.present ? data.isCustom.value : this.isCustom,
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
       isIncome: data.isIncome.present ? data.isIncome.value : this.isIncome,
+      dirty: data.dirty.present ? data.dirty.value : this.dirty,
+      remoteId: data.remoteId.present ? data.remoteId.value : this.remoteId,
     );
   }
 
@@ -327,14 +399,25 @@ class Category extends DataClass implements Insertable<Category> {
           ..write('color: $color, ')
           ..write('isCustom: $isCustom, ')
           ..write('sortOrder: $sortOrder, ')
-          ..write('isIncome: $isIncome')
+          ..write('isIncome: $isIncome, ')
+          ..write('dirty: $dirty, ')
+          ..write('remoteId: $remoteId')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, name, emoji, color, isCustom, sortOrder, isIncome);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    emoji,
+    color,
+    isCustom,
+    sortOrder,
+    isIncome,
+    dirty,
+    remoteId,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -345,7 +428,9 @@ class Category extends DataClass implements Insertable<Category> {
           other.color == this.color &&
           other.isCustom == this.isCustom &&
           other.sortOrder == this.sortOrder &&
-          other.isIncome == this.isIncome);
+          other.isIncome == this.isIncome &&
+          other.dirty == this.dirty &&
+          other.remoteId == this.remoteId);
 }
 
 class CategoriesCompanion extends UpdateCompanion<Category> {
@@ -356,6 +441,8 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
   final Value<bool> isCustom;
   final Value<int> sortOrder;
   final Value<bool> isIncome;
+  final Value<bool> dirty;
+  final Value<int?> remoteId;
   const CategoriesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -364,6 +451,8 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.isCustom = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.isIncome = const Value.absent(),
+    this.dirty = const Value.absent(),
+    this.remoteId = const Value.absent(),
   });
   CategoriesCompanion.insert({
     this.id = const Value.absent(),
@@ -373,6 +462,8 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.isCustom = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.isIncome = const Value.absent(),
+    this.dirty = const Value.absent(),
+    this.remoteId = const Value.absent(),
   }) : name = Value(name),
        emoji = Value(emoji),
        color = Value(color);
@@ -384,6 +475,8 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Expression<bool>? isCustom,
     Expression<int>? sortOrder,
     Expression<bool>? isIncome,
+    Expression<bool>? dirty,
+    Expression<int>? remoteId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -393,6 +486,8 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       if (isCustom != null) 'is_custom': isCustom,
       if (sortOrder != null) 'sort_order': sortOrder,
       if (isIncome != null) 'is_income': isIncome,
+      if (dirty != null) 'dirty': dirty,
+      if (remoteId != null) 'remote_id': remoteId,
     });
   }
 
@@ -404,6 +499,8 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Value<bool>? isCustom,
     Value<int>? sortOrder,
     Value<bool>? isIncome,
+    Value<bool>? dirty,
+    Value<int?>? remoteId,
   }) {
     return CategoriesCompanion(
       id: id ?? this.id,
@@ -413,6 +510,8 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       isCustom: isCustom ?? this.isCustom,
       sortOrder: sortOrder ?? this.sortOrder,
       isIncome: isIncome ?? this.isIncome,
+      dirty: dirty ?? this.dirty,
+      remoteId: remoteId ?? this.remoteId,
     );
   }
 
@@ -440,6 +539,12 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     if (isIncome.present) {
       map['is_income'] = Variable<bool>(isIncome.value);
     }
+    if (dirty.present) {
+      map['dirty'] = Variable<bool>(dirty.value);
+    }
+    if (remoteId.present) {
+      map['remote_id'] = Variable<int>(remoteId.value);
+    }
     return map;
   }
 
@@ -452,7 +557,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
           ..write('color: $color, ')
           ..write('isCustom: $isCustom, ')
           ..write('sortOrder: $sortOrder, ')
-          ..write('isIncome: $isIncome')
+          ..write('isIncome: $isIncome, ')
+          ..write('dirty: $dirty, ')
+          ..write('remoteId: $remoteId')
           ..write(')'))
         .toString();
   }
@@ -5182,6 +5289,8 @@ typedef $$CategoriesTableCreateCompanionBuilder =
       Value<bool> isCustom,
       Value<int> sortOrder,
       Value<bool> isIncome,
+      Value<bool> dirty,
+      Value<int?> remoteId,
     });
 typedef $$CategoriesTableUpdateCompanionBuilder =
     CategoriesCompanion Function({
@@ -5192,6 +5301,8 @@ typedef $$CategoriesTableUpdateCompanionBuilder =
       Value<bool> isCustom,
       Value<int> sortOrder,
       Value<bool> isIncome,
+      Value<bool> dirty,
+      Value<int?> remoteId,
     });
 
 final class $$CategoriesTableReferences
@@ -5339,6 +5450,16 @@ class $$CategoriesTableFilterComposer
 
   ColumnFilters<bool> get isIncome => $composableBuilder(
     column: $table.isIncome,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get dirty => $composableBuilder(
+    column: $table.dirty,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get remoteId => $composableBuilder(
+    column: $table.remoteId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5512,6 +5633,16 @@ class $$CategoriesTableOrderingComposer
     column: $table.isIncome,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get dirty => $composableBuilder(
+    column: $table.dirty,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get remoteId => $composableBuilder(
+    column: $table.remoteId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CategoriesTableAnnotationComposer
@@ -5543,6 +5674,12 @@ class $$CategoriesTableAnnotationComposer
 
   GeneratedColumn<bool> get isIncome =>
       $composableBuilder(column: $table.isIncome, builder: (column) => column);
+
+  GeneratedColumn<bool> get dirty =>
+      $composableBuilder(column: $table.dirty, builder: (column) => column);
+
+  GeneratedColumn<int> get remoteId =>
+      $composableBuilder(column: $table.remoteId, builder: (column) => column);
 
   Expression<T> merchantsRefs<T extends Object>(
     Expression<T> Function($$MerchantsTableAnnotationComposer a) f,
@@ -5712,6 +5849,8 @@ class $$CategoriesTableTableManager
                 Value<bool> isCustom = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<bool> isIncome = const Value.absent(),
+                Value<bool> dirty = const Value.absent(),
+                Value<int?> remoteId = const Value.absent(),
               }) => CategoriesCompanion(
                 id: id,
                 name: name,
@@ -5720,6 +5859,8 @@ class $$CategoriesTableTableManager
                 isCustom: isCustom,
                 sortOrder: sortOrder,
                 isIncome: isIncome,
+                dirty: dirty,
+                remoteId: remoteId,
               ),
           createCompanionCallback:
               ({
@@ -5730,6 +5871,8 @@ class $$CategoriesTableTableManager
                 Value<bool> isCustom = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<bool> isIncome = const Value.absent(),
+                Value<bool> dirty = const Value.absent(),
+                Value<int?> remoteId = const Value.absent(),
               }) => CategoriesCompanion.insert(
                 id: id,
                 name: name,
@@ -5738,6 +5881,8 @@ class $$CategoriesTableTableManager
                 isCustom: isCustom,
                 sortOrder: sortOrder,
                 isIncome: isIncome,
+                dirty: dirty,
+                remoteId: remoteId,
               ),
           withReferenceMapper: (p0) => p0
               .map(

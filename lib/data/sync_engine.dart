@@ -24,6 +24,10 @@ class SyncEngine {
     try {
       await _push();
       await _pull();
+      // Categories first: budgets + recurring reference them, so their ids
+      // must exist on the server before any feature row is written.
+      await _pushCategories();
+      await _pullCategories();
       await _pushFeatures();
       await _pullFeatures();
     } finally {
@@ -93,16 +97,84 @@ class SyncEngine {
     }
   }
 
+  /// Pushes the user's custom categories (builtins are shared, never sent).
+  /// Runs before features so budgets/recurring can reference the server id.
+  Future<void> _pushCategories() async {
+    final customs = await _repo.dirtyCustomCategories();
+    for (final c in customs) {
+      final json = customCategoryToRemoteJson(c, _userId);
+      try {
+        if (c.remoteId != null) {
+          await _client.from('categories').update(json).eq('id', c.remoteId!);
+        } else {
+          final resp = await _client
+              .from('categories')
+              .insert(json)
+              .select()
+              .single();
+          await _repo.markCategorySynced(c.id, resp['id'] as int);
+        }
+      } on PostgrestException catch (e) {
+        if (e.code == '23505') {
+          // Duplicate (user_id, name) — retry after a lost ack. Claim its id.
+          final existing = await _client
+              .from('categories')
+              .select('id')
+              .eq('name', json['name'])
+              .eq('user_id', _userId)
+              .maybeSingle();
+          if (existing != null) {
+            await _repo.markCategorySynced(c.id, existing['id'] as int);
+          }
+        } else {
+          rethrow;
+        }
+      }
+    }
+  }
+
+  /// Pulls the user's custom categories so a fresh device can restore budgets
+  /// referencing them (server id → local id happens in the feature pull).
+  /// ponytail: a category deleted locally resurrects on the next pull — no
+  /// tombstone yet. Add a deleted-category table if deletes must stay dead.
+  Future<void> _pullCategories() async {
+    final rows = await _client
+        .from('categories')
+        .select()
+        .eq('user_id', _userId)
+        .order('id', ascending: false)
+        .limit(500);
+    for (final r in rows) {
+      final remoteId = r['id'] as int;
+      final map = <String, Object?>{
+        'id': r['id'],
+        'name': r['name'],
+        'emoji': r['emoji'],
+        'color': r['color'],
+        'isCustom': r['is_custom'] ?? false,
+        'sortOrder': r['sort_order'] ?? 0,
+        'isIncome': r['is_income'] ?? false,
+      };
+      final existing = await _repo.findCategoryByRemoteId(remoteId);
+      if (existing == null) {
+        await _repo.insertCategoryFromRemote(map);
+      } else if (!existing.dirty) {
+        await _repo.updateCategoryFromRemote(existing.id, map);
+      }
+    }
+  }
+
   Future<void> _pushFeatures() async {
     for (final kind in SyncKind.values) {
       final rows = await _repo.dirtyRowsFor(kind);
       for (final row in rows) {
-        // Local-only rows (custom category) can never live on the server.
-        if (!await _repo.featureRowShareable(kind, row)) {
-          await _repo.markFeatureLocalOnly(kind, row.id);
-          continue;
-        }
         final json = localToRemoteFeatureJson(kind, row, _userId);
+        // Custom-category refs: translate local → server id (budgets/recurring).
+        final localCatId = json['category_id'] as int?;
+        if (localCatId != null) {
+          final remoteCatId = await _repo.categoryRemoteId(localCatId);
+          if (remoteCatId != null) json['category_id'] = remoteCatId;
+        }
         final table = featureTableFor(kind);
         try {
           if (row.remoteId != null) {
@@ -145,10 +217,14 @@ class SyncEngine {
       for (final r in rows) {
         final remoteId = r['id'] as int;
         final map = _repo.featureToLocalMap(kind, r);
+        // Custom-category refs: translate server → local id (budgets/recurring).
+        final remoteCatId = map['categoryId'] as int?;
+        if (remoteCatId != null) {
+          final localCatId = await _repo.categoryLocalId(remoteCatId);
+          if (localCatId != null) map['categoryId'] = localCatId;
+        }
         final existing = await _repo.findFeatureByRemoteId(kind, remoteId);
         if (existing == null) {
-          // Remote rows only reference shared categories (custom never pushed;
-          // shared categories are seeded on every device) — safe to insert.
           await _repo.insertFeatureFromRemote(kind, map);
         } else if (!existing.dirty) {
           // Converged local copy → overwrite with remote (next push wins).

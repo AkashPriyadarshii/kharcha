@@ -4,6 +4,8 @@ All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
 
 ## [unreleased]
 
+- **Capture everything** — any app's notification with a ₹ amount is captured (UPI + bank + messaging); Dart parser gates on payment keywords so "bhej de ₹200" chats don't become expenses. Money IN captured too (income transactions). Schema v10, parser rework + tests.
+- **Custom-category sync** — custom categories now push to Supabase (per-user rows, migration 0004), budgets/recurring translate category ids. Server `categories` seed (0003).
 - **Android-only** — `windows/` scaffold removed permanently (single platform, README updated).
 - **Full backup sync** — every feature table now syncs to Supabase (schema v9): budgets, wallets, recurring subscriptions, savings objectives, credit/debt ledger all get `dirty`/`remoteId` columns and push/pull with LWW. Server `categories` seed migration (0003) — budget push was failing FK 23503 because the server category table was never seeded. Budgets gain an `updated_at` LWW clock. Supabase migration 0002 adds the four new tables + RLS. SyncEngine pushes/pulls features after transactions; custom-category rows (no server mirror) stay local-only. Auto-backup timer in HomeShell — flushes dirty rows every 30s while the app is open, so a budget/edit reaches Supabase without waiting for a trigger.
 - **UX audit pass** — categories grouped into expense/income sections; wallets tap no longer silently deletes (rename-only via edit); subscriptions gain delete-with-confirm + actionable empty state; debts/objectives deletes confirmed; transactions list shows income with a glyph badge (not color-only).

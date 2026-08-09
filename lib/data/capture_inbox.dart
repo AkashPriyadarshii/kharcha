@@ -38,6 +38,7 @@ Future<int> drainCaptureInbox({required File inbox, required TransactionReposito
         merchant: parsed.merchant,
         upiRef: parsed.upiRef,
         txnDate: DateTime.now(),
+        isIncome: parsed.isIncome,
       );
       if (inserted != null) added++;
     } catch (_) {
