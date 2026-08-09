@@ -41,14 +41,6 @@ class UpiNotificationListener : NotificationListenerService() {
         // have distinct UPI refs, so the Dart-side dedupe is authoritative;
         // this window only stops the loudest spam.
         private const val DEDUPE_WINDOW_MS = 60_000L
-        private val UPI_PACKAGES =
-            setOf(
-                "com.google.android.apps.nbu.paisa.user", // Google Pay
-                "net.one97.paytm", // Paytm
-                "com.phonepe.app", // PhonePe
-                "com.axis.mobile", // Axis BHIM
-                "com.chqbook", // etc.
-            )
         private val AMOUNT_RE = Regex("""(?:₹|Rs\.?|INR|inr)\s*\d""")
 
         private val dateFmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
@@ -61,8 +53,6 @@ class UpiNotificationListener : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         try {
             val pkg = sbn.packageName
-            if (pkg !in UPI_PACKAGES) return
-
             val extras = sbn.notification?.extras ?: return
             val text = (
                 extras.getCharSequence("android.title")?.toString()
