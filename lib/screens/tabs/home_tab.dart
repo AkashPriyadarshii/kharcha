@@ -1,6 +1,8 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/theme.dart';
 import '../../data/database.dart';
@@ -17,6 +19,7 @@ class HomeSummary {
     required this.income,
     required this.budgetLeft,
     required this.byCategory,
+    required this.trend,
   });
 
   final double today;
@@ -24,6 +27,15 @@ class HomeSummary {
   final double income;
   final double budgetLeft;
   final List<(Category, double)> byCategory;
+  final List<(String, double)> trend;
+}
+
+/// The user's display name. Google sign-in stores it under `full_name`;
+/// the in-app edit writes `name`. Check both.
+String? _userName() {
+  final meta = Supabase.instance.client.auth.currentUser?.userMetadata;
+  if (meta == null) return null;
+  return (meta['name'] as String?) ?? (meta['full_name'] as String?);
 }
 
 final homeSummaryProvider = StreamProvider<HomeSummary>((ref) {
@@ -44,6 +56,7 @@ final homeSummaryProvider = StreamProvider<HomeSummary>((ref) {
       income: await repo.monthIncome(now),
       budgetLeft: (budgetTotal - spentOnBudgeted).clamp(0, double.infinity),
       byCategory: byCategory,
+      trend: await repo.monthlyTrend(now),
     );
   });
 });
@@ -63,7 +76,15 @@ class HomeTab extends ConsumerWidget {
       data: (s) => ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
+          _GreetingHeader(name: _userName()),
+          const SizedBox(height: 16),
           _HeroPanel(summary: s),
+          const SizedBox(height: 16),
+          _IncomeExpenseRow(summary: s),
+          const SizedBox(height: 24),
+          SectionTitle('Monthly trend'),
+          const SizedBox(height: 8),
+          _TrendCard(trend: s.trend),
           const SizedBox(height: 24),
           SectionTitle('This month by category'),
           const SizedBox(height: 8),
@@ -81,6 +102,162 @@ class HomeTab extends ConsumerWidget {
           else
             for (final t in recent5) _RecentTile(transaction: t),
         ],
+      ),
+    );
+  }
+}
+
+/// Greeting + the user's name (Cashew-style identity header). "Good evening,
+/// Akash." — the app talks to you, not at you.
+class _GreetingHeader extends StatelessWidget {
+  const _GreetingHeader({required this.name});
+
+  final String? name;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final hour = DateTime.now().hour;
+    final greeting = hour < 12
+        ? 'Good morning'
+        : hour < 17
+            ? 'Good afternoon'
+            : 'Good evening';
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(greeting, style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              if (name != null)
+                Text(name!, style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Income / expense as sibling cards — income gets its own mint card, not a
+/// footnote in the hero.
+class _IncomeExpenseRow extends StatelessWidget {
+  const _IncomeExpenseRow({required this.summary});
+
+  final HomeSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _StatCard(
+            label: 'Income this month',
+            amount: summary.income,
+            color: incomeGreen,
+            icon: Icons.arrow_downward,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _StatCard(
+            label: 'Spent today',
+            amount: summary.today,
+            color: expenseRed,
+            icon: Icons.receipt_long_outlined,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  const _StatCard({required this.label, required this.amount, required this.color, required this.icon});
+
+  final String label;
+  final double amount;
+  final Color color;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 20, color: color),
+            const SizedBox(height: 8),
+            Text(label, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            const SizedBox(height: 4),
+            Text(
+              _currency.format(amount),
+              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800, color: color),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Compact 6-month spend line — the trend is what the hero number can't say.
+class _TrendCard extends StatelessWidget {
+  const _TrendCard({required this.trend});
+
+  final List<(String, double)> trend;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    if (trend.isEmpty) return const SizedBox.shrink();
+    final max = trend.map((t) => t.$2).fold(0.0, (a, b) => b > a ? b : a);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+        child: SizedBox(
+          height: 140,
+          child: LineChart(
+            LineChartData(
+              minY: 0,
+              maxY: max <= 0 ? 1 : max * 1.2,
+              gridData: FlGridData(show: true, drawVerticalLine: false),
+              titlesData: FlTitlesData(
+                leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    interval: 1,
+                    getTitlesWidget: (v, _) {
+                      final i = v.toInt();
+                      if (i < 0 || i >= trend.length) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(trend[i].$1, style: theme.textTheme.labelSmall),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              lineBarsData: [
+                LineChartBarData(
+                  spots: [for (var i = 0; i < trend.length; i++) FlSpot(i.toDouble(), trend[i].$2)],
+                  isCurved: true,
+                  barWidth: 3,
+                  color: theme.colorScheme.primary,
+                  dotData: const FlDotData(show: false),
+                  belowBarData: BarAreaData(show: true, color: theme.colorScheme.primary.withValues(alpha: 0.12)),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

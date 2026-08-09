@@ -4,7 +4,7 @@
 
 ## Current status
 
-**v0.2.3 released (2026-08-09).** Auto-update via GitHub releases (check once/day auto + 3/hr manual from Profile, version-bump trigger), name fix, app-lock re-lock fix, home UX pass (pencil manage sheet, bell removed, re-onboarding tile, sign-out confirm). APK `kharcha-armv8a-release.apk` on [release v0.2.3](https://github.com/AkashPriyadarshii/kharcha/releases/tag/v0.2.3). Next: on-device verify update flow (device A sideloads v0.2.3 → push v0.2.4 → v0.2.3 device gets the in-app prompt). See changelog.
+**v0.2.4 released (2026-08-09).** Home redesign (greeting + name header, Income/Spent sibling cards, 6-month trend card) + Reports upgrade (Income/Spent/Net strip, pie % labels). On top of v0.2.3 (auto-update, name fix, app-lock fix, home UX pass). APK `kharcha-armv8a-release.apk` on [release v0.2.4](https://github.com/AkashPriyadarshii/kharcha/releases/tag/v0.2.4). Next: on-device verify update flow (v0.2.3 device → v0.2.4 prompt); editable home sections (Cashew-style reorder). See changelog.
 
 **Post-v0.2.2 polish (unreleased).** Display-name fix (Google `full_name` vs in-app `name`); app-lock re-lock race fixed (`_wasLockedAtPause`); home UX pass — bell removed, pencil manage sheet added, Profile re-onboarding tile, sign-out confirm. See changelog.
 
