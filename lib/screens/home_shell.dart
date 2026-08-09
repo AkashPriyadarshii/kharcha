@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -65,6 +64,24 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   }
 
   Future<void> _signOut(BuildContext context) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sign out?'),
+        content: const Text('Your expenses stay on this device. Sign back in anytime.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Sign out'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
     authBypass.value = false; // also exit guest mode
     await Supabase.instance.client.auth.signOut();
     // Router redirects to /auth on session change.
@@ -72,6 +89,40 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 
   void _quickAdd(BuildContext context) {
     showDialog<void>(context: context, builder: (_) => const QuickAddDialog());
+  }
+
+  /// Pencil button: quick access to the "manage" screens (categories, wallets,
+  /// subscriptions, goals, debts, split) without diving into Profile.
+  void _openManage(BuildContext context) {
+    const routes = [
+      (Icons.category_outlined, 'Categories', '/categories'),
+      (Icons.account_balance_wallet_outlined, 'Wallets', '/wallets'),
+      (Icons.repeat, 'Subscriptions', '/subscriptions'),
+      (Icons.flag_outlined, 'Savings goals', '/objectives'),
+      (Icons.balance, 'Credit & debt', '/debts'),
+      (Icons.call_split, 'Split a bill', '/split'),
+    ];
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final (icon, label, route) in routes)
+              ListTile(
+                leading: Icon(icon),
+                title: Text(label),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  context.push(route);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -85,12 +136,11 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             tooltip: 'Add expense',
             onPressed: () => context.push('/add'),
           ),
-          if (Platform.isAndroid)
-            IconButton(
-              icon: const Icon(Icons.notifications_active_outlined),
-              tooltip: 'Auto-capture UPI payments',
-              onPressed: () => context.push('/enable-capture'),
-            ),
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            tooltip: 'Manage categories, wallets & more',
+            onPressed: () => _openManage(context),
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Sign out',

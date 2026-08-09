@@ -17,6 +17,14 @@ import '../../data/transaction_repository.dart';
 
 final _currency = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
 
+/// The user's display name. Google sign-in stores it under `full_name`;
+/// the in-app edit writes `name`. Check both.
+String? _userName(User? user) {
+  final meta = user?.userMetadata;
+  if (meta == null) return null;
+  return (meta['name'] as String?) ?? (meta['full_name'] as String?);
+}
+
 /// Profile: account, payment methods, export, backup status, settings, app lock.
 class ProfileTab extends ConsumerWidget {
   const ProfileTab({super.key});
@@ -84,6 +92,14 @@ class ProfileTab extends ConsumerWidget {
         const SizedBox(height: 16),
         const SectionTitle('Settings'),
         const SizedBox(height: 8),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.notifications_active_outlined),
+          title: const Text('Auto-capture setup'),
+          subtitle: const Text('Re-run onboarding: capture, notifications, battery'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.push('/onboarding'),
+        ),
         ListTile(
           contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.balance),
@@ -235,8 +251,8 @@ class _AccountHeaderState extends ConsumerState<_AccountHeader> {
           children: [
             CircleAvatar(
               radius: 24,
-              child: user?.userMetadata?['name'] != null
-                  ? Text((user!.userMetadata!['name'] as String).substring(0, 1).toUpperCase())
+              child: _userName(user) != null
+                  ? Text(_userName(user)!.substring(0, 1).toUpperCase())
                   : const Icon(Icons.person),
             ),
             const SizedBox(width: 16),
@@ -248,7 +264,7 @@ class _AccountHeaderState extends ConsumerState<_AccountHeader> {
                     children: [
                       Flexible(
                         child: Text(
-                          user?.userMetadata?['name'] as String? ?? 'Kharcha user',
+                          _userName(user) ?? 'Kharcha user',
                           style: Theme.of(context).textTheme.titleMedium,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -276,7 +292,7 @@ class _AccountHeaderState extends ConsumerState<_AccountHeader> {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
     final controller = TextEditingController(
-      text: user.userMetadata?['name'] as String? ?? '',
+      text: _userName(user) ?? '',
     );
     final newName = await showDialog<String>(
       context: context,

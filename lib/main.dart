@@ -88,6 +88,11 @@ class LockGate extends ConsumerStatefulWidget {
 
 class _LockGateState extends ConsumerState<LockGate> with WidgetsBindingObserver {
   bool _unlocked = false;
+  // Whether the app was showing the lock screen when it paused. The biometric
+  // prompt itself backgrounds the activity — on return (resumed) the auth
+  // result decides, so we must NOT re-lock there. Re-lock only when the user
+  // backgrounded from an unlocked state.
+  bool _wasLockedAtPause = true;
 
   @override
   void initState() {
@@ -97,8 +102,12 @@ class _LockGateState extends ConsumerState<LockGate> with WidgetsBindingObserver
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Re-lock on every foreground — returning to the app re-prompts.
-    if (state == AppLifecycleState.resumed) setState(() => _unlocked = false);
+    if (state == AppLifecycleState.paused) {
+      _wasLockedAtPause = !_unlocked;
+    } else if (state == AppLifecycleState.resumed && !_wasLockedAtPause) {
+      // Returned to the app after backgrounding while unlocked → re-lock.
+      setState(() => _unlocked = false);
+    }
   }
 
   @override
