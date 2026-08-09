@@ -2,13 +2,15 @@
 
 **by Akash Priyadarshi** · [github.com/AkashPriyadarshii](https://github.com/AkashPriyadarshii) · [akashpriyadarshi.vercel.app](https://akashpriyadarshi.vercel.app)
 
+**🌐 Website:** [**kharcha.github.io**](https://AkashPriyadarshii.github.io/kharcha/) — features, screenshots, FAQ, direct download.
+
 India-first UPI expense tracker for Android. Every UPI payment from GPay, PhonePe, or Paytm auto-appears as an expense — no manual entry. Offline-first, rule-based automation (no AI), Supabase sync. Built with Flutter/Dart, Drift/SQLite.
 
 ## 📲 Download
 
 | | |
 |---|---|
-| **Latest release** | **v0.2.5** |
+| **Latest release** | **v0.2.6** |
 | **APK** | [`kharcha-armv8a-release.apk`](https://github.com/AkashPriyadarshii/kharcha/releases/latest/download/kharcha-armv8a-release.apk) (~25 MB) |
 | **Requirements** | Android 12+ (arm64) |
 
@@ -32,12 +34,15 @@ India-first UPI expense tracker for Android. Every UPI payment from GPay, PhoneP
 - **App lock** — biometric/PIN.
 - **Max tracking, never sold** — collects granular spend data (that's the product); data is never sold, never ad-targeted.
 
+## What's new in v0.2.6
+
+- **Dark theme** — a full dark mode (warm near-black, same ₹-green identity). Follow your system, or force Light/Dark from Profile → Settings → Theme.
+- **In-app bug reporting** — Report a bug in Settings. Email is one tap (opens your mail app, device details pre-filled); an in-app option works too.
+
 ## What's new in v0.2.5
 
 - **Notification fixes** — daily/weekly summaries now fire at the right time on every device (timezone fallback), and the weekly recap is no longer silently lost when it lands on a Sunday evening.
 - **Name fix** — your Google name now shows correctly after sign-in (was missing for many accounts).
-- **Home redesign** — greeting with your name, Income vs Spent cards, and a 6-month spend trend right on the dashboard.
-- **Reports upgrade** — Income/Spent/Net at a glance; category pie shows percentage labels.
 
 ## Tech stack
 
@@ -58,3 +63,15 @@ India-first UPI expense tracker for Android. Every UPI payment from GPay, PhoneP
 ## License
 
 Source-available. All rights reserved. This code is public for viewing only — no use, reproduction, or derivative works permitted. See LICENSE for full terms.
+
+## SEO & Metadata
+
+**Site:** [https://AkashPriyadarshii.github.io/kharcha/](https://AkashPriyadarshii.github.io/kharcha/)
+
+**Description:** Kharcha — India's UPI expense tracker for Android. Every UPI payment from GPay, PhonePe, or Paytm auto-appears as an expense. No manual entry. Offline-first, private, rule-based automation (no AI), Supabase sync.
+
+**Keywords:** UPI expense tracker, expense tracker India, UPI payment tracker, GPay tracker, PhonePe tracker, money tracker app, spend tracker India, budget app India, auto expense tracker, payment notification tracker, Kharcha app, personal finance app India, expense manager, money manager India, monthly budget tracker, UPI spend tracker, finance app Android.
+
+**Meta tags:** `<title>` Kharcha — India's UPI Expense Tracker for Android · `<meta description>` (see above) · Open Graph (`og:title`, `og:description`, `og:image` = HOME screenshot, `og:locale` = en_IN) · Twitter card `summary_large_image` · canonical URL · `theme-color` #0A6B4D · schema.org `SoftwareApplication` JSON-LD (finance category, free, aggregate rating).
+
+**Other links:** [Play-listing copy](docs/play-listing.md) · [Privacy policy](docs/privacy-policy.md)
