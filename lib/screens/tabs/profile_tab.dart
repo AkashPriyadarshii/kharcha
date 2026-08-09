@@ -126,6 +126,13 @@ class ProfileTab extends ConsumerWidget {
           onTap: () => context.push('/split'),
         ),
         _AppLockTile(),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.description_outlined),
+          title: const Text('Terms & Conditions'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.push('/terms'),
+        ),
       ],
     );
   }
