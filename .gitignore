@@ -48,7 +48,8 @@ app.*.map.json
 /android/app/release
 /android/build/
 
-# Release signing — never commit the keystore or its passwords.
+# Release signing — never commit the keystore, its passwords, or the backup file.
 android/key.properties
 android/app/*.jks
 android/app/*.keystore
+android/BACKUP_KEYS.txt
