@@ -54,3 +54,6 @@ android/key.properties.release
 android/app/*.jks
 android/app/*.keystore
 android/BACKUP_KEYS.txt
+
+# supabase CLI local state
+supabase/.temp/
