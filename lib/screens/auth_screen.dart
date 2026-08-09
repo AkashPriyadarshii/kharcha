@@ -34,6 +34,16 @@ class _AuthScreenState extends State<AuthScreen> {
         provider: OAuthProvider.google,
         idToken: idToken,
       );
+      // Root cause of the name bug: signInWithIdToken does NOT reliably copy
+      // Google's profile claims into user_metadata (no full_name/name key), so
+      // the name UI falls back to "Kharcha user". We already hold the account
+      // from Google itself — write it once so every screen just reads `name`.
+      final meta = Supabase.instance.client.auth.currentUser!.userMetadata ?? const {};
+      if (meta['name'] == null) {
+        await Supabase.instance.client.auth.updateUser(
+          UserAttributes(data: {...meta, 'name': account.displayName}),
+        );
+      }
       if (!mounted) return;
       context.go('/');
     } on GoogleSignInException catch (e) {

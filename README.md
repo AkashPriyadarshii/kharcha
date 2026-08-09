@@ -9,7 +9,7 @@ India-first UPI expense tracker for Android. Every UPI payment from GPay, PhoneP
 | | |
 |---|---|
 | **Latest release** | **v0.2.4** |
-| **APK** | [`kharcha-armv8a-release.apk`](https://github.com/AkashPriyadarshii/kharcha/releases/latest) (~25 MB) |
+| **APK** | [`kharcha-armv8a-release.apk`](https://github.com/AkashPriyadarshii/kharcha/releases/latest/download/kharcha-armv8a-release.apk) (~25 MB) |
 | **Requirements** | Android 12+ (arm64) |
 
 **Install:** download the APK → open it → allow "Install unknown apps" if prompted → done. App auto-updates itself after that — every release is checked and offered in-app, no sideloading needed again.
