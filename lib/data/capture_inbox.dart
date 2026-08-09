@@ -7,8 +7,11 @@ import '../core/upi_parser.dart';
 import 'transaction_repository.dart';
 
 /// Path of the Kotlin-written inbox (matches UpiNotificationListener.kt).
+/// Must be `getCacheDir()` on Android — the Kotlin side writes to
+/// `context.cacheDir` (`cache/`), while `getApplicationCacheDirectory()` is
+/// `code_cache/` (a different dir). A mismatch silently killed all capture.
 Future<File> captureInboxFile() async {
-  final dir = await getApplicationCacheDirectory();
+  final dir = await getTemporaryDirectory();
   return File('${dir.path}/upi_inbox.jsonl');
 }
 
