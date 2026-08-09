@@ -11,12 +11,20 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_lock.dart';
 import '../../core/theme.dart';
+import '../../core/theme_mode.dart';
+import '../../data/bug_reporter.dart';
 import '../../data/exporter.dart';
 import '../../data/importer.dart';
 import '../../data/transaction_repository.dart';
 import '../update_dialog.dart';
 
 final _currency = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
+
+/// Where bug reports go. Email is the recommended channel (no account needed,
+/// lands straight in the owner's inbox); the in-app path writes to Supabase.
+const _supportEmail = 'akash.priyadarshi9100backup@gmail.com';
+
+enum _ReportChannel { email, app }
 
 /// The user's display name. Google sign-in stores it under `full_name`;
 /// the in-app edit writes `name`. Check both.
@@ -110,6 +118,22 @@ class ProfileTab extends ConsumerWidget {
         ),
         ListTile(
           contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.dark_mode_outlined),
+          title: const Text('Theme'),
+          subtitle: Text(_themeLabel(ref.watch(themeModeProvider))),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => _pickTheme(context, ref),
+        ),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.bug_report_outlined),
+          title: const Text('Report a bug'),
+          subtitle: const Text('Email (recommended) or in-app'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => _reportBug(context),
+        ),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.balance),
           title: const Text('Credit & debt'),
           trailing: const Icon(Icons.chevron_right),
@@ -180,6 +204,128 @@ class ProfileTab extends ConsumerWidget {
       ],
     );
   }
+
+  /// Two ways to report a bug: Email (recommended — no account needed, lands
+  /// straight in the inbox) or in-app (writes the `bug_reports` table).
+  Future<void> _reportBug(BuildContext context) async {
+    final env = await const BugReporter().describeEnvironment();
+    if (!context.mounted) return;
+    final choice = await showDialog<_ReportChannel>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('Report a bug'),
+        children: [
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+            leading: const Icon(Icons.mail_outline),
+            title: const Text('Email'),
+            subtitle: const Text('Recommended — opens your mail app'),
+            onTap: () => Navigator.pop(context, _ReportChannel.email),
+          ),
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+            leading: const Icon(Icons.send_outlined),
+            title: const Text('In-app'),
+            subtitle: const Text('Sends via your signed-in Kharcha account'),
+            onTap: () => Navigator.pop(context, _ReportChannel.app),
+          ),
+        ],
+      ),
+    );
+    if (choice == null || !context.mounted) return;
+    switch (choice) {
+      case _ReportChannel.email:
+        final uri = Uri(
+          scheme: 'mailto',
+          path: _supportEmail,
+          queryParameters: {
+            'subject': 'Kharcha bug report',
+            'body': 'Describe the bug:\n\n\nDevice context:\n$env',
+          },
+        );
+        final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+        if (!ok && context.mounted) _fail(context, 'Could not open mail app.');
+      case _ReportChannel.app:
+        await _sendInAppReport(context, env);
+    }
+  }
+
+  Future<void> _sendInAppReport(BuildContext context, String env) async {
+    final controller = TextEditingController();
+    final message = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Describe the bug'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLines: 4,
+          maxLength: 2000,
+          decoration: const InputDecoration(hintText: 'What went wrong?'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('Send'),
+          ),
+        ],
+      ),
+    );
+    if (message == null || message.isEmpty || !context.mounted) return;
+    try {
+      await const BugReporter().report(message, environment: env);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Report sent. Thanks!')),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      _fail(context, 'Could not send: $e');
+    }
+  }
+
+  void _fail(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  /// System/Light/Dark picker. System follows the OS; the other two force it.
+  Future<void> _pickTheme(BuildContext context, WidgetRef ref) async {
+    final current = ref.read(themeModeProvider);
+    final picked = await showDialog<ThemeMode>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('Theme'),
+        children: [
+          RadioGroup<ThemeMode>(
+            groupValue: current,
+            onChanged: (v) => Navigator.pop(context, v),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final mode in ThemeMode.values)
+                  RadioListTile<ThemeMode>(
+                    value: mode,
+                    title: Text(_themeLabel(mode)),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+    if (picked == null || picked == current) return;
+    await ref.read(themeModeProvider.notifier).set(picked);
+  }
+
+  String _themeLabel(ThemeMode mode) => switch (mode) {
+        ThemeMode.system => 'Follow system',
+        ThemeMode.light => 'Light',
+        ThemeMode.dark => 'Dark',
+      };
 
   Future<void> _export(BuildContext context, WidgetRef ref, {required bool csv}) async {
     try {

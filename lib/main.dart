@@ -11,6 +11,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'core/app_lock.dart';
 import 'core/config.dart';
 import 'core/theme.dart';
+import 'core/theme_mode.dart';
 import 'data/database.dart';
 import 'data/notifications.dart';
 import 'data/sync_engine.dart';
@@ -32,6 +33,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Supabase.initialize(url: SupabaseConfig.url, publishableKey: SupabaseConfig.anonKey);
   await _container.read(appLockControllerProvider.notifier).load();
+  await _container.read(themeModeProvider.notifier).load();
   onboardingDone.value = await (await OnboardingStore.create()).isDone();
   // Onboarding is Android capture setup (notification access, battery
   // exemption). Nothing to set up on desktop — skip straight to the shell.
@@ -68,6 +70,8 @@ class KharchaApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'Kharcha',
       theme: kharchaTheme(),
+      darkTheme: kharchaDarkTheme(),
+      themeMode: ref.watch(themeModeProvider),
       routerConfig: _router,
       // LockGate overlays everything while the app is locked.
       builder: (context, child) => LockGate(child: child ?? const SizedBox.shrink()),
