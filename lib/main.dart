@@ -151,9 +151,11 @@ final _router = GoRouter(
   redirect: (context, state) {
     final loggedIn = authBypass.value ||
         Supabase.instance.client.auth.currentSession != null;
-    final atAuth = state.matchedLocation == '/auth';
-    if (!loggedIn && !atAuth) return '/auth';
-    if (loggedIn && atAuth) return '/';
+    // public = reachable without a session (auth + terms).
+    final public = state.matchedLocation == '/auth' ||
+        state.matchedLocation == '/terms';
+    if (!loggedIn && !public) return '/auth';
+    if (loggedIn && state.matchedLocation == '/auth') return '/';
     // Signed in → run onboarding once, before the home shell.
     if (loggedIn && state.matchedLocation == '/' && !onboardingDone.value) {
       return '/onboarding';

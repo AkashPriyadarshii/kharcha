@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:csv/csv.dart';
 
+import '../core/money.dart';
 import 'transaction_repository.dart';
 
 /// Result of an import: how many rows landed and which ones were skipped.
@@ -61,7 +62,7 @@ Future<ImportResult> importCsv(File file, TransactionRepository repo) async {
     if (row.every((c) => c.toString().trim().isEmpty)) continue;
 
     final amountStr = cell(row, 'amount')?.replaceAll(',', '');
-    final amount = double.tryParse(amountStr ?? '');
+    final amount = parseAmount(amountStr);
     final merchant = cell(row, 'merchant');
     final txnDate = DateTime.tryParse(cell(row, 'date') ?? '');
 
