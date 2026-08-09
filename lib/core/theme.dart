@@ -17,11 +17,13 @@ const moneyStyle = TextStyle(
   fontFeatures: [FontFeature.tabularFigures()],
 );
 
-ThemeData kharchaTheme() {
+ThemeData kharchaTheme({Brightness brightness = Brightness.light}) {
+  final dark = brightness == Brightness.dark;
   final scheme = ColorScheme.fromSeed(
     seedColor: seed,
-    brightness: Brightness.light,
-    surface: const Color(0xFFFBF7EF), // warm paper
+    brightness: brightness,
+    // Light: warm paper. Dark: warm near-black (keeps the ₹-green warmth).
+    surface: dark ? const Color(0xFF14120D) : const Color(0xFFFBF7EF),
   );
   final base = ThemeData(colorScheme: scheme, useMaterial3: true);
 
@@ -35,17 +37,17 @@ ThemeData kharchaTheme() {
     ),
     cardTheme: CardThemeData(
       elevation: 0,
-      color: const Color(0xFFFFFFFF),
+      color: dark ? scheme.surfaceContainerHigh : const Color(0xFFFFFFFF),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     ),
     navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: const Color(0xFFFFFFFF),
+      backgroundColor: dark ? scheme.surfaceContainer : const Color(0xFFFFFFFF),
       indicatorColor: scheme.primaryContainer,
       surfaceTintColor: Colors.transparent,
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: const Color(0xFFF1ECE1),
+      fillColor: dark ? scheme.surfaceContainerHigh : const Color(0xFFF1ECE1),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
     ),
     filledButtonTheme: FilledButtonThemeData(
@@ -54,6 +56,9 @@ ThemeData kharchaTheme() {
     textTheme: base.textTheme.apply(fontFamily: 'Roboto'),
   );
 }
+
+/// Same identity, dark — used when [ThemeMode] is dark/system-dark.
+ThemeData kharchaDarkTheme() => kharchaTheme(brightness: Brightness.dark);
 
 /// Small-caps section label used across dashboard/reports/budget screens.
 class SectionTitle extends StatelessWidget {
