@@ -2,6 +2,11 @@
 
 All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
 
+## [v0.2.6] — 2026-08-09
+
+- **Dark theme + theme mode** — full dark theme (warm near-black surfaces, same ₹-green identity) plus a Theme picker in Profile → Settings (Follow system / Light / Dark). Choice persists per-device in a JSON file (`theme_mode.json`, same pattern as app lock); startup loads it, `MaterialApp` wires `darkTheme` + `themeMode`. `lib/core/theme.dart` gains `kharchaDarkTheme()`; hardcoded whites replaced with scheme containers so both themes read correctly. `test/theme_mode_test.dart`.
+- **In-app bug reporting** — Profile → Settings → **Report a bug**. Two channels: **Email** (recommended — prefilled `mailto:` to the owner with device/OS/version context, no account needed) or **In-app** (signed-in user writes the new `bug_reports` table on Supabase, migration 0005; owner reads in the dashboard Table Editor). No GitHub account required for reporters. `lib/data/bug_reporter.dart` + `test/bug_reporter_test.dart`.
+
 ## [v0.2.4] — 2026-08-09
 
 - **Home redesign** (Cashew-inspired) — greeting header with your name ("Good evening, Akash"); Income this month + Spent today as sibling colored cards (mint income / red expense); compact 6-month spend trend card under the hero. Hero keeps the count-up ₹ panel, now with amber over-budget state.
