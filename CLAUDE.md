@@ -22,10 +22,9 @@ Every UPI payment auto-appears as an expense via notification capture. No manual
 
 ## Team
 
-- **Akash** (`AkashPriyadarshii`) — owner. Final call on scope, architecture, merges.
-- **Priyaranjan** (`priyaranjan122002`) — co-dev, UI/feature work.
+- **Akash** (`AkashPriyadarshii`) — owner. Sole developer. Final call on scope, architecture, merges.
 
-Both work through branches + PRs. No one pushes to `main` directly.
+Work through branches + PRs. No pushes to `main` directly.
 
 ## Stack (pinned — do not change without approval)
 
@@ -94,7 +93,7 @@ Apply to every line of code. These exist because this repo has a 2-person team a
 - **YAGNI.** No feature, abstraction, or config for something we don't need now. No "flexibility for later." No unused imports, variables, or files.
 - **No unrequested abstractions.** No interface with one implementation. No factory for one product. No config for a value that never changes.
 - **Boring over clever.** The simplest thing that works. Code must be readable at 3am.
-- **Stdlib / existing deps first.** Do NOT add a new package for something a few lines can do. Any new dependency requires the other dev's approval.
+- **Stdlib / existing deps first.** Do NOT add a new package for something a few lines can do. Any new dependency requires owner approval.
 - **Immutability.** Don't mutate existing objects; return new ones.
 - **Naming.** camelCase functions/vars, PascalCase types/widgets, `is`/`has`/`can` for booleans, `UPPER_SNAKE_CASE` constants. Match surrounding code.
 - **Error handling.** No swallowed errors. No silent `catch {}`. Show a user-friendly message; log detail.
@@ -165,7 +164,7 @@ flutter build apk --release --split-per-abi
 
 - Branch off `main`: `feat/<short-name>` or `fix/<short-name>`.
 - Conventional commits: `feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`.
-- PR to `main`. Other dev reviews and approves. Owner merges.
+- PR to `main`. Owner reviews and merges.
 - PR description must say: **what changed, how tested, screenshots if UI.**
 - Attribution disabled globally (no Co-Authored-By trailer).
 
@@ -176,7 +175,7 @@ flutter build apk --release --split-per-abi
 - [ ] `flutter analyze` passes
 - [ ] `flutter test` passes
 - [ ] Manual smoke test on Android device/emulator
-- [ ] PR reviewed and approved by the other dev
+- [ ] PR reviewed and approved by the owner
 - [ ] `docs/state.md` updated
 
 ## Docs must stay current — every commit
@@ -197,4 +196,4 @@ If a commit changes code but none of these md files need an update, say why in t
 
 ## Rule priority
 
-CLAUDE.md > user request > skill instructions. If a skill or agent says something different, this file wins. When in doubt, ask the other dev in the PR.
+CLAUDE.md > user request > skill instructions. If a skill or agent says something different, this file wins. When in doubt, ask the owner in the PR.

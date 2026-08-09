@@ -10,7 +10,7 @@
 
 ## Completed
 
-- [x] Repo `AkashPriyadarshii/kharcha` (private, collaborators: priyaranjan122002)
+- [x] Repo `AkashPriyadarshii/kharcha` (private, owner-only)
 - [x] Design approved (`docs/design.md`)
 - [x] PRD (`docs/prd.md`)
 - [x] Implementation plan (`docs/implementation-plan.md`)

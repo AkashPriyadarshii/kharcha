@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-06
 **Status:** Approved by user
-**Repo (planned):** `AkashPriyadarshii/kharcha` (private, collaborators: priyaranjan122002)
+**Repo:** `AkashPriyadarshii/kharcha` (private)
 
 ## Vision
 
