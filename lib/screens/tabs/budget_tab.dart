@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/money.dart';
 import '../../core/theme.dart';
 import '../../data/database.dart';
 import '../../data/transaction_repository.dart';
@@ -255,7 +256,7 @@ class _BudgetDialogState extends ConsumerState<_BudgetDialog> {
     try {
       await ref.read(transactionRepositoryProvider).upsertBudget(
             categoryId: categoryId,
-            amount: double.parse(_amount.text),
+            amount: parseAmount(_amount.text)!,
           );
       if (!mounted) return;
       Navigator.of(context).pop();

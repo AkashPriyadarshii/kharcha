@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/money.dart';
 import '../data/sync_engine.dart';
 import '../data/transaction_repository.dart';
 import '../widgets/income_expense_toggle.dart';
@@ -38,7 +39,7 @@ class _QuickAddDialogState extends ConsumerState<QuickAddDialog> {
     final container = ProviderScope.containerOf(context);
     try {
       await ref.read(transactionRepositoryProvider).insertManual(
-            amount: double.parse(_amount.text),
+            amount: parseAmount(_amount.text)!,
             merchant: _merchant.text.trim().isEmpty ? 'Manual' : _merchant.text,
             paymentMethod: 'upi',
             txnDate: DateTime.now(),

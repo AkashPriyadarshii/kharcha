@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../core/money.dart';
 import '../data/database.dart';
 import '../data/sync_engine.dart';
 import '../data/transaction_repository.dart';
@@ -71,7 +72,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       final t = widget.transaction;
       if (t == null) {
         await repo.insertManual(
-              amount: double.parse(_amount.text),
+              amount: parseAmount(_amount.text)!,
               merchant: _merchant.text,
               categoryId: _categoryId,
               walletId: _walletId,
@@ -83,7 +84,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       } else {
         await repo.updateTransaction(
               id: t.id,
-              amount: double.parse(_amount.text),
+              amount: parseAmount(_amount.text)!,
               merchant: _merchant.text,
               categoryId: _categoryId,
               note: _note.text,
