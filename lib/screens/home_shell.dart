@@ -43,7 +43,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     // budget/edit made a minute ago reaches Supabase without waiting for a
     // trigger. Offline failures no-op (rows stay dirty, retried next tick).
     _syncTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      unawaited(syncIfSignedIn(widget.container));
+      unawaited(_drainInbox());
     });
   }
 

@@ -1,9 +1,6 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
 
 import '../data/capture_inbox.dart';
 import '../data/transaction_repository.dart';
@@ -25,9 +22,8 @@ class _EnableCaptureScreenState extends ConsumerState<EnableCaptureScreen> {
   }
 
   Future<void> _drain() async {
-    final dir = await getApplicationCacheDirectory();
     final repo = ref.read(transactionRepositoryProvider);
-    await drainCaptureInbox(inbox: File('${dir.path}/upi_inbox.jsonl'), repo: repo);
+    await drainCaptureInbox(inbox: await captureInboxFile(), repo: repo);
   }
 
   @override
