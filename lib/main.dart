@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'core/app_logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -33,6 +35,15 @@ import 'screens/logs_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  FlutterError.onError = (details) {
+    AppLogger().e('FlutterError', details.exceptionAsString(), details.exception, details.stack);
+  };
+  PlatformDispatcher.instance.onError = (error, stack) {
+    AppLogger().e('PlatformDispatcher', error.toString(), error, stack);
+    return true;
+  };
+
   await Supabase.initialize(url: SupabaseConfig.url, publishableKey: SupabaseConfig.anonKey);
   await _container.read(appLockControllerProvider.notifier).load();
   await _container.read(themeModeProvider.notifier).load();

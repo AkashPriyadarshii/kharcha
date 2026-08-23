@@ -1,4 +1,8 @@
 import 'dart:collection';
+import 'dart:convert';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 
 class AppLogger {
@@ -25,7 +29,52 @@ class AppLogger {
     }
   }
 
+  
+  Future<void> _reportError(String module, String event, dynamic error, StackTrace? st) async {
+    try {
+      final recentLogs = _logs.toList().reversed.take(50).toList();
+      final payload = {
+        'timestamp': DateTime.now().toIso8601String(),
+        'module': module,
+        'event': event,
+        'error': error?.toString(),
+        'stack': st?.toString(),
+        'trailing_logs': recentLogs,
+      };
+      
+      try {
+        await Supabase.instance.client.from('app_errors').insert(payload);
+      } catch (_) {
+        final dir = await getApplicationDocumentsDirectory();
+        final file = File('${dir.path}/pending_crashes.jsonl');
+        file.writeAsStringSync('${jsonEncode(payload)}\n', mode: FileMode.append);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> flushPendingCrashes() async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/pending_crashes.jsonl');
+      if (!file.existsSync()) return;
+      
+      final lines = file.readAsLinesSync();
+      if (lines.isEmpty) {
+        file.deleteSync();
+        return;
+      }
+      
+      final client = Supabase.instance.client;
+      for (final line in lines) {
+        if (line.trim().isEmpty) continue;
+        await client.from('app_errors').insert(jsonDecode(line));
+      }
+      file.deleteSync();
+    } catch (_) {}
+  }
+
   void e(String module, String event, [dynamic error, StackTrace? st]) {
     log(module, event, level: 'ERROR', payload: {'error': error?.toString(), 'stack': st?.toString()});
+    _reportError(module, event, error, st);
   }
 }
