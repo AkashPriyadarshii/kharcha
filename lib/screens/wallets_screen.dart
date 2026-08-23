@@ -22,26 +22,44 @@ class _WalletsScreenState extends ConsumerState<WalletsScreen> {
   @override
   Widget build(BuildContext context) {
     final wallets = ref.watch(walletsProvider).value ?? const <Wallet>[];
+    final accounts = wallets.where((w) => w.accountMask != null && w.accountMask!.isNotEmpty).toList();
+    final manualWallets = wallets.where((w) => w.accountMask == null || w.accountMask!.isEmpty).toList();
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Wallets')),
+      appBar: AppBar(title: const Text('Accounts & Wallets')),
       body: SafeArea(
         top: false,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            if (wallets.isEmpty)
-              Text('No wallets yet. Add one to track balances per account.',
-                  style: Theme.of(context).textTheme.bodyMedium)
-            else
-              for (final w in wallets)
-                _WalletTile(wallet: w),
-          ],
-        ),
+        child: wallets.isEmpty
+            ? Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text('No accounts yet. Add one to track balances.',
+                    style: Theme.of(context).textTheme.bodyMedium),
+              )
+            : ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  if (accounts.isNotEmpty) ...[
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8, top: 8),
+                      child: Text('Accounts (Auto-tracked)', style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Theme.of(context).colorScheme.primary)),
+                    ),
+                    for (final w in accounts) _WalletTile(wallet: w),
+                    const Divider(),
+                  ],
+                  if (manualWallets.isNotEmpty) ...[
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8, top: 8),
+                      child: Text('Wallets (Manual)', style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Theme.of(context).colorScheme.primary)),
+                    ),
+                    for (final w in manualWallets) _WalletTile(wallet: w),
+                  ],
+                ],
+              ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _addWallet(context),
         icon: const Icon(Icons.add),
-        label: const Text('Add wallet'),
+        label: const Text('Add Account / Wallet'),
       ),
     );
   }

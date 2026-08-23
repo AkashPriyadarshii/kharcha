@@ -287,6 +287,17 @@ class TransactionRepository {
           break;
         }
       }
+      
+      // Auto-manage accounts: if we have a mask but no account exists, create it instantly
+      if (defaultWallet == null) {
+        final newName = bankName != null ? '$bankName ($accountMask)' : 'Account ($accountMask)';
+        defaultWallet = await insertWallet(
+          name: newName,
+          currency: 'INR',
+          accountMask: accountMask,
+          bankName: bankName,
+        );
+      }
     }
     defaultWallet ??= await (_db.select(_db.wallets)..limit(1)).getSingleOrNull();
 

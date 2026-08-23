@@ -95,10 +95,29 @@ class UpiNotificationListener : NotificationListenerService() {
                 synchronized("upi_inbox_lock".intern()) {
                     file.appendText(line)
                 }
+                showInstantNotification()
             } catch (_: Exception) {
                 // Never crash the service on a file-write failure.
             }
         }.start()
+    }
+
+    private fun showInstantNotification() {
+        try {
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+            
+            // Re-use the existing channel created by flutter_local_notifications
+            val channelId = "kharcha_transactions" 
+            
+            val notification = android.app.Notification.Builder(this, channelId)
+                .setContentTitle("Payment recorded")
+                .setContentText("Kharcha logged a new transaction.")
+                .setSmallIcon(android.R.drawable.ic_menu_info_details) // fallback icon
+                .setAutoCancel(true)
+                .build()
+                
+            notificationManager.notify((System.currentTimeMillis() % 100000).toInt(), notification)
+        } catch (_: Exception) {}
     }
 
     private fun escape(s: String): String =
