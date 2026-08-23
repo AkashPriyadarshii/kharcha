@@ -28,6 +28,7 @@ import 'screens/onboarding_screen.dart';
 import 'screens/subscriptions_screen.dart';
 import 'screens/terms_screen.dart';
 import 'screens/wallets_screen.dart';
+import 'screens/rules_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,6 +45,10 @@ Future<void> main() async {
       unawaited(syncIfSignedIn(_container));
     }
   });
+  
+  // Pennywise-style Income Autopay execution
+  unawaited(_container.read(transactionRepositoryProvider).processAutopay());
+  
   _initNotifications();
   runApp(UncontrolledProviderScope(container: _container, child: const KharchaApp()));
 }
@@ -192,7 +197,7 @@ final _router = GoRouter(
     GoRoute(path: '/split', builder: (context, state) => const BillSplitterScreen()),
     GoRoute(path: '/categories', builder: (context, state) => const CategoriesScreen()),
     GoRoute(path: '/debts', builder: (context, state) => const DebtsScreen()),
-
+    GoRoute(path: '/rules', builder: (context, state) => const RulesScreen()),
   ],
 );
 

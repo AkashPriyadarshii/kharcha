@@ -34,6 +34,28 @@ class Exporter {
     return file;
   }
 
+  /// Privacy-First Anonymized CSV export (Pennywise feature)
+  /// Masks PII (Merchants, Notes, UPI Refs) but keeps data structure for analysis
+  Future<File> exportAnonymizedCsv(Directory dir, String fileName) async {
+    final rows = await _repo.allTransactions();
+    final csv = const ListToCsvConverter().convert([
+      ['date', 'amount', 'type', 'merchant_hash', 'category', 'payment_method', 'source'],
+      for (final (t, cat) in rows)
+        [
+          t.txnDate.toIso8601String(),
+          t.amount.toString(),
+          t.isIncome ? 'income' : 'expense',
+          'MERCHANT_${t.merchant.hashCode.abs().toString().padLeft(8, '0')}',
+          cat ?? '',
+          t.paymentMethod,
+          t.source,
+        ],
+    ]);
+    final file = File('${dir.path}/$fileName');
+    await file.writeAsString(csv, flush: true);
+    return file;
+  }
+
   /// JSON array, newest first.
   Future<File> exportJson(Directory dir, String fileName) async {
     final rows = await _repo.allTransactions();

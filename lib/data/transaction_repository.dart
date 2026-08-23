@@ -27,6 +27,10 @@ final categoriesProvider = StreamProvider<List<Category>>(
   (ref) => ref.watch(transactionRepositoryProvider).watchCategories(),
 );
 
+final rulesProvider = StreamProvider<List<Rule>>(
+  (ref) => ref.watch(transactionRepositoryProvider).watchRules(),
+);
+
 /// An aggregate derived from the live transactions stream.
 ///
 /// Recomputes the DB query on every insert/delete — the FutureProvider
@@ -201,6 +205,7 @@ class TransactionRepository {
     String? upiRef,
     required DateTime txnDate,
     bool isIncome = false,
+    double? balance,
   }) async {
     final trimmedRef = upiRef?.trim();
     if (trimmedRef != null && trimmedRef.isNotEmpty && await existsUpiRef(trimmedRef)) {
@@ -239,11 +244,15 @@ class TransactionRepository {
       categoryId = other?.id;
     }
 
+    // Get default wallet (if any)
+    final defaultWallet = await (_db.select(_db.wallets)..limit(1)).getSingleOrNull();
+
     final id = await _db.into(_db.transactions).insert(
           TransactionsCompanion.insert(
             amount: amount,
             merchant: merchant.trim(),
             categoryId: Value(categoryId),
+            walletId: Value(defaultWallet?.id),
             note: const Value(null),
             paymentMethod: 'upi',
             upiRef: Value(trimmedRef),
@@ -252,6 +261,28 @@ class TransactionRepository {
             isIncome: Value(isIncome),
           ),
         );
+        
+    // Pennywise-style ground truth balance extraction:
+    // If the SMS contained the true bank balance, we adjust the wallet's 
+    // initialBalance so that the computed current balance exactly matches it.
+    if (balance != null && defaultWallet != null) {
+      final txns = await (_db.select(_db.transactions)
+            ..where((t) => t.walletId.equals(defaultWallet.id)))
+          .get();
+      
+      double sumTxns = 0.0;
+      for (final t in txns) {
+        sumTxns += t.isIncome ? t.amount : -t.amount;
+      }
+      
+      // We want: initialBalance + sumTxns = balance
+      // Therefore: initialBalance = balance - sumTxns
+      final newInitial = balance - sumTxns;
+      
+      await (_db.update(_db.wallets)..where((w) => w.id.equals(defaultWallet.id)))
+          .write(WalletsCompanion(initialBalance: Value(newInitial)));
+    }
+
     final row = await (_db.select(_db.transactions)..where((t) => t.id.equals(id))).getSingle();
     return row;
   }
@@ -1397,6 +1428,65 @@ class TransactionRepository {
   }
 
   static const paymentMethods = ['cash', 'upi', 'card', 'wallet'];
+
+  /// Pennywise-style Income Autopay / Auto-Subscription execution
+  /// Materializes any active recurring transaction whose nextDue date has arrived.
+  /// Advances the nextDue date based on the period.
+  Future<void> processAutopay() async {
+    final now = DateTime.now();
+    final due = await (_db.select(_db.recurringTransactions)
+          ..where((r) => r.active.equals(true) & r.nextDue.isSmallerOrEqualValue(now)))
+        .get();
+
+    for (final r in due) {
+      await insertManual(
+        amount: r.amount,
+        merchant: r.merchant,
+        categoryId: r.categoryId,
+        paymentMethod: 'upi',
+        txnDate: r.nextDue,
+        isIncome: false,
+      );
+
+      // Advance date
+      DateTime next;
+      switch (r.period) {
+        case 'daily':
+          next = r.nextDue.add(const Duration(days: 1));
+          break;
+        case 'weekly':
+          next = r.nextDue.add(const Duration(days: 7));
+          break;
+        case 'yearly':
+          next = DateTime(r.nextDue.year + 1, r.nextDue.month, r.nextDue.day);
+          break;
+        case 'monthly':
+        default:
+          next = DateTime(r.nextDue.year, r.nextDue.month + 1, r.nextDue.day);
+      }
+
+      await (_db.update(_db.recurringTransactions)..where((t) => t.id.equals(r.id))).write(
+        RecurringTransactionsCompanion(nextDue: Value(next), dirty: const Value(true)),
+      );
+    }
+  }
+
+  /// Watch rules for the Rules UI
+  Stream<List<Rule>> watchRules() => _db.select(_db.rules).watch();
+
+  Future<void> insertRule(String pattern, int categoryId) async {
+    await _db.into(_db.rules).insert(
+      RulesCompanion.insert(
+        pattern: pattern,
+        categoryId: categoryId,
+        type: 'learned',
+      ),
+    );
+  }
+
+  Future<void> deleteRule(int id) async {
+    await (_db.delete(_db.rules)..where((r) => r.id.equals(id))).go();
+  }
 }
 
 /// Pure validation for the manual form. Returns a user-facing error message,

@@ -96,6 +96,12 @@ class ProfileTab extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
         OutlinedButton.icon(
+          onPressed: () => _export(context, ref, csv: true, anonymize: true),
+          icon: const Icon(Icons.security),
+          label: const Text('Privacy-First Export (Mask PII)'),
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
           onPressed: () => _import(context, ref),
           icon: const Icon(Icons.upload_file_outlined),
           label: const Text('Import CSV'),
@@ -147,6 +153,13 @@ class ProfileTab extends ConsumerWidget {
           title: const Text('Categories'),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => context.push('/categories'),
+        ),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.rule_folder_outlined),
+          title: const Text('Smart Rules'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.push('/rules'),
         ),
         ListTile(
           contentPadding: EdgeInsets.zero,
@@ -362,16 +375,21 @@ class ProfileTab extends ConsumerWidget {
         ThemeMode.dark => 'Dark',
       };
 
-  Future<void> _export(BuildContext context, WidgetRef ref, {required bool csv}) async {
+  Future<void> _export(BuildContext context, WidgetRef ref, {required bool csv, bool anonymize = false}) async {
     try {
       // Always land in the user's Downloads folder (Android scoped storage
       // gives it without any permission on API 29+).
       final dir = await getDownloadsDirectory() ??
           await getApplicationDocumentsDirectory();
       final stamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-      final file = await (csv
-          ? Exporter(ref.read(transactionRepositoryProvider)).exportCsv(dir, 'kharcha_$stamp.csv')
-          : Exporter(ref.read(transactionRepositoryProvider)).exportJson(dir, 'kharcha_$stamp.json'));
+      final File file;
+      if (anonymize) {
+        file = await Exporter(ref.read(transactionRepositoryProvider)).exportAnonymizedCsv(dir, 'kharcha_anonymized_$stamp.csv');
+      } else {
+        file = await (csv
+            ? Exporter(ref.read(transactionRepositoryProvider)).exportCsv(dir, 'kharcha_$stamp.csv')
+            : Exporter(ref.read(transactionRepositoryProvider)).exportJson(dir, 'kharcha_$stamp.json'));
+      }
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Saved to ${file.path}')),
