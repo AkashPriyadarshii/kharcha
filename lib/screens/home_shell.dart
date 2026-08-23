@@ -126,10 +126,26 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _quickAdd(context),
-        icon: const Icon(Icons.add),
-        label: const Text('Quick add'),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          // Secondary: quick-add dialog (fast, minimal fields)
+          FloatingActionButton.small(
+            heroTag: 'fab_quick',
+            tooltip: 'Quick add',
+            onPressed: () => _quickAdd(context),
+            child: const Icon(Icons.bolt),
+          ),
+          const SizedBox(height: 12),
+          // Primary: full add-expense form
+          FloatingActionButton.extended(
+            heroTag: 'fab_add',
+            onPressed: () => context.push('/add'),
+            icon: const Icon(Icons.add),
+            label: const Text('Add expense'),
+          ),
+        ],
       ),
       body: IndexedStack(
         index: index,
