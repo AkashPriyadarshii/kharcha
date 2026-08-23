@@ -109,6 +109,8 @@ Future<ImportResult> importCsv(File file, TransactionRepository repo) async {
   var skipped = 0;
   final errors = <String>[];
 
+  final catCache = <String, int?>{};
+  
   for (var r = dataStart; r < rows.length; r++) {
     final row = rows[r];
     if (row.every((c) => c.toString().trim().isEmpty)) continue;
@@ -137,8 +139,17 @@ Future<ImportResult> importCsv(File file, TransactionRepository repo) async {
 
     var method = cell(row, methodIdx)?.toLowerCase() ?? 'upi';
     if (!TransactionRepository.paymentMethods.contains(method)) method = 'upi';
+    
     final categoryName = cell(row, categoryIdx);
-    final categoryId = categoryName != null ? await repo.categoryIdByName(categoryName) : null;
+    int? categoryId;
+    if (categoryName != null) {
+      if (catCache.containsKey(categoryName)) {
+        categoryId = catCache[categoryName];
+      } else {
+        categoryId = await repo.categoryIdByName(categoryName);
+        catCache[categoryName] = categoryId;
+      }
+    }
     final rawType = cell(row, typeIdx)?.toLowerCase();
     final isIncome = rawType == 'income' || rawType == 'credit';
 

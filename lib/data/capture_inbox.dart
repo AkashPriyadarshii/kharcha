@@ -88,12 +88,17 @@ Future<int> drainCaptureInbox({
           if (!inserted.isIncome && inserted.categoryId != null) {
             final status = await repo.checkCategoryBudgetStatus(inserted.categoryId!, inserted.txnDate);
             if (status != null && status.$4 >= 80) {
-              await notifications.showBudgetThresholdAlert(
-                categoryName: status.$1,
-                spent: status.$2,
-                budget: status.$3,
-                pct: status.$4,
-              );
+              final prevSpent = status.$2 - inserted.amount;
+              final prevPct = (prevSpent / status.$3 * 100).round();
+              
+              if ((status.$4 >= 80 && prevPct < 80) || (status.$4 >= 100 && prevPct < 100)) {
+                await notifications.showBudgetThresholdAlert(
+                  categoryName: status.$1,
+                  spent: status.$2,
+                  budget: status.$3,
+                  pct: status.$4,
+                );
+              }
             }
           }
         }

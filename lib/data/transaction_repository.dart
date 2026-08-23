@@ -2,7 +2,9 @@ import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+
 import '../core/categorizer.dart';
+import '../core/money.dart';
 import 'database.dart';
 import 'remote_feature.dart';
 import 'remote_transaction.dart';
@@ -723,34 +725,56 @@ class TransactionRepository {
 
   /// Top [n] merchants by spend, newest-first order from [allTransactions].
   Future<List<(String, double, int)>> merchantRanking({int n = 10}) async {
-    final per = <String, (double, int)>{};
-    for (final (t, _) in await allTransactions()) {
-      if (t.isIncome) continue; // merchant ranking is spend-only
-      final v = per[t.merchant] ?? (0, 0);
-      per[t.merchant] = (v.$1 + t.amount, v.$2 + 1);
-    }
-    final ranked = per.entries.toList()..sort((a, b) => b.value.$1.compareTo(a.value.$1));
-    return ranked.take(n).map((e) => (e.key, e.value.$1, e.value.$2)).toList();
+    final amountSum = _db.transactions.amount.sum();
+    final count = _db.transactions.id.count();
+    final query = _db.selectOnly(_db.transactions)
+      ..addColumns([_db.transactions.merchant, amountSum, count])
+      ..where(_db.transactions.isIncome.equals(false))
+      ..groupBy([_db.transactions.merchant])
+      ..orderBy([OrderingTerm.desc(amountSum)])
+      ..limit(n);
+      
+    final rows = await query.get();
+    return rows.map((r) => (
+      r.read(_db.transactions.merchant)!,
+      r.read(amountSum) ?? 0.0,
+      r.read(count) ?? 0,
+    )).toList();
   }
 
   /// Total spent per payment method, largest first.
   Future<List<(String, double, int)>> paymentMethodTotals() async {
-    final per = <String, (double, int)>{};
-    for (final (t, _) in await allTransactions()) {
-      if (t.isIncome) continue; // method totals are spend-only
-      final v = per[t.paymentMethod] ?? (0, 0);
-      per[t.paymentMethod] = (v.$1 + t.amount, v.$2 + 1);
-    }
-    final ranked = per.entries.toList()..sort((a, b) => b.value.$1.compareTo(a.value.$1));
-    return ranked.map((e) => (e.key, e.value.$1, e.value.$2)).toList();
+    final amountSum = _db.transactions.amount.sum();
+    final count = _db.transactions.id.count();
+    final query = _db.selectOnly(_db.transactions)
+      ..addColumns([_db.transactions.paymentMethod, amountSum, count])
+      ..where(_db.transactions.isIncome.equals(false))
+      ..groupBy([_db.transactions.paymentMethod])
+      ..orderBy([OrderingTerm.desc(amountSum)]);
+      
+    final rows = await query.get();
+    return rows.map((r) => (
+      r.read(_db.transactions.paymentMethod)!,
+      r.read(amountSum) ?? 0.0,
+      r.read(count) ?? 0,
+    )).toList();
   }
 
   /// (rows pushed to Supabase, rows pending push). Feature rows (budgets,
   /// wallets, recurring, objectives, debts) count as pending until synced.
   Future<(int, int)> syncStatus() async {
-    final all = await _db.select(_db.transactions).get();
-    final pending = all.where((t) => t.dirty).length;
-    final synced = all.where((t) => !t.dirty).length;
+    final pendingCountExp = _db.transactions.id.count();
+    final pending = (await (_db.selectOnly(_db.transactions)
+          ..addColumns([pendingCountExp])
+          ..where(_db.transactions.dirty.equals(true)))
+        .getSingle()).read(pendingCountExp) ?? 0;
+        
+    final syncedCountExp = _db.transactions.id.count();
+    final synced = (await (_db.selectOnly(_db.transactions)
+          ..addColumns([syncedCountExp])
+          ..where(_db.transactions.dirty.equals(false)))
+        .getSingle()).read(syncedCountExp) ?? 0;
+
     return (synced + (await _featureRowsSynced()), pending + (await featureRowsPending()));
   }
 
@@ -880,7 +904,7 @@ class TransactionRepository {
         return {
           'id': r['id'],
           'categoryId': r['category_id'],
-          'amount': (r['amount'] as num).toDouble(),
+          'amount': parseAmount(r['amount']?.toString()) ?? 0.0,
           'period': r['period'],
           'alertPct50': r['alert_pct_50'] ?? 50,
           'alertPct80': r['alert_pct_80'] ?? 80,
@@ -896,7 +920,7 @@ class TransactionRepository {
           'id': r['id'],
           'name': r['name'],
           'currency': r['currency'],
-          'initialBalance': (r['initial_balance'] as num?)?.toDouble() ?? 0,
+          'initialBalance': parseAmount(r['initial_balance']?.toString()) ?? 0.0,
           'createdAt': DateTime.parse(r['created_at'] as String).toLocal(),
           'dirty': false,
           'remoteId': r['id'],
@@ -905,7 +929,7 @@ class TransactionRepository {
         return {
           'id': r['id'],
           'merchant': r['merchant'],
-          'amount': (r['amount'] as num).toDouble(),
+          'amount': parseAmount(r['amount']?.toString()) ?? 0.0,
           'categoryId': r['category_id'],
           'period': r['period'],
           'nextDue': DateTime.parse(r['next_due'] as String).toLocal(),
@@ -917,8 +941,8 @@ class TransactionRepository {
         return {
           'id': r['id'],
           'name': r['name'],
-          'target': (r['target'] as num).toDouble(),
-          'saved': (r['saved'] as num?)?.toDouble() ?? 0,
+          'target': parseAmount(r['target']?.toString()) ?? 0.0,
+          'saved': parseAmount(r['saved']?.toString()) ?? 0.0,
           'deadline': r['deadline'] == null ? null : DateTime.parse(r['deadline'] as String).toLocal(),
           'dirty': false,
           'remoteId': r['id'],
@@ -927,7 +951,7 @@ class TransactionRepository {
         return {
           'id': r['id'],
           'name': r['name'],
-          'amount': (r['amount'] as num).toDouble(),
+          'amount': parseAmount(r['amount']?.toString()) ?? 0.0,
           'isLent': r['is_lent'] ?? false,
           'note': r['note'],
           'settled': r['settled'] ?? false,

@@ -13,9 +13,18 @@ import '../core/update_checker.dart';
 /// is 60/hr per IP, so 1000 users never flag the account — 429 just fails
 /// silent and retries next time.
 
-/// Auto-check once per app open (throttled to once/day on disk). Silent unless
-/// a newer release with a real APK asset exists.
+/// Auto-check once per app open (network check throttled to 1/hour). 
+/// Silent unless a newer release with a real APK asset exists.
 Future<void> checkForUpdate(BuildContext context) async {
+  // Network throttle: never hit GitHub API more than once an hour automatically
+  // (GitHub unauthenticated rate limit is 60/hr per IP).
+  final lastChk = await _lastChecked();
+  if (lastChk != null &&
+      DateTime.now().difference(lastChk) < const Duration(hours: 1)) {
+    return;
+  }
+  await _recordCheck();
+
   String versionName;
   try {
     versionName = await const MethodChannel('com.kharcha.app/update')
@@ -29,10 +38,10 @@ Future<void> checkForUpdate(BuildContext context) async {
   if (info == null || !info.available || info.apkUrl == null) return; // silent
   if (!context.mounted) return;
 
-  // Throttle: never prompt more than once a day.
-  final last = await _lastPrompted();
-  if (last != null &&
-      DateTime.now().difference(last) < const Duration(hours: 24)) {
+  // Prompt throttle: never prompt the user more than once a day.
+  final lastPrompt = await _lastPrompted();
+  if (lastPrompt != null &&
+      DateTime.now().difference(lastPrompt) < const Duration(hours: 24)) {
     return;
   }
   if (!context.mounted) return;
@@ -136,6 +145,25 @@ Future<bool> _downloadAndInstall(String url, int expectedSize) async {
 }
 
 // ---- throttle state (device-local JSON) ----
+Future<File> get _checkFile async => File(
+    '${(await getApplicationDocumentsDirectory()).path}/update_last_checked.json');
+
+Future<DateTime?> _lastChecked() async {
+  try {
+    final f = await _checkFile;
+    if (!await f.exists()) return null;
+    return DateTime.tryParse(await f.readAsString());
+  } catch (_) {
+    return null;
+  }
+}
+
+Future<void> _recordCheck() async {
+  try {
+    await (await _checkFile).writeAsString(DateTime.now().toIso8601String());
+  } catch (_) {}
+}
+
 Future<File> get _promptFile async => File(
     '${(await getApplicationDocumentsDirectory()).path}/update_last_prompted.json');
 

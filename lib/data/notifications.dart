@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
@@ -91,8 +92,8 @@ class Notifications {
 
     try {
       await _plugin.show(id, title, body, captureDetails);
-    } catch (_) {
-      // Silent error containment
+    } catch (e, st) {
+      debugPrint('Notification failed: $e\n$st');
     }
   }
 
@@ -121,8 +122,8 @@ class Notifications {
 
     try {
       await _plugin.show(id, title, body, alertDetails);
-    } catch (_) {
-      // Silent error containment
+    } catch (e, st) {
+      debugPrint('Budget alert failed: $e\n$st');
     }
   }
 
