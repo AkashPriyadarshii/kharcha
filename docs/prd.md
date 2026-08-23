@@ -8,11 +8,11 @@ A privacy-first (public), offline-first UPI expense tracker for Indian users. Th
 
 ## 2. Problem
 
-Indians spend through UPI (GPay, PhonePe, Paytm) dozens of times a month. No one remembers where the money went. Existing trackers (Walnut/Axio, Money Manager, Monefy) require manual entry — friction kills them. Auto-detection apps died when SMS permission was restricted.
+Indians spend through UPI (GPay, PhonePe, Paytm) dozens of times a month. No one remembers where the money went. Existing trackers (Walnut/Axio, Money Manager, Monefy) require manual entry — friction kills them.
 
 ## 3. Solution
 
-Read UPI **push notifications** (Play-legal, no SMS permission) → parse amount + merchant + date → auto-categorize by rule → save. Offline-first, syncs to Supabase when online. Manual entry always available as fallback.
+Read UPI **push notifications** and **SMS messages** (opt-in) → parse amount + merchant + date → auto-categorize by rule → save. Offline-first, syncs to Supabase when online. Manual entry always available as fallback.
 
 ## 4. Target users
 
@@ -76,7 +76,7 @@ Primary: students, working professionals, freelancers, families. India, Android 
 - **Offline:** app fully usable with no network; syncs when back online.
 - **Privacy:** public framing = privacy-first, private, on-device, never sold. Internally the product tracks full granular data (every payment, merchant, category, date) — that's the product. Data never sold, never ad-targeted. No bank login, no credential storage. App lock via biometric/PIN. Privacy policy before Play submission.
 - **Non-generic UI:** Material 3 base, deliberately opinionated. No default template cards, no stock hero, no safe-gray flat layout. See `docs/design.md` design direction.
-- **Permission model:** notification-access only (with disclosure). SMS is P2 opt-in only.
+- **Permission model:** notification-access and SMS (with disclosure). SMS is permitted for auto-capture.
 - **Android:** minSdk 32 (Android 12+).
 
 ## 10. Metrics (post-launch)

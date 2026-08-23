@@ -16,7 +16,7 @@ India-first UPI expense tracker. Every UPI payment auto-appears as an expense �
 - **Never sell data. Never ad-target from it.** That boundary holds regardless of framing — monetization is premium subscription, not data.
 - **Rule-based automation, zero AI** — categorization, normalization, dedupe all local dictionaries + user-learned rules.
 - **No ads in finance screens.** No AI slop. No bank API dependency.
-- **Never depend on a risky permission** — notification capture is the primary path; SMS is a later opt-in toggle (P2).
+- **Permissions:** Notification capture is the primary path, but SMS is now permitted and supported for auto-capture.
 - **Notifications: value-only, capped.** Never random, never marketing. Cap **5/day max**. The 9PM daily + Sunday weekly summaries and budget alerts are *targeted and user-opted-in* — they self-limit, and users never disable them, which keeps auto-capture alive. This is a hard rule: random/irrelevant push to a finance app violates Play policy and kills the capture feature. See `docs/handoff.md` log.
 
 ## Design direction (UI) — NOT generic
@@ -40,7 +40,7 @@ No AI slop, no generic anything. UI is a deliberate product of the brief above.
 - **Never sell data. Never ad-target from it.** Non-negotiable.
 - **Encryption** — data encrypted in transit (TLS) and at rest; encrypted backups.
 - **No bank login, no credential storage.**
-- **Permission model:** notification-access only in MVP (disclosure on first use). SMS is P2, opt-in only.
+- **Permission model:** notification-access and SMS (with disclosure). SMS is permitted for auto-capture.
 
 ## Scope
 
@@ -68,7 +68,7 @@ No AI slop, no generic anything. UI is a deliberate product of the brief above.
 
 ### P2 (after v0.1.0 stable)
 
-- SMS import (opt-in, `READ_SMS`, Play declaration)
+- SMS import (opt-in, `READ_SMS`, `RECEIVE_SMS` supported)
 - Recurring expenses / subscription detection
 - Savings goals
 - Split with friends
@@ -82,7 +82,7 @@ No AI slop, no generic anything. UI is a deliberate product of the brief above.
 
 ### Deliberately excluded
 
-- AI/LLM insights, ads in finance screens, bank API integration, SMS as a dependency.
+- AI/LLM insights, ads in finance screens, bank API integration.
 
 ## Architecture
 
