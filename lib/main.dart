@@ -29,6 +29,7 @@ import 'screens/subscriptions_screen.dart';
 import 'screens/terms_screen.dart';
 import 'screens/wallets_screen.dart';
 import 'screens/rules_screen.dart';
+import 'screens/logs_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -198,6 +199,7 @@ final _router = GoRouter(
     GoRoute(path: '/categories', builder: (context, state) => const CategoriesScreen()),
     GoRoute(path: '/debts', builder: (context, state) => const DebtsScreen()),
     GoRoute(path: '/rules', builder: (context, state) => const RulesScreen()),
+    GoRoute(path: '/logs', builder: (context, state) => const LogsScreen()),
   ],
 );
 

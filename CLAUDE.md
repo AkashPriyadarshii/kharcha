@@ -129,7 +129,7 @@ These are explicit product decisions. Do not "improve" them, do not "help" by ad
 - **NO AI / LLM anywhere.** No Gemini, no OpenAI, no "intelligent" features. Categorization is a local rule map. "AI insights" is banned. The word "AI" in a PR = rejected PR.
 - **NO ads in finance screens. Ever.**
 - **NO bank API integration.** Not available to indie devs; don't build a fake version.
-- **NO SMS permission in v0.1.0.** Notification capture is the path. SMS is P2, opt-in, only with Play declaration.
+- **SMS permission allowed.** Notification capture is the primary path, but SMS is now officially permitted for auto-capture.
 - **NO Firebase.** Supabase is chosen. Don't migrate.
 - **NO mock/placeholder features.** If a screen can't do its job, it doesn't ship.
 - **NO golden-gate UI experiments.** Follow the app's existing Material 3 pattern; don't rebuild a screen in a different style because you like it.

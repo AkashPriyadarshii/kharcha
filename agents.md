@@ -36,7 +36,7 @@ Rules: no unrequested abstractions, no boilerplate, no scaffolding "for later", 
 - **NO AI/LLM in the product.** No Gemini, OpenAI, "AI insights," "smart features." Categorization is a local rule map. The word "AI" in your PR = rejected.
 - **NO ads in finance screens.**
 - **NO Firebase.** Supabase is chosen. Don't migrate.
-- **NO SMS permission in v0.1.0.** Notification capture is the path. SMS is P2 opt-in with Play declaration.
+- **SMS permission allowed.** Notification capture is still an option, but SMS parsing is permitted as opt-in.
 - **NO mock/placeholder features.** A screen that can't do its job doesn't ship.
 - **NO generic template UI.** Material 3 base but opinionated. No default card grids, no stock hero + gradient blob, no safe-gray flat. See `docs/design.md` design direction.
 - **NO dead code.** Delete what your change makes unused. Don't delete pre-existing dead code.

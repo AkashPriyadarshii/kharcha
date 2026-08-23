@@ -25,7 +25,7 @@ India-first UPI expense tracker for Android. Every UPI payment from GPay, PhoneP
 
 ## Product
 
-- **Auto-capture** — reads UPI push notifications (GPay, PhonePe, Paytm) → parses amount/merchant/date → saves expense. Play-legal, no SMS permission.
+- **Auto-capture** — reads UPI push notifications (GPay, PhonePe, Paytm) and SMS messages → parses amount/merchant/date → saves expense. Play-legal, SMS permission is supported.
 - **Auto-categorization** — rule map: Swiggy→Food, Uber→Travel, Amazon→Shopping, Reliance→Grocery. Self-learns from user corrections.
 - **Duplicate-safe** — `upi_ref` unique; notification + manual can never double-add.
 - **9PM Hinglish daily summary** — "Aaj ₹540 kharcha hue." Weekly Sunday recap.

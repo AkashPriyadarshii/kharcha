@@ -1,3 +1,4 @@
+import '../core/app_logger.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -30,7 +31,8 @@ Future<void> checkForUpdate(BuildContext context) async {
     versionName = await const MethodChannel('com.kharcha.app/update')
             .invokeMethod<String>('getVersion') ??
         '0.0.0';
-  } catch (_) {
+  } catch (e, st) {
+    AppLogger().e('App', 'Exception caught', e, st);
     versionName = '0.0.0';
   }
 
@@ -71,7 +73,8 @@ Future<void> manualCheckForUpdate(BuildContext context) async {
     versionName = await const MethodChannel('com.kharcha.app/update')
             .invokeMethod<String>('getVersion') ??
         '0.0.0';
-  } catch (_) {
+  } catch (e, st) {
+    AppLogger().e('App', 'Exception caught', e, st);
     versionName = '0.0.0';
   }
   final info = await fetchLatestRelease(versionName: versionName);
@@ -136,10 +139,12 @@ Future<bool> _downloadAndInstall(String url, int expectedSize) async {
     await const MethodChannel('com.kharcha.app/update')
         .invokeMethod<void>('installApk', {'path': apk.path});
     return true;
-  } catch (_) {
+  } catch (e, st) {
+    AppLogger().e('App', 'Exception caught', e, st);
     try {
       await apk.delete();
-    } catch (_) {}
+    } catch (e, st) {
+    AppLogger().e('App', 'Exception caught', e, st);}
     return false;
   }
 }
@@ -153,7 +158,8 @@ Future<DateTime?> _lastChecked() async {
     final f = await _checkFile;
     if (!await f.exists()) return null;
     return DateTime.tryParse(await f.readAsString());
-  } catch (_) {
+  } catch (e, st) {
+    AppLogger().e('App', 'Exception caught', e, st);
     return null;
   }
 }
@@ -161,7 +167,8 @@ Future<DateTime?> _lastChecked() async {
 Future<void> _recordCheck() async {
   try {
     await (await _checkFile).writeAsString(DateTime.now().toIso8601String());
-  } catch (_) {}
+  } catch (e, st) {
+    AppLogger().e('App', 'Exception caught', e, st);}
 }
 
 Future<File> get _promptFile async => File(
@@ -172,7 +179,8 @@ Future<DateTime?> _lastPrompted() async {
     final f = await _promptFile;
     if (!await f.exists()) return null;
     return DateTime.tryParse(await f.readAsString());
-  } catch (_) {
+  } catch (e, st) {
+    AppLogger().e('App', 'Exception caught', e, st);
     return null;
   }
 }
@@ -180,7 +188,8 @@ Future<DateTime?> _lastPrompted() async {
 Future<void> recordPrompt() async {
   try {
     await (await _promptFile).writeAsString(DateTime.now().toIso8601String());
-  } catch (_) {}
+  } catch (e, st) {
+    AppLogger().e('App', 'Exception caught', e, st);}
 }
 
 Future<File> get _manualFile async => File(
@@ -197,7 +206,8 @@ Future<List<DateTime>> _recentManualChecks() async {
         .whereType<DateTime>()
         .toList();
     return list;
-  } catch (_) {
+  } catch (e, st) {
+    AppLogger().e('App', 'Exception caught', e, st);
     return [];
   }
 }
@@ -212,5 +222,6 @@ Future<void> _recordManualCheck() async {
     await f.writeAsString(jsonEncode(
       recent.map((t) => t.toIso8601String()).toList(),
     ));
-  } catch (_) {}
+  } catch (e, st) {
+    AppLogger().e('App', 'Exception caught', e, st);}
 }

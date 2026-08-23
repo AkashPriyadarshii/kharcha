@@ -24,7 +24,7 @@ targeting.
 
 | Permission | Why |
 |---|---|
-| Notification access | Auto-capture UPI payments (opt-in, on-device, no SMS) |
+| Notification & SMS access | Auto-capture UPI payments (opt-in, on-device, SMS supported) |
 | Biometric / PIN | Optional app lock so only you can open Kharcha |
 | Notifications | Daily 9PM + Sunday weekly spend summaries (opt-in) |
 
@@ -41,7 +41,7 @@ targeting.
 - **Never sell** your data.
 - **Never share** with advertisers.
 - **Never** ad-target.
-- **Never** read SMS.
+- **Opt-in** SMS reading for auto-capture.
 - **No** bank login or credential storage.
 - **No AI.** Categorization is a local rule map.
 

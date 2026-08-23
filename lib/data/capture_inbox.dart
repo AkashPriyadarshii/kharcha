@@ -1,3 +1,4 @@
+import '../core/app_logger.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -32,8 +33,8 @@ void _recordUnrecognized(Directory cacheDir, String jsonLine) {
     }
     existing.add(jsonLine);
     unrecFile.writeAsStringSync('${existing.join('\n')}\n');
-  } catch (_) {
-    // Ignore diagnostic logging failure
+  } catch (e, st) {
+    AppLogger().e('CaptureInbox', 'Error during capture inbox op', e, st);
   }
 }
 
@@ -61,14 +62,16 @@ Future<int> drainCaptureInbox({
       if (map['seenAt'] != null) {
         try {
           txnDate = DateTime.parse(map['seenAt'] as String).toLocal();
-        } catch (_) {}
+        } catch (e, st) {
+    AppLogger().e('App', 'Exception caught', e, st);}
       }
       
       parsed = parseUpiNotification(rawText);
       if (parsed == null && RegExp(r'(?:₹|Rs\.?|INR|\b\d{2,}\b)', caseSensitive: false).hasMatch(rawText)) {
         _recordUnrecognized(inbox.parent, lineTrim);
       }
-    } catch (_) {
+    } catch (e, st) {
+    AppLogger().e('App', 'Exception caught', e, st);
       // A corrupt/partial line is not worth crashing over — skip it.
       continue;
     }
@@ -112,7 +115,8 @@ Future<int> drainCaptureInbox({
           }
         }
       }
-    } catch (_) {
+    } catch (e, st) {
+    AppLogger().e('App', 'Exception caught', e, st);
       // A single insert failure (e.g. constraint) must not abort the drain —
       // that would replay every earlier line as a duplicate on the next open.
       continue;

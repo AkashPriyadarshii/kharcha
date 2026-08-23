@@ -20,7 +20,7 @@ up as an expense — no manual entry needed.
 **Why Kharcha**
 - Indians spend through UPI dozens of times a month. Nobody remembers where
   the money went. Kharcha remembers — automatically.
-- No SMS permission. Notification-based capture is on-device and private.
+- Supports both notification-based and SMS-based capture. Both are on-device and private.
 
 **Features**
 - 📲 **Auto-capture**: UPI payment notifications become expenses instantly
