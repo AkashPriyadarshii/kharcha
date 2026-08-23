@@ -9,7 +9,7 @@ import '../core/update_checker.dart';
 
 /// ponytail: whole-APK download (~26MB), no delta. Play Store publish
 /// supersedes this whole path — swap for `in_app_update` then.
-/// Rate caps: 1 auto-check/day, 3 manual checks/hour. GitHub's unauth limit
+/// Rate caps: 1 auto-check/day, 60 manual checks/hour. GitHub's unauth limit
 /// is 60/hr per IP, so 1000 users never flag the account — 429 just fails
 /// silent and retries next time.
 
@@ -49,14 +49,14 @@ Future<void> checkForUpdate(BuildContext context) async {
   await _promptAndInstall(context, info);
 }
 
-/// Manual "Check for updates" from Profile. Same flow, but capped at 3/hour
+/// Manual "Check for updates" from Profile. Same flow, but capped at 60/hour
 /// (user-initiated, so it skips the daily gate — hitting the cap shows a
 /// snackbar rather than silently doing nothing).
 Future<void> manualCheckForUpdate(BuildContext context) async {
   final recent = await _recentManualChecks();
   recent.retainWhere(
       (t) => DateTime.now().difference(t) < const Duration(hours: 1));
-  if (recent.length >= 3) {
+  if (recent.length >= 60) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('You\'ve checked recently — try again in an hour.')),
