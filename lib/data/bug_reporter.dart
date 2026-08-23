@@ -32,6 +32,7 @@ class BugReporter {
       throw StateError('Sign in to report a bug.');
     }
     await Supabase.instance.client.from('bug_reports').insert({
+      'user_id': session.user.id,
       'message': message,
       'app_version': environment,
     });

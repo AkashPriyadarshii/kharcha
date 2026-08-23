@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:drift/native.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kharcha/data/capture_inbox.dart';
@@ -38,6 +39,7 @@ class _FakeNotifications extends Notifications {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late AppDatabase db;
   late TransactionRepository repo;
   late Directory tempDir;
@@ -50,6 +52,12 @@ void main() {
     fakeNotifications = _FakeNotifications(repo);
     tempDir = Directory.systemTemp.createTempSync('kharcha_test_');
     inboxFile = File('${tempDir.path}/upi_inbox.jsonl');
+
+    const channel = MethodChannel('com.kharcha.app/sms');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) async {
+      if (call.method == 'catchUpSms') return null;
+      return null;
+    });
   });
 
   tearDown(() async {
@@ -81,7 +89,7 @@ void main() {
     );
 
     expect(added, 2);
-    expect(inboxFile.readAsStringSync(), '');
+    expect(inboxFile.existsSync() ? inboxFile.readAsStringSync() : '', '');
 
     final all = await db.select(db.transactions).get();
     expect(all.length, 2);

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/theme.dart';
+import '../../widgets/brand_logo.dart';
 import '../../data/database.dart';
 import '../../data/transaction_repository.dart';
 import '../../widgets/income_expense_toggle.dart';
@@ -582,15 +583,10 @@ class _RecentTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Row(
             children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: category != null
-                    ? categoryColor(category!).withValues(alpha: 0.18)
-                    : (income ? incomeGreen.withValues(alpha: 0.18) : expenseRed.withValues(alpha: 0.18)),
-                child: Text(
-                  income ? '💰' : (category?.emoji ?? '🧾'),
-                  style: const TextStyle(fontSize: 18),
-                ),
+              BrandLogo(
+                merchantName: transaction.merchant,
+                fallbackEmoji: transaction.emoji ?? (income ? '💰' : (category?.emoji ?? '🧾')),
+                fallbackColor: category?.color,
               ),
               const SizedBox(width: 12),
               Expanded(

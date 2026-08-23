@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/theme.dart';
 import '../../core/transaction_filter.dart';
+import '../../widgets/brand_logo.dart';
 import '../../data/database.dart';
 import '../../data/transaction_repository.dart';
 import '../../widgets/income_expense_toggle.dart';
@@ -328,11 +329,10 @@ class _TransactionList extends ConsumerWidget {
             leading: Stack(
               alignment: Alignment.bottomRight,
               children: [
-                CircleAvatar(
-                  backgroundColor: cat == null
-                      ? const Color(0xFF8D99AE)
-                      : Color(int.parse('FF${cat.color.replaceFirst('#', '')}', radix: 16)),
-                  child: Text(t.emoji ?? cat?.emoji ?? '📦'),
+                BrandLogo(
+                  merchantName: t.merchant,
+                  fallbackEmoji: t.emoji ?? cat?.emoji ?? '📦',
+                  fallbackColor: cat?.color,
                 ),
                 if (t.isIncome)
                   Container(

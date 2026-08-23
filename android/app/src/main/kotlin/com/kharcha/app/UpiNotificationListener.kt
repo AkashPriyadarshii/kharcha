@@ -64,6 +64,17 @@ class UpiNotificationListener : NotificationListenerService() {
                 extras.getCharSequence("android.text")?.toString()
                     ?: ""
                 )
+
+            // Block social/messaging apps which send ads with ₹ and keywords
+            if (pkg.contains("whatsapp", ignoreCase = true) ||
+                pkg.contains("telegram", ignoreCase = true) ||
+                pkg.contains("instagram", ignoreCase = true) ||
+                pkg.contains("messaging", ignoreCase = true) ||
+                pkg.contains("mms", ignoreCase = true) ||
+                pkg.contains("facebook", ignoreCase = true)) {
+                return
+            }
+
             if (!AMOUNT_RE.containsMatchIn(text)) return // not a payment
             if (text.isBlank()) return
 
@@ -75,8 +86,23 @@ class UpiNotificationListener : NotificationListenerService() {
 
             prefs.edit().putLong(LAST_SEEN, now).putString(LAST_TEXT, text).apply()
 
+            val parsedTxn = com.pennywiseai.parser.core.bank.BankParserFactory.parse(text, pkg, now)
+            val parsedJson = if (parsedTxn != null) {
+                """
+                ,"parsed":{
+                    "amount":${parsedTxn.amount},
+                    "merchant":"${escape(parsedTxn.merchant ?: "Unknown")}",
+                    "type":"${parsedTxn.type.name}",
+                    "reference":${if (parsedTxn.referenceNumber != null) "\"${escape(parsedTxn.referenceNumber!!)}\"" else "null"},
+                    "balance":${parsedTxn.balance},
+                    "accountMask":${if (parsedTxn.accountMask != null) "\"${escape(parsedTxn.accountMask!!)}\"" else "null"},
+                    "bankName":${if (parsedTxn.bankName != null) "\"${escape(parsedTxn.bankName!!)}\"" else "null"}
+                }
+                """.trimIndent().replace("\n", "")
+            } else ""
+
             val line =
-                "{\"package\":\"${escape(pkg)}\",\"text\":\"${escape(text)}\",\"seenAt\":\"${dateFmt.format(Date(now))}\"}\n"
+                "{\"package\":\"${escape(pkg)}\",\"text\":\"${escape(text)}\",\"seenAt\":\"${dateFmt.format(Date(now))}\"$parsedJson}\n"
             appendToInbox(line)
         } catch (_: Exception) {
             // A bad notification must never crash the service — skip it.
@@ -95,29 +121,10 @@ class UpiNotificationListener : NotificationListenerService() {
                 synchronized("upi_inbox_lock".intern()) {
                     file.appendText(line)
                 }
-                showInstantNotification()
             } catch (_: Exception) {
                 // Never crash the service on a file-write failure.
             }
         }.start()
-    }
-
-    private fun showInstantNotification() {
-        try {
-            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
-            
-            // Re-use the existing channel created by flutter_local_notifications
-            val channelId = "kharcha_transactions" 
-            
-            val notification = android.app.Notification.Builder(this, channelId)
-                .setContentTitle("Payment recorded")
-                .setContentText("Kharcha logged a new transaction.")
-                .setSmallIcon(android.R.drawable.ic_menu_info_details) // fallback icon
-                .setAutoCancel(true)
-                .build()
-                
-            notificationManager.notify(8001, notification)
-        } catch (_: Exception) {}
     }
 
     private fun escape(s: String): String =

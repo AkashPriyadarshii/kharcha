@@ -98,7 +98,22 @@ Future<int> drainCaptureInbox({
     AppLogger().e('App', 'Exception caught', e, st);}
       }
       
-      parsed = parseUpiNotification(rawText);
+      if (map['parsed'] is Map<String, dynamic>) {
+        final p = map['parsed'] as Map<String, dynamic>;
+        parsed = ParsedUpiPayment(
+          amount: (p['amount'] as num?)?.toDouble() ?? 0.0,
+          merchant: (p['merchant'] as String?) ?? 'Unknown',
+          isIncome: p['type'] == 'INCOME' || p['type'] == 'REFUND',
+          upiRef: p['reference'] as String?,
+          balance: p['balance'] != null ? (p['balance'] as num).toDouble() : null,
+          accountMask: p['accountMask'] as String?,
+          bankName: p['bankName'] as String?,
+          needsReview: false,
+        );
+      } else {
+        parsed = parseUpiNotification(rawText);
+      }
+      
       if (parsed == null && RegExp(r'(?:₹|Rs\.?|INR|\b\d{2,}\b)', caseSensitive: false).hasMatch(rawText)) {
         _recordUnrecognized(inbox.parent, lineTrim);
       }
