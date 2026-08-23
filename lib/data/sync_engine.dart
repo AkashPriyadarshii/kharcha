@@ -42,7 +42,7 @@ class SyncEngine {
     // gone row also succeeds). Keeps a stale pull from resurrecting the row.
     final tombstones = await _repo.deletedRemoteIds();
     for (final remoteId in tombstones) {
-      await _client.from('transactions').delete().eq('id', remoteId);
+      await _client.from('transactions').update({'is_deleted': true}).eq('id', remoteId);
       await _repo.clearDeletedRow(remoteId);
     }
     final dirty = await _repo.dirtyRows();
@@ -93,6 +93,12 @@ class SyncEngine {
       // Skip rows the user deleted locally — the DELETE may not have reached
       // the server yet, but the row must not come back.
       if (remote.id != null && tombstones.contains(remote.id)) continue;
+      if (remote.isDeleted) {
+        if (remote.id != null) {
+          await _repo.physicalDeleteByRemoteId(remote.id!);
+        }
+        continue;
+      }
       await _repo.applyRemote(remote);
     }
   }

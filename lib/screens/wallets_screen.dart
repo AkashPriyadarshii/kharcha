@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -49,33 +50,47 @@ class _WalletsScreenState extends ConsumerState<WalletsScreen> {
     final name = TextEditingController();
     String currency = 'INR';
     final balance = TextEditingController();
+    final accountMask = TextEditingController();
+    final bankName = TextEditingController();
     await showDialog<void>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => AlertDialog(
           title: const Text('New wallet'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: name,
-                autofocus: true,
-                decoration: const InputDecoration(labelText: 'Name'),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: currency,
-                decoration: const InputDecoration(labelText: 'Currency'),
-                items: [for (final c in _currencies) DropdownMenuItem(value: c, child: Text(c))],
-                onChanged: (v) => setLocal(() => currency = v ?? 'INR'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: balance,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'Opening balance (optional)'),
-              ),
-            ],
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: name,
+                  autofocus: true,
+                  decoration: const InputDecoration(labelText: 'Name'),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: currency,
+                  decoration: const InputDecoration(labelText: 'Currency'),
+                  items: [for (final c in _currencies) DropdownMenuItem(value: c, child: Text(c))],
+                  onChanged: (v) => setLocal(() => currency = v ?? 'INR'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: balance,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(labelText: 'Opening balance (optional)'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: accountMask,
+                  decoration: const InputDecoration(labelText: 'Account Mask (e.g. 1234)'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: bankName,
+                  decoration: const InputDecoration(labelText: 'Bank Name (e.g. HDFC)'),
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
@@ -87,6 +102,8 @@ class _WalletsScreenState extends ConsumerState<WalletsScreen> {
                       name: n,
                       currency: currency,
                       initialBalance: parseAmount(balance.text) ?? 0,
+                      accountMask: accountMask.text.trim().isEmpty ? null : accountMask.text.trim(),
+                      bankName: bankName.text.trim().isEmpty ? null : bankName.text.trim(),
                     );
                 Navigator.of(ctx).pop();
               },
@@ -107,22 +124,39 @@ class _WalletTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final balance = ref.watch(walletBalanceProvider(wallet.id)).value ?? 0.0;
+    final totalBalance = balance + wallet.initialBalance;
     final symbol = _currencySymbol(wallet.currency);
+    
+    // Check if SMS balance drifts from computed balance (allowing 1 unit delta for rounding)
+    final bool hasDrift = wallet.latestSmsBalance != null && (wallet.latestSmsBalance! - totalBalance).abs() > 1.0;
+
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: const Icon(Icons.account_balance_wallet_outlined),
-      title: Text(wallet.name),
+      title: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(wallet.name),
+          if (hasDrift) ...[
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: () => _showDriftDialog(context, totalBalance, symbol),
+              child: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 18),
+            ),
+          ]
+        ],
+      ),
       subtitle: Text(wallet.currency),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            NumberFormat.currency(locale: 'en_IN', symbol: symbol).format(balance + wallet.initialBalance),
+            NumberFormat.currency(locale: 'en_IN', symbol: symbol).format(totalBalance),
             style: moneyStyle.copyWith(fontSize: 13),
           ),
           IconButton(
             icon: const Icon(Icons.edit_outlined),
-            tooltip: 'Rename wallet',
+            tooltip: 'Edit wallet',
             onPressed: () => _editWallet(context, ref, wallet),
           ),
         ],
@@ -130,16 +164,51 @@ class _WalletTile extends ConsumerWidget {
     );
   }
 
-  void _editWallet(BuildContext context, WidgetRef ref, Wallet wallet) {
-    final name = TextEditingController(text: wallet.name);
+  void _showDriftDialog(BuildContext context, double currentBalance, String symbol) {
+    final diff = wallet.latestSmsBalance! - currentBalance;
+    final diffFormatted = NumberFormat.currency(locale: 'en_IN', symbol: symbol).format(diff.abs());
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Rename wallet'),
-        content: TextField(
-          controller: name,
-          autofocus: true,
-          decoration: const InputDecoration(labelText: 'Name'),
+        title: const Text('Balance Sync Drift'),
+        content: Text('The last SMS reported a balance of ${NumberFormat.currency(locale: 'en_IN', symbol: symbol).format(wallet.latestSmsBalance!)}.\n\n'
+            'Your tracked balance is off by $diffFormatted. You should add an adjustment transaction.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('OK')),
+        ],
+      ),
+    );
+  }
+
+  void _editWallet(BuildContext context, WidgetRef ref, Wallet wallet) {
+    final name = TextEditingController(text: wallet.name);
+    final accountMask = TextEditingController(text: wallet.accountMask ?? '');
+    final bankName = TextEditingController(text: wallet.bankName ?? '');
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit wallet'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: name,
+                autofocus: true,
+                decoration: const InputDecoration(labelText: 'Name'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: accountMask,
+                decoration: const InputDecoration(labelText: 'Account Mask (e.g. 1234)'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: bankName,
+                decoration: const InputDecoration(labelText: 'Bank Name (e.g. HDFC)'),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
@@ -147,7 +216,11 @@ class _WalletTile extends ConsumerWidget {
             onPressed: () {
               final n = name.text.trim();
               if (n.isEmpty) return;
-              ref.read(transactionRepositoryProvider).updateWallet(wallet.copyWith(name: n));
+              ref.read(transactionRepositoryProvider).updateWallet(wallet.copyWith(
+                    name: n,
+                    accountMask: Value(accountMask.text.trim().isEmpty ? null : accountMask.text.trim()),
+                    bankName: Value(bankName.text.trim().isEmpty ? null : bankName.text.trim()),
+                  ));
               Navigator.of(ctx).pop();
             },
             child: const Text('Save'),

@@ -49,12 +49,12 @@ void main() {
 
     test('learned rule overrides builtin', () {
       final learned = [rule('zomato', 'learned', 9), ...rules];
-      expect(categorize(merchant: 'zomato', rules: learned), 9);
+      expect(categorize(merchant: 'zomato', rules: learned)?.categoryId, 9);
     });
 
     test('longer pattern beats shorter within same type', () {
       final withLong = [rule('zomato ub', 'builtin', 7), ...rules];
-      expect(categorize(merchant: 'zomato ub', rules: withLong), 7);
+      expect(categorize(merchant: 'zomato ub', rules: withLong)?.categoryId, 7);
     });
   });
 }

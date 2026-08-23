@@ -147,6 +147,58 @@ class MainActivity : FlutterFragmentActivity() {
                     else -> result.notImplemented()
                 }
             }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.kharcha.app/sms")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "catchUpSms" -> {
+                        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED) {
+                            result.success("")
+                            return@setMethodCallHandler
+                        }
+                        
+                        val prefs = getSharedPreferences("kharcha_sms_prefs", android.content.Context.MODE_PRIVATE)
+                        val sinceMs = prefs.getLong("last_sms_time", System.currentTimeMillis() - 7L * 24 * 60 * 60 * 1000)
+                        val newLastSmsTime = System.currentTimeMillis()
+                        
+                        val uri = android.net.Uri.parse("content://sms/inbox")
+                        val projection = arrayOf("address", "body", "date")
+                        val selection = "date > ?"
+                        val selectionArgs = arrayOf(sinceMs.toString())
+                        val sortOrder = "date ASC"
+                        
+                        val sb = StringBuilder()
+                        
+                        try {
+                            contentResolver.query(uri, projection, selection, selectionArgs, sortOrder)?.use { cursor ->
+                                val bodyIdx = cursor.getColumnIndex("body")
+                                val addressIdx = cursor.getColumnIndex("address")
+                                val dateIdx = cursor.getColumnIndex("date")
+                                
+                                while (cursor.moveToNext()) {
+                                    val body = cursor.getString(bodyIdx) ?: ""
+                                    val address = cursor.getString(addressIdx) ?: ""
+                                    val date = cursor.getLong(dateIdx)
+                                    
+                                    val df = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US)
+                                    df.timeZone = java.util.TimeZone.getTimeZone("UTC")
+                                    val dateStr = df.format(java.util.Date(date))
+                                    
+                                    val json = org.json.JSONObject()
+                                    json.put("package", address)
+                                    json.put("text", body)
+                                    json.put("seenAt", dateStr)
+                                    sb.append(json.toString()).append("\n")
+                                }
+                            }
+                            prefs.edit().putLong("last_sms_time", newLastSmsTime).apply()
+                            result.success(sb.toString())
+                        } catch (e: Exception) {
+                            result.error("sms_error", e.message, null)
+                        }
+                    }
+                    else -> result.notImplemented()
+                }
+            }
     }
 
     companion object {

@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 
 import 'money.dart';
 
@@ -11,6 +11,9 @@ class ParsedUpiPayment {
     required this.isIncome,
     this.upiRef,
     this.balance,
+    this.accountMask,
+    this.bankName,
+    this.needsReview = false,
   });
 
   final double amount;
@@ -22,6 +25,10 @@ class ParsedUpiPayment {
   
   /// The true bank balance extracted from the message (if available).
   final double? balance;
+
+  final String? accountMask;
+  final String? bankName;
+  final bool needsReview;
 }
 
 // Amount: ₹ / Rs. / INR, optional space, digits + optional decimals (supports Indian comma system).
@@ -85,6 +92,9 @@ final _upiRefRe = RegExp(
   caseSensitive: false,
 );
 final _upiRefBareRe = RegExp(r'\b(\d{12})\b');
+
+final _accountMaskRe = RegExp(r'(?:a/c|acct|account)(?:\s*no\.?|\s*number)?(?:\s*ending\s*(?:in|with))?\s*(?:x|X|\*)*(\d{3,6})\b', caseSensitive: false);
+final _bankNameRe = RegExp(r'\b(SBI|HDFC|ICICI|Axis|Kotak|PNB|BOB|IDFC|IndusInd|Yes Bank|Canara|Union Bank|Indian Bank|State Bank of India|Bank of Baroda|Paytm Payments Bank|Airtel Payments Bank|Jio Payments Bank|Federal Bank|South Indian Bank)\b', caseSensitive: false);
 
 String _cleanMerchant(String raw) {
   var name = raw.trim();
@@ -170,6 +180,7 @@ ParsedUpiPayment? parseUpiNotification(String text) {
   if (_nonTransactionRe.hasMatch(clean)) return null;
 
   // 1. Amount extraction
+  bool usedContextualAmount = false;
   var amountMatch = _amountRe.firstMatch(clean);
   String? rawAmount = amountMatch?.group(1);
   if (rawAmount == null || rawAmount.isEmpty) {
@@ -178,6 +189,9 @@ ParsedUpiPayment? parseUpiNotification(String text) {
   if (rawAmount == null || rawAmount.isEmpty) {
     final ctxMatch = _contextualAmountRe.firstMatch(clean);
     rawAmount = ctxMatch?.group(1);
+    if (rawAmount != null && rawAmount.isNotEmpty) {
+      usedContextualAmount = true;
+    }
   }
   if (rawAmount == null || rawAmount.isEmpty) return null;
 
@@ -232,11 +246,15 @@ ParsedUpiPayment? parseUpiNotification(String text) {
     }
   }
 
+  bool usedFallbackMerchant = false;
   if (merchant == null || merchant == 'Unknown') {
     final fallbackMatch = _fallbackMerchantRe.firstMatch(clean);
     if (fallbackMatch != null) {
       final cand = _cleanMerchant(fallbackMatch.group(1)!);
-      if (cand != 'Unknown') merchant = cand;
+      if (cand != 'Unknown') {
+        merchant = cand;
+        usedFallbackMerchant = true;
+      }
     }
   }
 
@@ -257,12 +275,24 @@ ParsedUpiPayment? parseUpiNotification(String text) {
     }
   }
 
+  // 6. Account mask and Bank name
+  final maskMatch = _accountMaskRe.firstMatch(clean);
+  final accountMask = maskMatch?.group(1);
+
+  final bankMatch2 = _bankNameRe.firstMatch(clean);
+  final bankName = bankMatch2?.group(1);
+
+  final needsReview = usedContextualAmount || usedFallbackMerchant;
+
   return ParsedUpiPayment(
     amount: amount,
     merchant: merchant,
     isIncome: isIncome,
     upiRef: ref,
     balance: balance,
+    accountMask: accountMask,
+    bankName: bankName,
+    needsReview: needsReview,
   );
 }
 

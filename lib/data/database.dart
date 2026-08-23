@@ -37,6 +37,9 @@ class Rules extends Table {
   TextColumn get pattern => text().withLength(min: 1, max: 80)();
   IntColumn get categoryId => integer().references(Categories, #id)();
   TextColumn get type => text().withLength(min: 1, max: 16)(); // builtin | learned
+  
+  // v0.2.9 Fields
+  TextColumn get emoji => text().withLength(min: 1, max: 8).nullable()();
 }
 
 /// Wallets: separate balances + per-wallet currency (offline-first; exchange
@@ -50,6 +53,11 @@ class Wallets extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   BoolColumn get dirty => boolean().withDefault(const Constant(true))();
   IntColumn get remoteId => integer().nullable()();
+  
+  // v0.2.9 Fields
+  TextColumn get accountMask => text().nullable()();
+  TextColumn get bankName => text().nullable()();
+  RealColumn get latestSmsBalance => real().nullable()();
 }
 
 /// Manual exchange rates (ISO → ISO), used to convert wallet balances to the
@@ -129,6 +137,12 @@ class Transactions extends Table {
   BoolColumn get dirty => boolean().withDefault(const Constant(true))();
   /// Supabase row id once pushed; null while unsynced.
   IntColumn get remoteId => integer().nullable()();
+  
+  // v0.2.9 Fields
+  BoolColumn get needsReview => boolean().withDefault(const Constant(false))();
+  BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+  TextColumn get accountMask => text().nullable()();
+  TextColumn get emoji => text().withLength(min: 1, max: 8).nullable()();
 }
 
 /// Rows the user deleted locally that must be deleted on Supabase too.
@@ -179,7 +193,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase({QueryExecutor? executor}) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -247,6 +261,17 @@ class AppDatabase extends _$AppDatabase {
             // recurring/objective/debt/category deletes so a stale pull can't
             // resurrect them. No backfill needed — only future deletes write.
             await m.createTable(deletedFeatures);
+          }
+          if (from < 12) {
+            // v0.2.9: Added sync mapping fields and transaction emoji.
+            await m.addColumn(wallets, wallets.accountMask);
+            await m.addColumn(wallets, wallets.bankName);
+            await m.addColumn(wallets, wallets.latestSmsBalance);
+            await m.addColumn(transactions, transactions.needsReview);
+            await m.addColumn(transactions, transactions.isDeleted);
+            await m.addColumn(transactions, transactions.accountMask);
+            await m.addColumn(transactions, transactions.emoji);
+            await m.addColumn(rules, rules.emoji);
           }
         },
       );

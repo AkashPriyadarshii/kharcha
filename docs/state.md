@@ -4,6 +4,8 @@
 
 ## Current status
 
+**v0.2.9 (unreleased) UI and Sync updates.** Added `accountMask`, `bankName`, and `latestSmsBalance` to `Wallets`, and `needsReview`, `isDeleted`, `accountMask`, and `emoji` to `Transactions` and `Rules` in Drift (schema v12). Updated UI: wallets screen takes account mask/bank name and flags drift; transactions list highlights `needsReview` (pale yellow) with a confirm checkmark and displays rule-based emojis instead of category icons. Sync engine adapted: pushing local deletes now sets `is_deleted = true` remotely instead of hard-deleting, and pulling `is_deleted = true` physically deletes locally.
+
 **Pennywise Feature Parity implemented (unreleased).** Added True Balance Extraction & Wallet Balance Sync (captured SMS calculates delta to update initialBalance for ground truth). Added Income Autopay / Subscription Automation (processAutopay executes due recurring transactions on startup and advances dates). Added Privacy-First Export (PII-masked CSV for transaction analysis). Added Smart Rules engine UI (manage learned and custom categorization rules). All new logic verified with unit tests.
 
 **v0.2.8 released (2026-08-23).** Auto-report fatal crashes to Supabase (`app_errors`) using `AppLogger` and local caching; system logs screen added to profile tab. AppLogger operates with zero third-party telemetry dependencies (no Firebase/Sentry). Added migration `0006_app_errors.sql`. Includes all Pennywise parity features (ground truth wallet sync, income autopay, privacy export, smart rules UI).

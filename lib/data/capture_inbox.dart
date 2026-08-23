@@ -1,6 +1,7 @@
 import '../core/app_logger.dart';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/services.dart';
 
 import 'package:path_provider/path_provider.dart';
 
@@ -46,6 +47,20 @@ Future<int> drainCaptureInbox({
   required TransactionRepository repo,
   Notifications? notifications,
 }) async {
+  try {
+    const channel = MethodChannel('com.kharcha.app/sms');
+    final String? smsJsonl = await channel.invokeMethod<String>('catchUpSms');
+    if (smsJsonl != null && smsJsonl.isNotEmpty) {
+      if (inbox.existsSync()) {
+        inbox.writeAsStringSync(smsJsonl, mode: FileMode.append);
+      } else {
+        inbox.writeAsStringSync(smsJsonl);
+      }
+    }
+  } catch (e, st) {
+    AppLogger().e('CaptureInbox', 'Error catching up SMS', e, st);
+  }
+
   if (!inbox.existsSync()) return 0;
 
   var added = 0;
@@ -85,6 +100,9 @@ Future<int> drainCaptureInbox({
         txnDate: txnDate,
         isIncome: parsed.isIncome,
         balance: parsed.balance,
+        accountMask: parsed.accountMask,
+        bankName: parsed.bankName,
+        needsReview: parsed.needsReview,
       );
       if (inserted != null) {
         added++;
