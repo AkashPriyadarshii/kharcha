@@ -68,7 +68,7 @@ class KharchaDatabaseHelper(private val context: Context) {
                 }
                 cCursor.close()
             } else {
-                val normalized = normalizeMerchant(txn.merchant)
+                val normalized = normalizeMerchant(txn.merchant ?: "")
                 val rCursor = db.rawQuery("SELECT pattern, category_id, emoji, type FROM rules", null)
                 var bestRuleLen = -1
                 var bestRuleType = ""
@@ -116,7 +116,7 @@ class KharchaDatabaseHelper(private val context: Context) {
                 wCursor.close()
                 
                 if (walletId == null) {
-                    val newName = if (txn.bankName != null) "\ (\)" else "Account (\)"
+                    val newName = if (txn.bankName != null) "${txn.bankName} (${txn.accountLast4})" else "Account (${txn.accountLast4})"
                     val wValues = ContentValues().apply {
                         put("name", newName)
                         put("currency", "INR")
@@ -139,7 +139,7 @@ class KharchaDatabaseHelper(private val context: Context) {
             // 4. Insert Transaction
             val values = ContentValues().apply {
                 put("amount", txn.amount.toDouble())
-                put("merchant", txn.merchant.trim())
+                put("merchant", txn.merchant?.trim() ?: "Unknown")
                 put("category_id", categoryId)
                 put("wallet_id", walletId)
                 put("payment_method", "upi")
