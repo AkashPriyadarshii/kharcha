@@ -81,6 +81,7 @@ Future<int> drainCaptureInbox({
         upiRef: parsed.upiRef,
         txnDate: txnDate,
         isIncome: parsed.isIncome,
+        balance: parsed.balance,
       );
       if (inserted != null) {
         added++;

@@ -10,6 +10,7 @@ class ParsedUpiPayment {
     required this.merchant,
     required this.isIncome,
     this.upiRef,
+    this.balance,
   });
 
   final double amount;
@@ -18,6 +19,9 @@ class ParsedUpiPayment {
   /// True when money came IN (received/credited). False for spending.
   final bool isIncome;
   final String? upiRef;
+  
+  /// The true bank balance extracted from the message (if available).
+  final double? balance;
 }
 
 // Amount: ₹ / Rs. / INR, optional space, digits + optional decimals (supports Indian comma system).
@@ -241,12 +245,24 @@ ParsedUpiPayment? parseUpiNotification(String text) {
   // 4. UPI Ref / UTR extraction
   ref ??= _upiRefRe.firstMatch(clean)?.group(1) ??
       (hasSpend || hasReceive ? _upiRefBareRe.firstMatch(clean)?.group(1) : null);
+      
+  // 5. Balance extraction (e.g. "Avail Bal: Rs 10000", "Balance is INR 500.00")
+  double? balance;
+  final balRe = RegExp(r'(?:bal|balance|avl bal|available balance)[^0-9]*?(?:₹|Rs\.?|INR)?\s*([0-9,]+(?:\.[0-9]{1,2})?)', caseSensitive: false);
+  final balMatch = balRe.firstMatch(clean);
+  if (balMatch != null) {
+    final rawBal = balMatch.group(1);
+    if (rawBal != null) {
+      balance = parseAmount(rawBal.replaceAll(',', ''));
+    }
+  }
 
   return ParsedUpiPayment(
     amount: amount,
     merchant: merchant,
     isIncome: isIncome,
     upiRef: ref,
+    balance: balance,
   );
 }
 

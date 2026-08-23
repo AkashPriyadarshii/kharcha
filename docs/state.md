@@ -4,6 +4,8 @@
 
 ## Current status
 
+**Pennywise Feature Parity implemented (unreleased).** Added True Balance Extraction & Wallet Balance Sync (captured SMS calculates delta to update initialBalance for ground truth). Added Income Autopay / Subscription Automation (processAutopay executes due recurring transactions on startup and advances dates). Added Privacy-First Export (PII-masked CSV for transaction analysis). Added Smart Rules engine UI (manage learned and custom categorization rules). All new logic verified with unit tests. Next: push and recreate v0.2.7 release.
+
 **v0.2.7 released (2026-08-23).** Non-transaction spam filter (`_nonTransactionRe` — recharge expiry, OTP, bill-due, failed payment, loan promos all return `null` before parsing), onboarding Step 1 gains an optional SMS capture secondary action (`RECEIVE_SMS` + `READ_SMS`, MainActivity channel updated), GitHub API update checker rate limited (max 1/hr network hit) to prevent 429 exhaustion, data layer Drift SQL aggregation (count, groupBy) replacing OOM-prone memory loops. Includes Pennywise-style cross-channel deduplication (±2-min window) for SMS + Push, `seenAt` offline capture stability, and **GitHub-Style Spending Heatmap** in the Reports tab. Full notification/automation test suite (187/187 tests, 28 files, 0 analyzer warnings). APK `kharcha-armv8a-release.apk` (28.3 MB, debug-signed, arm64) on [release v0.2.7](https://github.com/AkashPriyadarshii/kharcha/releases/tag/v0.2.7). On top of v0.2.6 (dark theme + theme-mode picker, in-app bug reporting) and v0.2.4 (home redesign + reports upgrade). Next: on-device verify v0.2.7 capture filter (sideload + send a recharge SMS to confirm it's not captured); editable home sections (Cashew-style reorder). See changelog.
 
 **Post-v0.2.2 polish (unreleased).** Display-name fix (Google `full_name` vs in-app `name`); app-lock re-lock race fixed (`_wasLockedAtPause`); home UX pass — bell removed, pencil manage sheet added, Profile re-onboarding tile, sign-out confirm. See changelog.
@@ -66,6 +68,11 @@
   - **Shell Cleanup & Safe Sign-out (P0/P3)**: Removed destructive sign-out from top AppBar, replacing with shortcuts menu; relocated Sign Out to Profile tab under Account with confirmation dialog and auth state cleanup. Over-budget warning alert colors tuned to rich ink-amber `Color(0xFF331E05)` and `Color(0xFFF59E0B)`.
   - **Pull-to-refresh & Recovery**: Wrapped Home dashboard in `RefreshIndicator` and user-friendly error recovery card with Retry.
   - **Test Suite**: Added `test/home_tab_test.dart` covering `HomeSummary`, `formatTxnTime`, `categoryColor`, and full widget interactions. Full test suite: 28 test files, 181/181 tests passing.
+- [x] **Pennywise Feature Parity**:
+  - **Ground Truth Wallet Sync**: SMS captures update wallet `initialBalance` to align exactly with bank-reported balance without destroying local ledgers.
+  - **Income Autopay**: `RecurringTransactions` are processed automatically on app boot.
+  - **Privacy-First Export**: Data export feature hashing merchant PII and stripping notes for safe analysis.
+  - **Smart Rules UI**: Added `/rules` screen so users can view and define regex rules that get executed in `categorizer.dart`.
 
 ## Next up
 

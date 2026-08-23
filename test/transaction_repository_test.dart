@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -291,5 +292,59 @@ void main() {
       await repo.clearDeletedRow(42);
       expect(await repo.deletedRemoteIds(), isEmpty);
     });
+  });
+
+  test('insertCaptured updates default wallet initialBalance if true balance is provided', () async {
+    final wallet = await repo.insertWallet(name: 'Bank', currency: 'INR');
+    
+    // Add one expense of 50
+    await repo.insertManual(
+      amount: 50,
+      merchant: 'Coffee',
+      paymentMethod: 'upi',
+      txnDate: DateTime.now(),
+      walletId: wallet.id,
+    );
+
+    // Capture an SMS showing bank balance is 1000 after spending 10
+    await repo.insertCaptured(
+      amount: 10,
+      merchant: 'Tea',
+      txnDate: DateTime.now(),
+      balance: 1000,
+    );
+    
+    // total spending in the wallet: -50 (manual) + -10 (captured) = -60.
+    // balance = 1000. So initialBalance = 1000 - (-60) = 1060.
+    final updatedWallet = await (db.select(db.wallets)..where((w) => w.id.equals(wallet.id))).getSingle();
+    expect(updatedWallet.initialBalance, 1060.0);
+  });
+
+  test('processAutopay inserts due recurring transactions and advances nextDue', () async {
+    final now = DateTime.now();
+    // Insert a daily recurring transaction due now
+    final id = await db.into(db.recurringTransactions).insert(
+      RecurringTransactionsCompanion.insert(
+        amount: 200,
+        merchant: 'Netflix',
+        period: 'daily',
+        nextDue: now,
+        active: const Value(true),
+      ),
+    );
+
+    await repo.processAutopay();
+
+    // Check if manual transaction was inserted
+    final txns = await repo.allTransactions();
+    expect(txns, hasLength(1));
+    expect(txns.first.$1.amount, 200);
+    expect(txns.first.$1.merchant, 'Netflix');
+    expect(txns.first.$1.paymentMethod, 'upi');
+    expect(txns.first.$1.source, 'manual'); // Auto-pay creates manual txns
+
+    // Check if nextDue was advanced by 1 day
+    final updated = await (db.select(db.recurringTransactions)..where((r) => r.id.equals(id))).getSingle();
+    expect(updated.nextDue.day, now.add(const Duration(days: 1)).day);
   });
 }
