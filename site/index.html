@@ -50,25 +50,41 @@
     const toast = document.getElementById('download-toast');
     
     downloadBtns.forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', async (e) => {
         e.preventDefault();
-        const url = btn.getAttribute('href');
+        const fallbackUrl = btn.getAttribute('href');
         const originalText = btn.textContent;
         
-        // Show Toast
+        // Update UI State
         toast.classList.add('show');
-        
-        // Update Button State
-        btn.textContent = 'Downloading... ↓';
+        btn.textContent = 'Fetching APK...';
         btn.style.pointerEvents = 'none';
         btn.style.opacity = '0.8';
         
-        // Trigger Download
-        setTimeout(() => {
-          window.location.href = url;
-        }, 500);
+        try {
+          // Dynamically fetch the latest release data from GitHub API
+          const response = await fetch('https://api.github.com/repos/AkashPriyadarshii/kharcha/releases/latest');
+          if (!response.ok) throw new Error('API Rate Limit or Error');
+          
+          const data = await response.json();
+          // Find the first attached asset that is an APK
+          const apkAsset = data.assets.find(asset => asset.name.endsWith('.apk'));
+          
+          if (apkAsset && apkAsset.browser_download_url) {
+            btn.textContent = 'Downloading... ↓';
+            setTimeout(() => {
+              window.location.href = apkAsset.browser_download_url;
+            }, 300);
+          } else {
+            // No APK found in the latest release, fallback to releases page
+            window.location.href = fallbackUrl;
+          }
+        } catch (error) {
+          // If the fetch fails (e.g., adblocker, rate limit), fallback to the releases page
+          window.location.href = fallbackUrl;
+        }
         
-        // Reset State after 8 seconds
+        // Reset UI State after 8 seconds
         setTimeout(() => {
           toast.classList.remove('show');
           btn.textContent = originalText;
@@ -229,7 +245,7 @@
         <a href="#features">Architecture</a>
         <a href="#how">How it works</a>
         <a href="#faq">FAQ</a>
-        <a class="btn btn-primary js-download-btn" style="padding: 10px 20px;" href="https://github.com/AkashPriyadarshii/kharcha/releases/latest/download/kharcha-latest.apk">Download APK</a>
+        <a class="btn btn-primary js-download-btn" style="padding: 10px 20px;" href="https://github.com/AkashPriyadarshii/kharcha/releases/latest">Download APK</a>
       </nav>
     </div>
   </header>
@@ -240,7 +256,7 @@
         <h1>You pay via UPI. <span class="accent">Kharcha logs it.</span></h1>
         <p class="lead">Kharcha reads payment notifications from GPay, PhonePe, and Paytm. It logs each transaction into your budget automatically. Zero manual entry. Offline-first.</p>
         <div class="cta-row">
-          <a class="btn btn-primary js-download-btn" href="https://github.com/AkashPriyadarshii/kharcha/releases/latest/download/kharcha-latest.apk">Download for Android</a>
+          <a class="btn btn-primary js-download-btn" href="https://github.com/AkashPriyadarshii/kharcha/releases/latest">Download for Android</a>
           <a class="btn btn-ghost" href="#how">Read the documentation</a>
         </div>
         <p class="meta-note">Android 12+ · ~25 MB · Free</p>
@@ -317,7 +333,7 @@
     <div class="wrap">
       <h2 style="margin-bottom: 24px;">Initialize Kharcha</h2>
       <p style="margin-bottom: 48px;">Free. Zero ads. No telemetry. Your financial data never leaves your device.</p>
-      <a class="btn btn-primary js-download-btn" href="https://github.com/AkashPriyadarshii/kharcha/releases/latest/download/kharcha-latest.apk" style="font-size: 16px; padding: 18px 36px;">Download for Android</a>
+      <a class="btn btn-primary js-download-btn" href="https://github.com/AkashPriyadarshii/kharcha/releases/latest" style="font-size: 16px; padding: 18px 36px;">Download for Android</a>
     </div>
   </section>
 
