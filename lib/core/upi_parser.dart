@@ -56,7 +56,7 @@ final _spendRe = RegExp(
 
 // Money-in verbs (incoming).
 final _receiveRe = RegExp(
-  r'\b(?:received|credited|added to your|added in your|added to|refund|refunded|cashback|paid you|sent you|deposited|credited with|money received|inward)\b',
+  r'\b(?:received|credited|added to your|added in your|added to|refund|refunded|cashback|paid you|sent you|(?:sent|paid|transferred|given|credited).{0,20}to you|deposited|credited with|money received|inward)\b',
   caseSensitive: false,
 );
 
@@ -75,14 +75,14 @@ final _gpayMerchantRe = RegExp(
 // High-priority explicit recipient: "to X", "paid to X", "at X", "done at X"
 final _recipientMerchantRe = RegExp(
   r'(?:paid to|transferred to|sent to|payment to|spent on .*? at|sent .{0,12}to|done at|\bto\b|\bat\b)\s+'
-  r'([A-Za-z0-9][A-Za-z0-9 &.\-@]{1,60}?)(?=,|\.|$|:|\s+(?:of\s*(?:₹|Rs\.?|INR|\d)|upi|ref|utr|trans|txn|bal|balance|on\s+\d|on\s+[A-Za-z]|via|bank|a/c|by|from|using|credited|debited|successful|is\s+successful|was\s+successful))',
+  r'(?!you\b)([A-Za-z0-9][A-Za-z0-9 &.\-@]{1,60}?)(?=,|\.|$|:|\s+(?:of\s*(?:₹|Rs\.?|INR|\d)|upi|ref|utr|trans|txn|bal|balance|on\s+\d|on\s+[A-Za-z]|via|bank|a/c|by|from|using|credited|debited|successful|is\s+successful|was\s+successful))',
   caseSensitive: false,
 );
 
 // Fallback purpose/source: "from X", "towards X", "for X", "debited from X"
 final _fallbackMerchantRe = RegExp(
   r'(?:from|towards|for|debited (?:at|from))\s+'
-  r'([A-Za-z0-9][A-Za-z0-9 &.\-@]{1,60}?)(?=,|\.|$|:|\s+(?:of\s*(?:₹|Rs\.?|INR|\d)|upi|ref|utr|trans|txn|bal|balance|on\s+\d|on\s+[A-Za-z]|via|bank|a/c|by|from|using|credited|debited|successful|is\s+successful|was\s+successful))',
+  r'(?!you\b)([A-Za-z0-9][A-Za-z0-9 &.\-@]{1,60}?)(?=,|\.|$|:|\s+(?:of\s*(?:₹|Rs\.?|INR|\d)|upi|ref|utr|trans|txn|bal|balance|on\s+\d|on\s+[A-Za-z]|via|bank|a/c|by|from|using|credited|debited|successful|is\s+successful|was\s+successful))',
   caseSensitive: false,
 );
 
@@ -211,7 +211,7 @@ ParsedUpiPayment? parseUpiNotification(String text) {
   final isIncome = hasReceive &&
       (!hasSpend ||
           clean.toLowerCase().contains('paid you') ||
-          clean.toLowerCase().contains('sent you') ||
+          clean.toLowerCase().contains('sent you') || RegExp(r'(?:sent|paid|transferred|given|credited).{0,20}to you', caseSensitive: false).hasMatch(clean) ||
           clean.toLowerCase().contains('credited to') ||
           clean.toLowerCase().contains('credited with') ||
           clean.toLowerCase().contains('refund') ||
@@ -259,6 +259,18 @@ ParsedUpiPayment? parseUpiNotification(String text) {
     }
   }
 
+  if (merchant == null || merchant == 'Unknown') {
+    if (isIncome) {
+      final senderRe = RegExp(r'^([A-Za-z0-9][A-Za-z0-9 &.\-@]{1,60}?)\s+(?:sent|paid|transferred|given|credited)', caseSensitive: false);
+      final senderMatch = senderRe.firstMatch(clean);
+      if (senderMatch != null) {
+        final cand = _cleanMerchant(senderMatch.group(1)!);
+        if (cand.toLowerCase() != 'you' && cand.toLowerCase() != 'i') {
+          merchant = cand;
+        }
+      }
+    }
+  }
   merchant ??= 'Unknown';
 
   // 4. UPI Ref / UTR extraction
@@ -301,4 +313,5 @@ ParsedUpiPayment? parseUpiNotification(String text) {
 String encodeInboxLine({required String package, required String text, required String seenAt}) {
   return jsonEncode({'package': package, 'text': text, 'seenAt': seenAt});
 }
+
 

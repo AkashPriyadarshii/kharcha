@@ -204,4 +204,18 @@ void main() {
       expect(map['text'], '₹450 paid');
     });
   });
+  test('Parses generic incoming transfer message', () {
+    final parsed = parseUpiNotification('papa sent Rs 2400 to you');
+    expect(parsed, isNotNull);
+    expect(parsed!.amount, 2400.0);
+    expect(parsed.isIncome, true);
+    expect(parsed.merchant, 'Papa');
+  });
+
+  test('Parses generic incoming paid to message', () {
+    final parsed = parseUpiNotification('friend paid 500 to you');
+    expect(parsed, isNotNull);
+    expect(parsed!.amount, 500.0);
+    expect(parsed.isIncome, true);
+  });
 }
