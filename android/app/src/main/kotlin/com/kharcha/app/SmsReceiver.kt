@@ -64,6 +64,14 @@ class SmsReceiver : BroadcastReceiver() {
 
                 val line = "{\"package\":\"sms.${escape(sender)}\",\"text\":\"${escape(text)}\",\"seenAt\":\"$seenAt\"$parsedJson}\n"
                 appendToInbox(context, line)
+
+                // Show rich notification with parsed details (PennyWise-style)
+                if (parsedTxn != null) {
+                    val insertRes = KharchaDatabaseHelper(context).insertTransaction(parsedTxn, now)
+                    if (insertRes != null && !insertRes.isDuplicate) {
+                        TransactionNotifier.show(context, parsedTxn)
+                    }
+                }
             }
         } catch (_: Exception) {
             // Guard against any runtime exceptions during SMS processing

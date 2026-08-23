@@ -104,6 +104,14 @@ class UpiNotificationListener : NotificationListenerService() {
             val line =
                 "{\"package\":\"${escape(pkg)}\",\"text\":\"${escape(text)}\",\"seenAt\":\"${dateFmt.format(Date(now))}\"$parsedJson}\n"
             appendToInbox(line)
+
+            // Show rich notification with parsed details (PennyWise-style)
+            if (parsedTxn != null) {
+                val insertRes = KharchaDatabaseHelper(this).insertTransaction(parsedTxn, now)
+                    if (insertRes != null && !insertRes.isDuplicate) {
+                        TransactionNotifier.show(this, parsedTxn)
+                    }
+            }
         } catch (_: Exception) {
             // A bad notification must never crash the service — skip it.
         }
