@@ -46,16 +46,22 @@ class AppLock {
 
   /// Shows the OS auth prompt. Returns true when the user passed.
   Future<bool> authenticate({String reason = 'Kharcha is locked'}) async {
-    return _auth.authenticate(
-      localizedReason: reason,
-      options: const AuthenticationOptions(
-        biometricOnly: false,
-        useErrorDialogs: true,
-        // stickyAuth keeps the prompt up across background/foreground — without
-        // it the biometric dialog's own backgrounding can cancel auth.
-        stickyAuth: true,
-      ),
-    );
+    try {
+      return await _auth.authenticate(
+        localizedReason: reason,
+        options: const AuthenticationOptions(
+          biometricOnly: false,
+          useErrorDialogs: true,
+          // stickyAuth keeps the prompt up across background/foreground — without
+          // it the biometric dialog's own backgrounding can cancel auth.
+          stickyAuth: true,
+        ),
+      );
+    } catch (_) {
+      // PlatformException (e.g. LockedOut, NotAvailable) — fail gracefully so
+      // the lock screen doesn't get permanently bricked.
+      return false;
+    }
   }
 }
 

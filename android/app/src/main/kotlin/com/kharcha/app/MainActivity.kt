@@ -22,8 +22,12 @@ class MainActivity : FlutterFragmentActivity() {
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "openNotificationListenerSettings" -> {
-                        startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-                        result.success(null)
+                        try {
+                            startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                            result.success(null)
+                        } catch (e: Exception) {
+                            result.error("activity_not_found", e.message, null)
+                        }
                     }
                     "requestNotificationPermission" -> {
                         // Android 13+: request the runtime dialog directly.
@@ -42,8 +46,8 @@ class MainActivity : FlutterFragmentActivity() {
                         result.success(true)
                     }
                     "requestBatteryOptimizationExemption" -> {
-                        val pm = getSystemService(POWER_SERVICE) as PowerManager
-                        if (!pm.isIgnoringBatteryOptimizations(packageName)) {
+                        val pm = getSystemService(POWER_SERVICE) as? PowerManager
+                        if (pm != null && !pm.isIgnoringBatteryOptimizations(packageName)) {
                             val intent = Intent(
                                 Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
                                 Uri.parse("package:$packageName")
@@ -60,10 +64,12 @@ class MainActivity : FlutterFragmentActivity() {
                         result.success(true)
                     }
                     "openBatteryOptimizationSettings" -> {
-                        startActivity(
-                            Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-                        )
-                        result.success(null)
+                        try {
+                            startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                            result.success(null)
+                        } catch (e: Exception) {
+                            result.error("activity_not_found", e.message, null)
+                        }
                     }
                     "requestSmsPermission" -> {
                         if (ContextCompat.checkSelfPermission(
@@ -79,7 +85,7 @@ class MainActivity : FlutterFragmentActivity() {
                         result.success(true)
                     }
                     "getCaptureStatus" -> {
-                        val pm = getSystemService(POWER_SERVICE) as PowerManager
+                        val pm = getSystemService(POWER_SERVICE) as? PowerManager
                         val enabledListeners = Settings.Secure.getString(
                             contentResolver, "enabled_notification_listeners"
                         ) ?: ""
@@ -93,7 +99,7 @@ class MainActivity : FlutterFragmentActivity() {
                                     ContextCompat.checkSelfPermission(
                                         this, Manifest.permission.POST_NOTIFICATIONS
                                     ) == PackageManager.PERMISSION_GRANTED),
-                                "battery" to pm.isIgnoringBatteryOptimizations(packageName),
+                                "battery" to (pm?.isIgnoringBatteryOptimizations(packageName) == true),
                             )
                         )
                     }
@@ -107,7 +113,11 @@ class MainActivity : FlutterFragmentActivity() {
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "getVersion" -> {
-                        result.success(packageManager.getPackageInfo(packageName, 0).versionName)
+                        try {
+                            result.success(packageManager.getPackageInfo(packageName, 0).versionName)
+                        } catch (e: Exception) {
+                            result.error("version_error", e.message, null)
+                        }
                     }
                     "installApk" -> {
                         val path = call.argument<String>("path")
@@ -122,13 +132,17 @@ class MainActivity : FlutterFragmentActivity() {
                         }
                         // Sanity: refuses any update not signed with this app's
                         // cert — protects against a truncated/mismatched APK.
-                        val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", apk)
-                        val intent = Intent(Intent.ACTION_VIEW).apply {
-                            setDataAndType(uri, "application/vnd.android.package-archive")
-                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        try {
+                            val uri = FileProvider.getUriForFile(this@MainActivity, "$packageName.fileprovider", apk)
+                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                setDataAndType(uri, "application/vnd.android.package-archive")
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            startActivity(intent)
+                            result.success(null)
+                        } catch (e: Exception) {
+                            result.error("install_error", e.message, null)
                         }
-                        startActivity(intent)
-                        result.success(null)
                     }
                     else -> result.notImplemented()
                 }

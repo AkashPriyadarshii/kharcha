@@ -1,4 +1,4 @@
-﻿package com.kharcha.app
+package com.kharcha.app
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -55,13 +55,20 @@ class SmsReceiver : BroadcastReceiver() {
     }
 
     private fun appendToInbox(context: Context, line: String) {
-        try {
-            val file = File(context.cacheDir, "upi_inbox.jsonl")
-            file.parentFile?.mkdirs()
-            file.appendText(line)
-        } catch (_: Exception) {
-            // Never crash
-        }
+        val pendingResult = goAsync()
+        Thread {
+            try {
+                val file = File(context.cacheDir, "upi_inbox.jsonl")
+                file.parentFile?.mkdirs()
+                synchronized("upi_inbox_lock".intern()) {
+                    file.appendText(line)
+                }
+            } catch (_: Exception) {
+                // Never crash
+            } finally {
+                pendingResult.finish()
+            }
+        }.start()
     }
 
     private fun escape(s: String): String =

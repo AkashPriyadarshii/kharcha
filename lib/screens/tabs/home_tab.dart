@@ -174,7 +174,7 @@ class HomeTab extends ConsumerWidget {
                   padding: const EdgeInsets.all(16),
                   child: Row(
                     children: [
-                      const Icon(Icons.pie_chart_outline, size: 24, color: Color(0xFF0A6B4D)),
+                      Icon(Icons.pie_chart_outline, size: 24, color: Theme.of(context).colorScheme.primary),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
@@ -214,7 +214,7 @@ class HomeTab extends ConsumerWidget {
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     children: [
-                      const Icon(Icons.receipt_long_outlined, size: 36, color: Color(0xFF0A6B4D)),
+                      Icon(Icons.receipt_long_outlined, size: 36, color: Theme.of(context).colorScheme.primary),
                       const SizedBox(height: 12),
                       Text(
                         'No expenses yet',

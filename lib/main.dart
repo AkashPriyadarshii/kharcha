@@ -170,7 +170,7 @@ final _router = GoRouter(
     if (!loggedIn && !public) return '/auth';
     if (loggedIn && state.matchedLocation == '/auth') return '/';
     // Signed in → run onboarding once, before the home shell.
-    if (loggedIn && state.matchedLocation == '/' && !onboardingDone.value) {
+    if (loggedIn && state.matchedLocation != '/onboarding' && !onboardingDone.value) {
       return '/onboarding';
     }
     return null;
