@@ -1,4 +1,4 @@
-package com.kharcha.app
+﻿package com.kharcha.app
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -74,3 +74,4 @@ class SmsReceiver : BroadcastReceiver() {
     private fun escape(s: String): String =
         s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ").replace("\r", " ")
 }
+

@@ -227,7 +227,14 @@ class TransactionRepository {
         .getSingleOrNull();
         
     if (duplicate != null) {
-      return null; // Already captured via the other channel
+      // If both have a valid but DISTINCT upi_ref, they are genuine back-to-back payments.
+      final hasDistinctRefs = trimmedRef != null && trimmedRef.isNotEmpty &&
+          duplicate.upiRef != null && duplicate.upiRef!.isNotEmpty &&
+          trimmedRef != duplicate.upiRef;
+          
+      if (!hasDistinctRefs) {
+        return null; // Already captured via the other channel
+      }
     }
 
     var categoryId = categorize(
