@@ -53,9 +53,17 @@ Future<int> drainCaptureInbox({
     if (lineTrim.isEmpty) continue;
 
     final ParsedUpiPayment? parsed;
+    DateTime txnDate = DateTime.now();
     try {
       final map = jsonDecode(lineTrim) as Map<String, dynamic>;
       final rawText = (map['text'] ?? '') as String;
+      
+      if (map['seenAt'] != null) {
+        try {
+          txnDate = DateTime.parse(map['seenAt'] as String).toLocal();
+        } catch (_) {}
+      }
+      
       parsed = parseUpiNotification(rawText);
       if (parsed == null && RegExp(r'(?:₹|Rs\.?|INR|\b\d{2,}\b)', caseSensitive: false).hasMatch(rawText)) {
         _recordUnrecognized(inbox.parent, lineTrim);
@@ -71,7 +79,7 @@ Future<int> drainCaptureInbox({
         amount: parsed.amount,
         merchant: parsed.merchant,
         upiRef: parsed.upiRef,
-        txnDate: DateTime.now(),
+        txnDate: txnDate,
         isIncome: parsed.isIncome,
       );
       if (inserted != null) {

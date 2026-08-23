@@ -21,6 +21,8 @@ class ReportsTab extends ConsumerWidget {
     final trend = ref.watch(monthlyTrendProvider);
     final merchants = ref.watch(merchantRankingProvider);
     final home = ref.watch(homeSummaryProvider);
+    final heatmap = ref.watch(spendingHeatmapProvider);
+    
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       children: [
@@ -44,6 +46,13 @@ class ReportsTab extends ConsumerWidget {
           const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()))
         else
           _MonthlyTrendLine(trend: trend.value!),
+        const SizedBox(height: 24),
+        const SectionTitle('Spending Heatmap (Last 20 Weeks)'),
+        const SizedBox(height: 8),
+        if (heatmap.value == null)
+          const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()))
+        else
+          _SpendingHeatmap(data: heatmap.value!),
         const SizedBox(height: 24),
         const SectionTitle('Top merchants'),
         const SizedBox(height: 8),
@@ -264,6 +273,79 @@ class _MerchantRow extends StatelessWidget {
           Text(_currency.format(amount), style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
           Text('$count×', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
         ],
+      ),
+    );
+  }
+}
+class _SpendingHeatmap extends StatelessWidget {
+  const _SpendingHeatmap({required this.data});
+  final Map<DateTime, double> data;
+
+  @override
+  Widget build(BuildContext context) {
+    if (data.isEmpty) {
+      return Text('No spending data for heatmap.', style: Theme.of(context).textTheme.bodyMedium);
+    }
+    
+    // Calculate max amount to normalize color intensity
+    double maxAmt = 0;
+    for (final amt in data.values) {
+      if (amt > maxAmt) maxAmt = amt;
+    }
+    if (maxAmt == 0) maxAmt = 1;
+
+    // Generate last 140 days
+    final today = DateTime.now();
+    final List<DateTime> days = List.generate(
+      140,
+      (i) => DateTime(today.year, today.month, today.day).subtract(Duration(days: 139 - i)),
+    );
+
+    // Group into columns of 7 days (weeks)
+    final int weeks = (140 / 7).ceil();
+    final primary = Theme.of(context).colorScheme.primary;
+    final surface = Theme.of(context).colorScheme.surfaceContainerHighest;
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: List.generate(weeks, (wIndex) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(7, (dIndex) {
+              final flatIndex = wIndex * 7 + dIndex;
+              if (flatIndex >= 140) return const SizedBox.shrink();
+              
+              final date = days[flatIndex];
+              final amt = data[date] ?? 0.0;
+              final intensity = (amt / maxAmt).clamp(0.0, 1.0);
+              
+              Color cellColor;
+              if (amt == 0) {
+                cellColor = surface;
+              } else {
+                // Ensure at least some visibility for small amounts
+                final opacity = 0.2 + (intensity * 0.8);
+                cellColor = primary.withValues(alpha: opacity);
+              }
+
+              return Tooltip(
+                message: ': ',
+                child: Container(
+                  width: 12,
+                  height: 12,
+                  margin: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: cellColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              );
+            }),
+          );
+        }),
       ),
     );
   }

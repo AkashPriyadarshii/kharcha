@@ -59,6 +59,11 @@ final merchantRankingProvider = StreamProvider<List<(String, double, int)>>(
   (ref) => _aggregate(ref, (repo) => repo.merchantRanking()),
 );
 
+/// Heatmap data for the last 140 days (20 weeks).
+final spendingHeatmapProvider = StreamProvider<Map<DateTime, double>>(
+  (ref) => _aggregate(ref, (repo) => repo.spendingHeatmap(DateTime.now())),
+);
+
 /// Spend per payment method, for the profile tab.
 final paymentMethodTotalsProvider = StreamProvider<List<(String, double, int)>>(
   (ref) => _aggregate(ref, (repo) => repo.paymentMethodTotals()),
@@ -200,6 +205,24 @@ class TransactionRepository {
     final trimmedRef = upiRef?.trim();
     if (trimmedRef != null && trimmedRef.isNotEmpty && await existsUpiRef(trimmedRef)) {
       return null;
+    }
+
+    // Pennywise-style cross-channel deduplication: 
+    // Prevent duplicate SMS + Notification captures by checking for the same 
+    // amount within a ±2 minute window. We don't check exact merchant because
+    // SMS and Notification text often parse merchants slightly differently.
+    final twoMinsBefore = txnDate.subtract(const Duration(minutes: 2));
+    final twoMinsAfter = txnDate.add(const Duration(minutes: 2));
+    
+    final duplicate = await (_db.select(_db.transactions)
+          ..where((t) => t.amount.equals(amount))
+          ..where((t) => t.isIncome.equals(isIncome))
+          ..where((t) => t.txnDate.isBetweenValues(twoMinsBefore, twoMinsAfter))
+          ..limit(1))
+        .getSingleOrNull();
+        
+    if (duplicate != null) {
+      return null; // Already captured via the other channel
     }
 
     var categoryId = categorize(
@@ -625,6 +648,24 @@ class TransactionRepository {
           _db.transactions.txnDate.isSmallerThanValue(end) &
           _db.transactions.isIncome.equals(true));
     return q.getSingle().then((row) => row.read(sum) ?? 0);
+  }
+
+  /// Heatmap data: total spend per day for the last [days].
+  Future<Map<DateTime, double>> spendingHeatmap(DateTime today, {int days = 140}) async {
+    final start = DateTime(today.year, today.month, today.day).subtract(Duration(days: days - 1));
+    final endExclusive = DateTime(today.year, today.month, today.day).add(const Duration(days: 1));
+    
+    // We fetch raw rows because Drift doesn't support grouping by a date-casted column out-of-the-box easily without custom expressions.
+    final rows = await (_db.select(_db.transactions)
+          ..where((t) => t.txnDate.isBiggerOrEqualValue(start) & t.txnDate.isSmallerThanValue(endExclusive) & _expenseOnly()))
+        .get();
+        
+    final Map<DateTime, double> map = {};
+    for (final t in rows) {
+      final date = DateTime(t.txnDate.year, t.txnDate.month, t.txnDate.day);
+      map[date] = (map[date] ?? 0) + t.amount;
+    }
+    return map;
   }
 
   /// Top [n] categories by spend in the 7 days up to and including [end].
