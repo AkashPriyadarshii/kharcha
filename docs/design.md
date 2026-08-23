@@ -95,7 +95,13 @@ Flutter app (Android 12+, minSdk 32)
 │   ├── Drift SQLite   ← source of truth (offline-first)
 │   └── Supabase       ← Google auth + Postgres + background sync
 ├── Capture
-│   ├── NotificationListenerService  (Kotlin) → parse → dedupe → insert
+│   ├── SmsReceiver & NotificationListenerService (Kotlin)
+│   │     → extract regex amount → append to jsonl inbox → **instant native push notification**
+│   ├── Dart Parser & Dedupe (app foreground)
+│   │     → parse full (₹, merchant, upi_ref, date, accountMask) → dedupe
+│   │     → auto-create Account if mask unrecognized (Accounts vs Wallets logic)
+│   │     → auto-category via rule map / learned rule
+│   │     → insert local
 │   └── Manual entry (fallback)
 └── Local notifications (flutter_local_notifications)
     ├── 9PM daily summary (Hinglish)
@@ -105,12 +111,17 @@ Flutter app (Android 12+, minSdk 32)
 ### Data flow: capture
 
 ```
-UPI push notification → NotificationListenerService
-  → parse (₹, merchant, upi_ref, date)
-  → dedupe by upi_ref
-  → auto-category via rule map / learned rule
-  → insert local (instant)
-  → queue for Supabase sync
+SMS / Push notification → Receiver (Kotlin)
+  → Native regex fast-extract → Instant Android Notification (user feedback)
+  → Append raw text to local inbox queue (.jsonl)
+  ... (App opened by user) ...
+  → Dart background processor drains inbox
+  → Parse full (₹, merchant, upi_ref, date, accountMask)
+  → Dedupe by upi_ref & time window
+  → Auto-create Account wallet if mask missing
+  → Auto-category via rule map
+  → Insert local → adjust wallet ground truth balance
+  → Queue for Supabase sync
 ```
 
 ### Sync

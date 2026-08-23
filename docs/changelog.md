@@ -2,8 +2,20 @@
 
 All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
 
-## [v0.2.7] — 2026-08-23
+## [v0.2.9] — 2026-08-23
 
+- **Accounts vs Wallets Auto-Management** — Split the Wallets screen into `Accounts (Auto-tracked)` and `Wallets (Manual)`. Upgraded the auto-capture engine: if an SMS arrives with an unrecognized bank account mask (e.g., HDFC 1234), Kharcha will now automatically create that account on the fly instead of dumping it into the default wallet.
+- **Native Instant Background Notifications** — Added instant native Android push notifications (from Kotlin) the millisecond an SMS or push is captured. This gives users immediate feedback that Kharcha logged the transaction without needing to open the app or wait for the background parse.
+- **Auto-Update Engine Overhaul** — Fixed a critical bug where the GitHub release asset name mismatch broke auto-updates globally. The update engine now properly identifies the APK, and pushes a persistent local notification if an update is found so the user can easily install it even if they dismiss the dialog.
+
+## [v0.2.8] — 2026-08-23
+
+- **AppLogger & Crash Reporting** — Replaced raw print statements with `AppLogger` Singleton and `app_errors` table for offline telemetry. System logs screen added to profile tab.
+- **Pennywise Parity Integration** — Added True Balance Extraction & Wallet Balance Sync (captured SMS calculates delta to update initialBalance for ground truth).
+- **Automation Upgrades** — Added Income Autopay / Subscription Automation. Added Smart Rules engine UI (manage learned and custom categorization rules).
+- **Privacy-First Export** — Added PII-masked CSV export for transaction analysis. All new logic verified with unit tests.
+
+## [v0.2.7] — 2026-08-23
 - **Non-Transaction Spam & Reminder Rejection Filter** — `_nonTransactionRe` in `lib/core/upi_parser.dart` immediately returns `null` (step 0, before any amount extraction) for recharge expiry notices ("plz recharge with 196rs", "validity expires"), bill due/overdue alerts, OTP/verification codes, pre-approved loan promos, payment/collect requests, and failed/declined transactions. Non-spends are never stored as expenses.
 - **Onboarding SMS step** — Step 1 ("Auto-capture UPI & Bank SMS") now shows an optional secondary action to enable SMS capture (`RECEIVE_SMS` + `READ_SMS`) alongside the existing notification listener path. Either path alone marks the step done so the user can proceed. `_PermissionStep` gains optional `secondaryActionLabel`/`secondaryDone`/`onSecondaryAction` params; `_stepDone` for step 1 is now `_capture || _sms`.
 - **SMS runtime permission channel** — `MainActivity.kt` gains a `requestSmsPermission` method handler (requests both `RECEIVE_SMS` + `READ_SMS` at runtime) and `getCaptureStatus` now returns a `sms` boolean key alongside the existing `capture`/`notifications`/`battery` keys.
