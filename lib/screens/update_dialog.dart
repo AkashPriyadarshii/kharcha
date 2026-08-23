@@ -7,6 +7,8 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../core/update_checker.dart';
+import '../data/notifications.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// ponytail: whole-APK download (~26MB), no delta. Play Store publish
 /// supersedes this whole path — swap for `in_app_update` then.
@@ -47,6 +49,14 @@ Future<void> checkForUpdate(BuildContext context) async {
     return;
   }
   if (!context.mounted) return;
+
+  // Show a silent persistent notification so they can update from the tray later.
+  try {
+    final notif = ProviderScope.containerOf(context).read(notificationsProvider);
+    notif.showUpdateAvailable(versionTag: info.tag!);
+  } catch (e) {
+    // Ignore if provider is unavailable
+  }
 
   await _promptAndInstall(context, info);
 }

@@ -62,6 +62,12 @@ class Notifications {
       description: 'Instant alerts when transactions are auto-tracked',
       importance: Importance.high,
     ));
+    await android?.createNotificationChannel(const AndroidNotificationChannel(
+      _updateChannelId,
+      'App updates',
+      description: 'Alerts when a new version of Kharcha is available',
+      importance: Importance.low,
+    ));
     // Notification permission is requested contextually in onboarding, not at
     // startup — a dialog on the auth screen would be spammy.
   }
@@ -97,6 +103,8 @@ class Notifications {
     }
   }
 
+  static const _updateChannelId = 'kharcha_updates';
+
   /// Instant alert when an expense crosses a budget threshold (e.g. 80%, 100%).
   Future<void> showBudgetThresholdAlert({
     required String categoryName,
@@ -131,6 +139,34 @@ class Notifications {
   /// each app start — the pending push carries the freshest data we have.
   /// ponytail: data is as-of-last-open, not fire-time; a background fill needs
   /// a foreground service / headless task — add when accuracy at 9PM matters.
+  /// Persistent alert when a new version of Kharcha is available.
+  Future<void> showUpdateAvailable({
+    required String versionTag,
+  }) async {
+    const id = 9999;
+    const details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        _updateChannelId,
+        'App updates',
+        channelDescription: 'Alerts when a new version of Kharcha is available',
+        importance: Importance.low, // Doesn't need to pop over the screen loudly
+        priority: Priority.low,
+        autoCancel: true,
+      ),
+    );
+
+    try {
+      await _plugin.show(
+        id,
+        'Update available',
+        'Kharcha $versionTag is ready to download. Tap to update in the app.',
+        details,
+      );
+    } catch (e, st) {
+      debugPrint('Update alert failed: $e\n$st');
+    }
+  }
+
   Future<void> scheduleDaily() async {
     final now = DateTime.now();
     final total = await _repo.dayTotal(now);

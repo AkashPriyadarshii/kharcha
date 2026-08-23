@@ -56,7 +56,9 @@ Future<UpdateInfo?> fetchLatestRelease({
     final assets = (json['assets'] as List<dynamic>? ?? const [])
         .whereType<Map<String, dynamic>>();
     final apk = assets
-        .where((a) => a['name'] == _assetName && a['size'] is int && a['size'] != 0)
+        .where((a) => (a['name'] == _assetName || a['name'] == 'app-arm64-v8a-release.apk') && 
+                      a['size'] is int && 
+                      a['size'] != 0)
         .firstOrNull;
     if (tag == null || apk == null) return const UpdateInfo(available: false);
     final available = compareVersions(tag, versionName);
