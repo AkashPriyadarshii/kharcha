@@ -204,13 +204,14 @@ class TransactionRepository {
       merchant: merchant,
       rules: await _db.select(_db.rules).get(),
     );
-    // Income rows get the first builtin income category ("Other income").
+    // Income rows get the catch-all income category — "Other income", never
+    // "Salary". A UPI credit (refund, cashback, a friend's money) is not a
+    // salary payment; labeling it Salary would pollute income reports.
     if (isIncome) {
-      final income = await (_db.select(_db.categories)
-            ..where((c) => c.isIncome.equals(true))
-            ..orderBy([(t) => OrderingTerm(expression: t.sortOrder)]))
+      final other = await (_db.select(_db.categories)
+            ..where((c) => c.name.equals('Other income')))
           .getSingleOrNull();
-      categoryId = income?.id ?? categoryId;
+      categoryId = other?.id;
     }
 
     final id = await _db.into(_db.transactions).insert(
@@ -257,14 +258,22 @@ class TransactionRepository {
     await (_db.delete(_db.wallets)..where((w) => w.id.equals(id))).go();
   }
 
-  /// Balance of a wallet in its own currency: initial + sum of spends.
+  /// Balance of a wallet in its own currency: income − expenses (amounts are
+  /// stored positive, sign comes from is_income). Initial balance is added by
+  /// the caller, so income raises the balance and a spend lowers it.
   Future<double> walletBalance(int walletId) async {
     final sum = _db.transactions.amount.sum();
-    final row = await (_db.selectOnly(_db.transactions)
+    final spent = await (_db.selectOnly(_db.transactions)
           ..addColumns([sum])
-          ..where(_db.transactions.walletId.equals(walletId)))
+          ..where(_db.transactions.walletId.equals(walletId) &
+              _expenseOnly()))
         .getSingle();
-    return (row.read(sum) ?? 0).toDouble();
+    final earned = await (_db.selectOnly(_db.transactions)
+          ..addColumns([sum])
+          ..where(_db.transactions.walletId.equals(walletId) &
+              _db.transactions.isIncome.equals(true)))
+        .getSingle();
+    return ((earned.read(sum) ?? 0) - (spent.read(sum) ?? 0)).toDouble();
   }
 
   /// Watches exchange rates.
@@ -336,16 +345,28 @@ class TransactionRepository {
       ));
 
   /// Advances [r.nextDue] by one period after it has been paid, so the next
-  /// due date rolls forward. Pure + unit-testable.
+  /// due date rolls forward. Pure + unit-testable. Month-end dates clamp to
+  /// the target month's last day (Jan 31 → Feb 28, not Mar 3) — Dart's
+  /// DateTime otherwise normalizes 31-Feb to 3-Mar silently.
   static DateTime nextDueAfter(RecurringTransaction r, DateTime paidOn) {
     final base = paidOn.isAfter(r.nextDue) ? paidOn : r.nextDue;
     return switch (r.period) {
       'daily' => base.add(const Duration(days: 1)),
       'weekly' => base.add(const Duration(days: 7)),
-      'monthly' => DateTime(base.year, base.month + 1, base.day),
-      'yearly' => DateTime(base.year + 1, base.month, base.day),
+      'monthly' => _nextMonthClamped(base),
+      'yearly' => _nextYearClamped(base),
       _ => base.add(const Duration(days: 30)),
     };
+  }
+
+  static DateTime _nextMonthClamped(DateTime d) {
+    final lastDay = DateTime(d.year, d.month + 2, 0).day;
+    return DateTime(d.year, d.month + 1, d.day > lastDay ? lastDay : d.day);
+  }
+
+  static DateTime _nextYearClamped(DateTime d) {
+    final lastDay = DateTime(d.year + 1, d.month + 1, 0).day;
+    return DateTime(d.year + 1, d.month, d.day > lastDay ? lastDay : d.day);
   }
 
   /// Adds a due subscription as a transaction (source = manual) and rolls the
@@ -439,7 +460,12 @@ class TransactionRepository {
   }
 
   /// Adds a custom category. New categories sort after all builtins.
-  Future<int> insertCategory({required String name, required String emoji, required String color}) {
+  Future<int> insertCategory({
+    required String name,
+    required String emoji,
+    required String color,
+    bool isIncome = false,
+  }) {
     final sortOrder = _db.selectOnly(_db.categories)
       ..addColumns([_db.categories.sortOrder.max()]);
     return _db.transaction(() async {
@@ -449,6 +475,7 @@ class TransactionRepository {
         emoji: emoji,
         color: color,
         isCustom: const Value(true),
+        isIncome: Value(isIncome),
         sortOrder: Value((max ?? 0) + 1),
       ))).id;
     });
@@ -462,6 +489,13 @@ class TransactionRepository {
             color: Value(color),
             dirty: const Value(true), // edits re-push (custom cats only — builtins read-only)
           ));
+
+  /// Finds category name by id.
+  Future<String?> categoryNameById(int? id) async {
+    if (id == null) return null;
+    final row = await (_db.select(_db.categories)..where((c) => c.id.equals(id))).getSingleOrNull();
+    return row?.name;
+  }
 
   /// Deletes a category and detaches its transactions (they become uncategorized).
   /// Custom categories with a server mirror are tombstoned for remote delete;
@@ -631,18 +665,37 @@ class TransactionRepository {
     final start = DateTime(month.year, month.month, 1);
     final end = DateTime(month.year, month.month + 1, 1);
     final rows = _db.select(_db.transactions).join([
-      innerJoin(_db.categories, _db.categories.id.equalsExp(_db.transactions.categoryId)),
+      leftOuterJoin(_db.categories, _db.categories.id.equalsExp(_db.transactions.categoryId)),
     ])
       ..where(_db.transactions.txnDate.isBiggerOrEqualValue(start) &
           _db.transactions.txnDate.isSmallerThanValue(end) &
           _expenseOnly());
     final per = <int, (Category, double)>{};
+    var uncategorizedTotal = 0.0;
     for (final r in await rows.get()) {
-      final cat = r.readTable(_db.categories);
+      final cat = r.readTableOrNull(_db.categories);
       final amount = r.readTable(_db.transactions).amount;
-      per.update(cat.id, (v) => (v.$1, v.$2 + amount), ifAbsent: () => (cat, amount));
+      if (cat != null) {
+        per.update(cat.id, (v) => (v.$1, v.$2 + amount), ifAbsent: () => (cat, amount));
+      } else {
+        uncategorizedTotal += amount;
+      }
     }
-    final list = per.values.toList()..sort((a, b) => b.$2.compareTo(a.$2));
+    final list = per.values.toList();
+    if (uncategorizedTotal > 0) {
+      const uncat = Category(
+        id: -1,
+        name: 'Uncategorized',
+        emoji: '📦',
+        color: '#8D99AE',
+        isCustom: false,
+        sortOrder: 999,
+        isIncome: false,
+        dirty: false,
+      );
+      list.add((uncat, uncategorizedTotal));
+    }
+    list.sort((a, b) => b.$2.compareTo(a.$2));
     return list;
   }
 
@@ -697,7 +750,8 @@ class TransactionRepository {
   Future<(int, int)> syncStatus() async {
     final all = await _db.select(_db.transactions).get();
     final pending = all.where((t) => t.dirty).length;
-    return (all.length + (await _featureRowsSynced()), pending + (await featureRowsPending()));
+    final synced = all.where((t) => !t.dirty).length;
+    return (synced + (await _featureRowsSynced()), pending + (await featureRowsPending()));
   }
 
   /// Synced feature rows (remoteId != null) — for the profile backup line.
@@ -1056,6 +1110,31 @@ class TransactionRepository {
     if (row == null) return;
     await _deleteFeature('budgets', row.remoteId);
     await (_db.delete(_db.budgets)..where((b) => b.id.equals(id))).go();
+  }
+
+  /// Checks if [categoryId] has an active budget and returns its budget status:
+  /// (categoryName, spentSoFar, budgetAmount, pct)
+  Future<(String, double, double, int)?> checkCategoryBudgetStatus(int categoryId, DateTime date) async {
+    final b = await (_db.select(_db.budgets)..where((b) => b.categoryId.equals(categoryId))).getSingleOrNull();
+    if (b == null || b.amount <= 0) return null;
+
+    final cat = await (_db.select(_db.categories)..where((c) => c.id.equals(categoryId))).getSingleOrNull();
+    if (cat == null) return null;
+
+    final startOfMonth = DateTime(date.year, date.month, 1);
+    final endOfMonth = DateTime(date.year, date.month + 1, 1);
+
+    final txns = await (_db.select(_db.transactions)
+          ..where((t) =>
+              t.categoryId.equals(categoryId) &
+              t.isIncome.equals(false) &
+              t.txnDate.isBiggerOrEqualValue(startOfMonth) &
+              t.txnDate.isSmallerThanValue(endOfMonth)))
+        .get();
+
+    final spent = txns.fold(0.0, (s, t) => s + t.amount);
+    final pct = ((spent / b.amount) * 100).round();
+    return (cat.name, spent, b.amount, pct);
   }
 
   /// All transactions newest-first, with their category name (null when

@@ -3,10 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../core/config.dart';
 import '../data/capture_inbox.dart';
+import '../data/notifications.dart';
 import '../data/sync_engine.dart';
 import '../data/transaction_repository.dart';
 import 'quick_add_dialog.dart';
@@ -16,6 +15,9 @@ import 'tabs/home_tab.dart';
 import 'tabs/profile_tab.dart';
 import 'tabs/reports_tab.dart';
 import 'tabs/transactions_tab.dart';
+
+/// Controls active navigation tab across the app shell.
+final homeTabIndexProvider = StateProvider<int>((ref) => 0);
 
 /// Main shell: tabbed navigation (Home / Transactions / Budget). Drains the
 /// UPI inbox on startup (captures expenses added while closed) and syncs.
@@ -32,7 +34,6 @@ class HomeShell extends ConsumerStatefulWidget {
 }
 
 class _HomeShellState extends ConsumerState<HomeShell> {
-  int _index = 0;
   Timer? _syncTimer;
 
   @override
@@ -60,7 +61,12 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   Future<void> _drainInbox() async {
     try {
       final repo = ref.read(transactionRepositoryProvider);
-      await drainCaptureInbox(inbox: await captureInboxFile(), repo: repo);
+      final notif = ref.read(notificationsProvider);
+      await drainCaptureInbox(
+        inbox: await captureInboxFile(),
+        repo: repo,
+        notifications: notif,
+      );
       // Newly captured expenses are dirty → flush them to Supabase.
       await syncIfSignedIn(widget.container);
     } catch (_) {
@@ -68,35 +74,11 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     }
   }
 
-  Future<void> _signOut(BuildContext context) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Sign out?'),
-        content: const Text('Your expenses stay on this device. Sign back in anytime.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Sign out'),
-          ),
-        ],
-      ),
-    );
-    if (ok != true) return;
-    authBypass.value = false; // also exit guest mode
-    await Supabase.instance.client.auth.signOut();
-    // Router redirects to /auth on session change.
-  }
-
   void _quickAdd(BuildContext context) {
     showDialog<void>(context: context, builder: (_) => const QuickAddDialog());
   }
 
-  /// Pencil button: quick access to the "manage" screens (categories, wallets,
+  /// Manage button: quick access to the "manage" screens (categories, wallets,
   /// subscriptions, goals, debts, split) without diving into Profile.
   void _openManage(BuildContext context) {
     const routes = [
@@ -132,24 +114,15 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
+    final index = ref.watch(homeTabIndexProvider);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Kharcha'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.add_box_outlined),
-            tooltip: 'Add expense',
-            onPressed: () => context.push('/add'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            tooltip: 'Manage categories, wallets & more',
+            icon: const Icon(Icons.grid_view_outlined),
+            tooltip: 'Shortcuts & manage',
             onPressed: () => _openManage(context),
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Sign out',
-            onPressed: () => _signOut(context),
           ),
         ],
       ),
@@ -159,7 +132,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         label: const Text('Quick add'),
       ),
       body: IndexedStack(
-        index: _index,
+        index: index,
         children: const [
           HomeTab(),
           TransactionsTab(),
@@ -169,8 +142,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         ],
       ),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
+        selectedIndex: index,
+        onDestinationSelected: (i) => ref.read(homeTabIndexProvider.notifier).state = i,
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
           NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Transactions'),

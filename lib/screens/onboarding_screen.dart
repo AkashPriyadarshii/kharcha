@@ -51,13 +51,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   static const _titles = [
     'Track every UPI payment. Automatically.',
-    'Auto-capture UPI payments',
+    'Auto-capture UPI & Bank SMS',
     'Daily summaries',
     'Keep capture awake',
   ];
   static const _bodies = [
-    'Kharcha reads your UPI payment notifications — GPay, PhonePe, Paytm — and saves each expense itself. No manual entry. All on-device.',
-    'Allow notification access so payments save themselves.',
+    'Kharcha reads your UPI payment notifications (GPay, PhonePe, Paytm) and bank SMS, saving each expense itself. No manual entry. 100% on-device.',
+    'Allow notification access so payments save themselves. SMS access is optional for bank alerts.',
     'Allow notifications for your 9PM recap and budget alerts.',
     'Let Kharcha ignore battery optimization so auto-capture never sleeps.',
   ];
@@ -69,13 +69,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   ];
   static const _actions = [
     null, // intro step has no permission action
-    'Enable capture',
+    'Enable notification capture',
     'Allow notifications',
     'Allow battery exemption',
   ];
 
   int _step = 0;
   bool _capture = false;
+  bool _sms = false;
   bool _notifications = false;
   bool _battery = false;
   Timer? _statusTimer;
@@ -98,6 +99,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       if (!mounted || status == null) return;
       setState(() {
         _capture = status['capture'] == true;
+        _sms = status['sms'] == true;
         _notifications = status['notifications'] == true;
         _battery = status['battery'] == true;
       });
@@ -124,7 +126,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   bool get _stepDone {
     switch (_step) {
       case 1:
-        return _capture;
+        return _capture || _sms;
       case 2:
         return _notifications;
       case 3:
@@ -211,6 +213,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         icon: _icons[_step],
                         actionLabel: _actions[_step]!,
                         isDone: _stepDone,
+                        secondaryActionLabel: _step == 1 ? 'Enable SMS capture (Optional)' : null,
+                        secondaryDone: _step == 1 ? _sms : null,
+                        onSecondaryAction: _step == 1 ? () => _invoke('requestSmsPermission') : null,
                         onAction: () => _invoke(
                           switch (_step) {
                             1 => 'openNotificationListenerSettings',
@@ -286,6 +291,9 @@ class _PermissionStep extends StatelessWidget {
     required this.actionLabel,
     required this.isDone,
     required this.onAction,
+    this.secondaryActionLabel,
+    this.secondaryDone,
+    this.onSecondaryAction,
   });
 
   final int step;
@@ -295,6 +303,9 @@ class _PermissionStep extends StatelessWidget {
   final String actionLabel;
   final bool isDone;
   final VoidCallback onAction;
+  final String? secondaryActionLabel;
+  final bool? secondaryDone;
+  final VoidCallback? onSecondaryAction;
 
   @override
   Widget build(BuildContext context) {
@@ -325,11 +336,32 @@ class _PermissionStep extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              isDone ? 'Done' : 'Not done yet',
+              isDone ? 'Notification Listener: Active' : 'Notification Listener: Not active',
               style: theme.textTheme.bodyMedium,
             ),
           ],
         ),
+        if (secondaryActionLabel != null && onSecondaryAction != null) ...[
+          const SizedBox(height: 16),
+          OutlinedButton(onPressed: onSecondaryAction, child: Text(secondaryActionLabel!)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(
+                secondaryDone == true ? Icons.check_circle : Icons.radio_button_unchecked,
+                size: 20,
+                color: secondaryDone == true
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                secondaryDone == true ? 'Bank SMS: Active' : 'Bank SMS: Not enabled (optional)',
+                style: theme.textTheme.bodyMedium,
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }

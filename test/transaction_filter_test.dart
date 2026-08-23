@@ -107,4 +107,17 @@ void main() {
     );
     expect(ids(f.apply(rows)), [1]);
   });
+
+  test('multi-token query and hashtag searching in note', () {
+    final rowsWithTags = [
+      _tx(id: 10, merchant: 'Swiggy', note: 'pizza #goa #food'),
+      _tx(id: 11, merchant: 'Uber', note: 'airport cab #goa'),
+      _tx(id: 12, merchant: 'Decathlon', note: 'shoes #sports'),
+    ];
+    final fTag = const TransactionFilter(query: '#goa');
+    expect(ids(fTag.apply(rowsWithTags)), [10, 11]);
+
+    final fMulti = const TransactionFilter(query: 'Swiggy #goa');
+    expect(ids(fMulti.apply(rowsWithTags)), [10]);
+  });
 }
