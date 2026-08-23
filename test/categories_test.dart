@@ -16,7 +16,7 @@ void main() {
 
   test('insertCategory appends after builtins with custom flag', () async {
     final id = await repo.insertCategory(name: 'Coffee', emoji: '☕', color: '#543310');
-    final row = await db.select(db.categories).getSingle();
+    final row = await (db.select(db.categories)..where((c) => c.id.equals(id))).getSingle();
     expect(row.id, id);
     expect(row.isCustom, isTrue);
     expect(row.sortOrder, greaterThan(0));
@@ -25,7 +25,7 @@ void main() {
   test('updateCategory edits name/emoji/color', () async {
     final id = await repo.insertCategory(name: 'Coffee', emoji: '☕', color: '#543310');
     await repo.updateCategory(id, name: 'Chai', emoji: '🫖', color: '#123456');
-    final row = await db.select(db.categories).getSingle();
+    final row = await (db.select(db.categories)..where((c) => c.id.equals(id))).getSingle();
     expect(row.name, 'Chai');
     expect(row.emoji, '🫖');
     expect(row.color, '#123456');
@@ -42,9 +42,9 @@ void main() {
     );
     await repo.deleteCategory(id);
 
-    final cats = await db.select(db.categories).get();
+    final deleted = await (db.select(db.categories)..where((c) => c.id.equals(id))).getSingleOrNull();
     final txns = await db.select(db.transactions).get();
-    expect(cats, isEmpty);
+    expect(deleted, isNull);
     expect(txns.single.categoryId, isNull);
   });
 

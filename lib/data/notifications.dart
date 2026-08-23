@@ -1,10 +1,16 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:intl/intl.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
 import 'transaction_repository.dart';
+
+final notificationsProvider = Provider<Notifications>((ref) {
+  final repo = ref.watch(transactionRepositoryProvider);
+  return Notifications(FlutterLocalNotificationsPlugin(), repo);
+});
 
 final _currency = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
 
@@ -22,6 +28,7 @@ class Notifications {
   final TransactionRepository _repo;
 
   static const _channelId = 'kharcha_summaries';
+  static const _captureChannelId = 'kharcha_transactions';
   static const _dailyId = 901;
   static const _weeklyId = 902;
 
@@ -37,7 +44,7 @@ class Notifications {
       tz.setLocalLocation(tz.getLocation('Asia/Kolkata'));
     }
     await _plugin.initialize(const InitializationSettings(
-      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      android: AndroidInitializationSettings('@mipmap/launcher_icon'),
     ));
     final android = _plugin
         .resolvePlatformSpecificImplementation<
@@ -48,8 +55,75 @@ class Notifications {
       description: 'Daily and weekly spending summaries',
       importance: Importance.high,
     ));
+    await android?.createNotificationChannel(const AndroidNotificationChannel(
+      _captureChannelId,
+      'Transaction alerts',
+      description: 'Instant alerts when transactions are auto-tracked',
+      importance: Importance.high,
+    ));
     // Notification permission is requested contextually in onboarding, not at
     // startup — a dialog on the auth screen would be spammy.
+  }
+
+  /// Instant push confirmation when a transaction is auto-captured.
+  Future<void> showTransactionCaptured({
+    required double amount,
+    required String merchant,
+    required bool isIncome,
+    String? categoryName,
+  }) async {
+    final title = isIncome ? '💰 Income auto-tracked' : '💸 Expense auto-tracked';
+    final catSuffix = (categoryName != null && categoryName.isNotEmpty) ? ' • $categoryName' : '';
+    final body = isIncome
+        ? '${_fmt(amount)} received from $merchant$catSuffix'
+        : '${_fmt(amount)} spent at $merchant$catSuffix';
+
+    final id = (DateTime.now().millisecondsSinceEpoch & 0x7FFFFFFF) % 100000;
+    const captureDetails = NotificationDetails(
+      android: AndroidNotificationDetails(
+        _captureChannelId,
+        'Transaction alerts',
+        channelDescription: 'Instant alerts when transactions are auto-tracked',
+        importance: Importance.high,
+        priority: Priority.high,
+      ),
+    );
+
+    try {
+      await _plugin.show(id, title, body, captureDetails);
+    } catch (_) {
+      // Silent error containment
+    }
+  }
+
+  /// Instant alert when an expense crosses a budget threshold (e.g. 80%, 100%).
+  Future<void> showBudgetThresholdAlert({
+    required String categoryName,
+    required double spent,
+    required double budget,
+    required int pct,
+  }) async {
+    final title = pct >= 100
+        ? '🚨 Budget exceeded: $categoryName'
+        : '⚠️ Budget alert: $categoryName ($pct%)';
+    final body = 'Spent ${_fmt(spent)} of ${_fmt(budget)} limit for $categoryName.';
+
+    final id = (categoryName.hashCode & 0x7FFFFFFF) % 100000;
+    const alertDetails = NotificationDetails(
+      android: AndroidNotificationDetails(
+        _captureChannelId,
+        'Budget alerts',
+        channelDescription: 'Alerts when category spending crosses budget limits',
+        importance: Importance.high,
+        priority: Priority.high,
+      ),
+    );
+
+    try {
+      await _plugin.show(id, title, body, alertDetails);
+    } catch (_) {
+      // Silent error containment
+    }
   }
 
   /// (Re)schedules the daily 21:00 push with today's numbers so far. Called

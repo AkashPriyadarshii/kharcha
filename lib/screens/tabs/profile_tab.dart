@@ -10,12 +10,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_lock.dart';
+import '../../core/config.dart';
 import '../../core/theme.dart';
 import '../../core/theme_mode.dart';
 import '../../data/bug_reporter.dart';
 import '../../data/exporter.dart';
 import '../../data/importer.dart';
 import '../../data/transaction_repository.dart';
+import '../../widgets/income_expense_toggle.dart';
 import '../update_dialog.dart';
 
 final _currency = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
@@ -201,8 +203,41 @@ class ProfileTab extends ConsumerWidget {
           trailing: const Icon(Icons.open_in_new, size: 18),
           onTap: () => _launch(context, 'https://github.com/AkashPriyadarshii/kharcha'),
         ),
+        const SizedBox(height: 24),
+        const SectionTitle('Account'),
+        const SizedBox(height: 8),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.logout, color: expenseRed),
+          title: const Text('Sign out', style: TextStyle(color: expenseRed)),
+          subtitle: const Text('Your expenses remain safely on this device'),
+          onTap: () => _signOut(context),
+        ),
       ],
     );
+  }
+
+  Future<void> _signOut(BuildContext context) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sign out?'),
+        content: const Text('Your expenses stay on this device. Sign back in anytime.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Sign out'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    authBypass.value = false; // also exit guest mode
+    await Supabase.instance.client.auth.signOut();
   }
 
   /// Two ways to report a bug: Email (recommended — no account needed, lands
@@ -398,6 +433,10 @@ class _AccountHeaderState extends ConsumerState<_AccountHeader> {
   Widget build(BuildContext context) {
     final user = Supabase.instance.client.auth.currentUser;
     final email = user?.email ?? 'Signed in';
+    final name = _userName(user);
+    final initial = (name == null || name.isEmpty)
+        ? null
+        : name.substring(0, 1).toUpperCase();
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -405,8 +444,8 @@ class _AccountHeaderState extends ConsumerState<_AccountHeader> {
           children: [
             CircleAvatar(
               radius: 24,
-              child: _userName(user) != null
-                  ? Text(_userName(user)!.substring(0, 1).toUpperCase())
+              child: initial != null
+                  ? Text(initial)
                   : const Icon(Icons.person),
             ),
             const SizedBox(width: 16),

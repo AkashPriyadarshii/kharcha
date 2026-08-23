@@ -34,6 +34,29 @@ void main() {
     expect(TransactionRepository.nextDueAfter(weekly, DateTime(2026, 8, 1)), DateTime(2026, 8, 8));
   });
 
+  test('nextDueAfter clamps month-end dates to the target month', () {
+    RecurringTransaction rec({required String period, required DateTime nextDue}) =>
+        RecurringTransaction(
+          id: 1, merchant: 'X', amount: 1, categoryId: null,
+          period: period, nextDue: nextDue, active: true, dirty: true, remoteId: null,
+        );
+    // Jan 31 + 1 month → Feb 28 (2026 non-leap), never Mar 3.
+    expect(
+      TransactionRepository.nextDueAfter(rec(period: 'monthly', nextDue: DateTime(2026, 1, 31)), DateTime(2026, 1, 31)),
+      DateTime(2026, 2, 28),
+    );
+    // Leap-day yearly → Feb 28 next non-leap year, not Mar 1.
+    expect(
+      TransactionRepository.nextDueAfter(rec(period: 'yearly', nextDue: DateTime(2024, 2, 29)), DateTime(2024, 2, 29)),
+      DateTime(2025, 2, 28),
+    );
+    // Mid-month stays put.
+    expect(
+      TransactionRepository.nextDueAfter(rec(period: 'monthly', nextDue: DateTime(2026, 8, 15)), DateTime(2026, 8, 15)),
+      DateTime(2026, 9, 15),
+    );
+  });
+
   test('insertRecurring + watchRecurring emits', () async {
     await repo.insertRecurring(
       merchant: 'Netflix', amount: 199, period: 'monthly', nextDue: DateTime(2026, 8, 15));

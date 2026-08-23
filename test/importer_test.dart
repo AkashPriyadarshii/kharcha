@@ -104,4 +104,76 @@ void main() {
     expect(result.added, 0);
     expect(result.errors, isNotEmpty);
   });
+
+  test('imports Pennywise format with capitalized headers and dd/MM/yyyy date format', () async {
+    final f = await writeCsv(
+      'Date,Time,Merchant,Category,Type,Amount,Currency,Bank,Account,Balance After,Description\n'
+      '15/08/2026,14:30:00,Swiggy,Food,Expense,350.00,INR,HDFC,1234,5000.00,Lunch with friends\n'
+      '16/08/2026,10:00:00,Consulting Client,Other income,Income,15000,INR,HDFC,1234,20000.00,Project fee\n',
+    );
+
+    final result = await importCsv(f, repo);
+    expect(result.added, 2);
+    expect(result.skipped, 0);
+
+    final rows = await db.select(db.transactions).get();
+    expect(rows, hasLength(2));
+    final swiggy = rows.firstWhere((r) => r.merchant == 'Swiggy');
+    expect(swiggy.amount, 350.0);
+    expect(swiggy.isIncome, isFalse);
+    expect(swiggy.txnDate.year, 2026);
+    expect(swiggy.txnDate.month, 8);
+    expect(swiggy.txnDate.day, 15);
+
+    final consulting = rows.firstWhere((r) => r.merchant == 'Consulting Client');
+    expect(consulting.amount, 15000.0);
+    expect(consulting.isIncome, isTrue);
+  });
+
+  test('importJson restores full backup JSON with transactions, budgets and debts', () async {
+    final f = await writeCsv('''
+{
+  "app": "Kharcha",
+  "version": 1,
+  "transactions": [
+    {
+      "date": "2026-08-10T12:00:00.000",
+      "amount": 750,
+      "type": "expense",
+      "merchant": "Amazon",
+      "category": "Shopping",
+      "payment_method": "card",
+      "upi_ref": "REF_JSON_1"
+    }
+  ],
+  "debts": [
+    {
+      "name": "Pooja",
+      "amount": 500,
+      "is_lent": true,
+      "note": "Dinner split"
+    }
+  ],
+  "budgets": [
+    {
+      "category": "Food",
+      "amount": 6000
+    }
+  ]
+}
+''');
+
+    final result = await importJson(f, repo);
+    expect(result.added, 1);
+    expect(result.skipped, 0);
+
+    final txns = await db.select(db.transactions).get();
+    expect(txns.any((t) => t.merchant == 'Amazon' && t.amount == 750), isTrue);
+
+    final debts = await db.select(db.debts).get();
+    expect(debts.any((d) => d.name == 'Pooja' && d.amount == 500), isTrue);
+
+    final budgets = await db.select(db.budgets).get();
+    expect(budgets.any((b) => b.amount == 6000), isTrue);
+  });
 }

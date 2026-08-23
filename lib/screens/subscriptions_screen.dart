@@ -28,6 +28,18 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen> {
       ..sort((a, b) => a.nextDue.compareTo(b.nextDue));
     final shown = _onlyDue ? due : recurring;
 
+    final activeList = recurring.where((r) => r.active).toList();
+    final totalMonthly = activeList.fold(0.0, (s, r) {
+      final monthly = switch (r.period) {
+        'daily' => r.amount * 30.0,
+        'weekly' => r.amount * 4.33,
+        'monthly' => r.amount,
+        'yearly' => r.amount / 12.0,
+        _ => r.amount,
+      };
+      return s + monthly;
+    });
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Subscriptions'),
@@ -44,14 +56,53 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-              if (due.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  '${due.length} due now',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Theme.of(context).colorScheme.error),
+            if (recurring.isNotEmpty) ...[
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Monthly commitment',
+                              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _currency.format(totalMonthly),
+                              style: moneyStyle.copyWith(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text('${activeList.length} active', style: Theme.of(context).textTheme.bodySmall),
+                          if (due.isNotEmpty)
+                            Text(
+                              '${due.length} due now',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context).colorScheme.error,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
+              const SizedBox(height: 16),
+            ],
             if (shown.isEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 40),

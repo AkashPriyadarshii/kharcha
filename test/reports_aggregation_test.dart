@@ -37,4 +37,15 @@ void main() {
     expect(ranking[0], ('Zomato', 400.0, 2));
     expect(ranking[1], ('Swiggy', 250.0, 1));
   });
+
+  test('monthSpendByCategory includes both categorized and uncategorized expenses', () async {
+    final foodCat = await (db.select(db.categories)..where((c) => c.name.equals('Food'))).getSingle();
+    await repo.insertManual(amount: 500, merchant: 'Restaurant', categoryId: foodCat.id, paymentMethod: 'upi', txnDate: DateTime(2026, 8, 1));
+    await repo.insertManual(amount: 200, merchant: 'Unknown Shop', categoryId: null, paymentMethod: 'cash', txnDate: DateTime(2026, 8, 2));
+
+    final list = await repo.monthSpendByCategory(DateTime(2026, 8, 1));
+    expect(list, hasLength(2));
+    expect(list.any((c) => c.$1.name == 'Food' && c.$2 == 500), isTrue);
+    expect(list.any((c) => c.$1.name == 'Uncategorized' && c.$2 == 200), isTrue);
+  });
 }

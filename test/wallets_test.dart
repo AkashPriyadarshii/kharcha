@@ -23,13 +23,17 @@ void main() {
     expect(wallets.single.currency, 'INR');
   });
 
-  test('walletBalance = sum of transactions on that wallet', () async {
+  test('walletBalance = income − expenses on that wallet', () async {
     final w = await repo.insertWallet(name: 'Cash', currency: 'INR');
     await repo.insertManual(
       amount: 100, merchant: 'A', paymentMethod: 'upi', txnDate: DateTime(2026, 8, 1), walletId: w.id);
     await repo.insertManual(
       amount: 50, merchant: 'B', paymentMethod: 'cash', txnDate: DateTime(2026, 8, 2), walletId: w.id);
-    expect(await repo.walletBalance(w.id), 150);
+    await repo.insertManual(
+      amount: 1000, merchant: 'Acme', paymentMethod: 'upi', txnDate: DateTime(2026, 8, 3),
+      walletId: w.id, isIncome: true);
+    // Spends lower the balance, income raises it.
+    expect(await repo.walletBalance(w.id), 850);
   });
 
   test('walletBalance ignores transactions on other wallets', () async {
@@ -38,7 +42,7 @@ void main() {
     await repo.insertManual(
       amount: 100, merchant: 'A', paymentMethod: 'upi', txnDate: DateTime(2026, 8, 1), walletId: w2.id);
     expect(await repo.walletBalance(w1.id), 0);
-    expect(await repo.walletBalance(w2.id), 100);
+    expect(await repo.walletBalance(w2.id), -100);
   });
 
   test('deleteWallet nulls wallet_id on its transactions', () async {
