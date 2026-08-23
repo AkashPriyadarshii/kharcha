@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'money.dart';
 
@@ -270,3 +270,4 @@ ParsedUpiPayment? parseUpiNotification(String text) {
 String encodeInboxLine({required String package, required String text, required String seenAt}) {
   return jsonEncode({'package': package, 'text': text, 'seenAt': seenAt});
 }
+

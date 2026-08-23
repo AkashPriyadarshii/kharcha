@@ -1,4 +1,4 @@
-package com.kharcha.app
+﻿package com.kharcha.app
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -101,3 +101,4 @@ class UpiNotificationListener : NotificationListenerService() {
     private fun escape(s: String): String =
         s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ").replace("\r", " ")
 }
+
