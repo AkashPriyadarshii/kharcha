@@ -44,6 +44,40 @@
     "author": { "@type": "Person", "name": "Akash Priyadarshi" },
     "description": "India-first UPI expense tracker. Every UPI payment from GPay, PhonePe, or Paytm auto-appears as an expense — no manual entry needed."
   }
+  
+    // Download UX Interceptor
+    const downloadBtns = document.querySelectorAll('.js-download-btn');
+    const toast = document.getElementById('download-toast');
+    
+    downloadBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const url = btn.getAttribute('href');
+        const originalText = btn.textContent;
+        
+        // Show Toast
+        toast.classList.add('show');
+        
+        // Update Button State
+        btn.textContent = 'Downloading... ↓';
+        btn.style.pointerEvents = 'none';
+        btn.style.opacity = '0.8';
+        
+        // Trigger Download
+        setTimeout(() => {
+          window.location.href = url;
+        }, 500);
+        
+        // Reset State after 8 seconds
+        setTimeout(() => {
+          toast.classList.remove('show');
+          btn.textContent = originalText;
+          btn.style.pointerEvents = 'auto';
+          btn.style.opacity = '1';
+        }, 8000);
+      });
+    });
+
   </script>
 
   <!-- Favicon: inline emoji glyph, no file needed -->
@@ -169,6 +203,21 @@
       .grid-2, .steps { grid-template-columns: 1fr; }
       nav { display: none; }
     }
+  
+    /* Toast Notification */
+    .toast {
+      position: fixed; bottom: 32px; left: 50%; transform: translate(-50%, 100px);
+      background: rgba(18, 19, 21, 0.85); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--hairline-strong); border-radius: 16px; padding: 16px 24px;
+      box-shadow: 0 24px 48px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05) inset;
+      width: calc(100% - 48px); max-width: 420px; z-index: 100;
+      opacity: 0; pointer-events: none; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .toast.show { transform: translate(-50%, 0); opacity: 1; }
+    .toast-content { display: flex; flex-direction: column; gap: 4px; }
+    .toast-content strong { color: var(--primary); font-size: 14px; font-weight: 600; }
+    .toast-content span { color: var(--ink-muted); font-size: 13px; line-height: 1.5; }
+
   </style>
 </head>
 <body>
@@ -180,7 +229,7 @@
         <a href="#features">Architecture</a>
         <a href="#how">How it works</a>
         <a href="#faq">FAQ</a>
-        <a class="btn btn-primary" style="padding: 10px 20px;" href="https://github.com/AkashPriyadarshii/kharcha/releases/latest/download/kharcha-armv8a-release.apk">Download APK</a>
+        <a class="btn btn-primary js-download-btn" style="padding: 10px 20px;" href="https://github.com/AkashPriyadarshii/kharcha/releases/latest/download/kharcha-latest.apk">Download APK</a>
       </nav>
     </div>
   </header>
@@ -191,7 +240,7 @@
         <h1>You pay via UPI. <span class="accent">Kharcha logs it.</span></h1>
         <p class="lead">Kharcha reads payment notifications from GPay, PhonePe, and Paytm. It logs each transaction into your budget automatically. Zero manual entry. Offline-first.</p>
         <div class="cta-row">
-          <a class="btn btn-primary" href="https://github.com/AkashPriyadarshii/kharcha/releases/latest/download/kharcha-armv8a-release.apk">Download for Android</a>
+          <a class="btn btn-primary js-download-btn" href="https://github.com/AkashPriyadarshii/kharcha/releases/latest/download/kharcha-latest.apk">Download for Android</a>
           <a class="btn btn-ghost" href="#how">Read the documentation</a>
         </div>
         <p class="meta-note">Android 12+ · ~25 MB · Free</p>
@@ -268,7 +317,7 @@
     <div class="wrap">
       <h2 style="margin-bottom: 24px;">Initialize Kharcha</h2>
       <p style="margin-bottom: 48px;">Free. Zero ads. No telemetry. Your financial data never leaves your device.</p>
-      <a class="btn btn-primary" href="https://github.com/AkashPriyadarshii/kharcha/releases/latest/download/kharcha-armv8a-release.apk" style="font-size: 16px; padding: 18px 36px;">Download for Android</a>
+      <a class="btn btn-primary js-download-btn" href="https://github.com/AkashPriyadarshii/kharcha/releases/latest/download/kharcha-latest.apk" style="font-size: 16px; padding: 18px 36px;">Download for Android</a>
     </div>
   </section>
 
@@ -330,6 +379,14 @@
       });
     }
   </script>
+
+
+  <div id="download-toast" class="toast">
+    <div class="toast-content">
+      <strong>Downloading securely from GitHub.</strong>
+      <span>If Android shows a "File might be harmful" warning, it is a standard OS check for sideloaded apps. Select "Download anyway".</span>
+    </div>
+  </div>
 
 </body>
 </html>
