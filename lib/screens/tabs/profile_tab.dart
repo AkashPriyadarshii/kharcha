@@ -10,6 +10,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_lock.dart';
+import '../../core/app_logger.dart';
 import '../../core/config.dart';
 import '../../core/theme.dart';
 import '../../core/theme_mode.dart';
@@ -338,9 +339,10 @@ class ProfileTab extends ConsumerWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Report sent. Thanks!')),
       );
-    } catch (e) {
+    } catch (e, st) {
       if (!context.mounted) return;
-      _fail(context, 'Could not send: $e');
+      AppLogger().e('BugReporter', 'Failed to send in-app bug report', e, st);
+      _fail(context, 'Could not send report. Please try email instead.');
     }
   }
 

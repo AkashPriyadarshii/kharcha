@@ -46,7 +46,23 @@ class SmsReceiver : BroadcastReceiver() {
                 val text = bodyBuilder.toString().trim()
                 if (!AMOUNT_RE.containsMatchIn(text)) continue
 
-                val line = "{\"package\":\"sms.${escape(sender)}\",\"text\":\"${escape(text)}\",\"seenAt\":\"$seenAt\"}\n"
+                val parsedTxn = com.pennywiseai.parser.core.bank.BankParserFactory.parse(text, sender, now)
+                
+                val parsedJson = if (parsedTxn != null) {
+                    """
+                    ,"parsed":{
+                        "amount":${parsedTxn.amount},
+                        "merchant":"${escape(parsedTxn.merchant ?: "Unknown")}",
+                        "type":"${parsedTxn.type.name}",
+                        "reference":${if (parsedTxn.referenceNumber != null) "\"${escape(parsedTxn.referenceNumber!!)}\"" else "null"},
+                        "balance":${parsedTxn.balance},
+                        "accountMask":${if (parsedTxn.accountMask != null) "\"${escape(parsedTxn.accountMask!!)}\"" else "null"},
+                        "bankName":${if (parsedTxn.bankName != null) "\"${escape(parsedTxn.bankName!!)}\"" else "null"}
+                    }
+                    """.trimIndent().replace("\n", "")
+                } else ""
+
+                val line = "{\"package\":\"sms.${escape(sender)}\",\"text\":\"${escape(text)}\",\"seenAt\":\"$seenAt\"$parsedJson}\n"
                 appendToInbox(context, line)
             }
         } catch (_: Exception) {
@@ -63,29 +79,12 @@ class SmsReceiver : BroadcastReceiver() {
                 synchronized("upi_inbox_lock".intern()) {
                     file.appendText(line)
                 }
-                showInstantNotification(context)
             } catch (_: Exception) {
                 // Never crash
             } finally {
                 pendingResult.finish()
             }
         }.start()
-    }
-
-    private fun showInstantNotification(context: Context) {
-        try {
-            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
-            val channelId = "kharcha_transactions" 
-            
-            val notification = android.app.Notification.Builder(context, channelId)
-                .setContentTitle("Payment recorded")
-                .setContentText("Kharcha logged a new SMS transaction.")
-                .setSmallIcon(android.R.drawable.ic_menu_info_details)
-                .setAutoCancel(true)
-                .build()
-                
-            notificationManager.notify(8001, notification)
-        } catch (_: Exception) {}
     }
 
     private fun escape(s: String): String =

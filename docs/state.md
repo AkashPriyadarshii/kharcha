@@ -80,6 +80,8 @@
   - **Privacy-First Export**: Data export feature hashing merchant PII and stripping notes for safe analysis.
   - [x] **Smart Rules UI**: Added `/rules` screen so users can view and define regex rules that get executed in `categorizer.dart`.
 - [x] **Notification Spam Fix**: Used a static notification ID in `SmsReceiver.kt` and `UpiNotificationListener.kt` so background triggers only show 1 overwriting notification instead of 5-10 distinct notifications per message.
+- [x] **Marketing Promo Spam Fix**: Blocked social/messaging apps (`com.whatsapp`, `telegram`, etc.) from triggering the notification listener in `UpiNotificationListener.kt` and added explicit ad keywords (`flat off`, `supercoins`, `free delivery`, `save extra`) to `_nonTransactionRe` in Dart. This stops WhatsApp ads (like "Flipkart Minutes ₹50 off") from being incorrectly parsed as UPI payments.
+- [x] **Pennywise Automations**: Ported Bank/Brand Logo fetching via Clearbit+offline Hex (added `BrandLogo`), auto-creation of missing Wallets & balance tracking in `insertCaptured()`, and extensive categorization rules to `_seedRules()`. All tests passing.
 
 ## Next up
 

@@ -396,6 +396,11 @@ class AppDatabase extends _$AppDatabase {
       'practo': 'Medical',
       'fortis': 'Medical',
       'max healthcare': 'Medical',
+      'hospital': 'Medical',
+      'clinic': 'Medical',
+      'pharmacy': 'Medical',
+      'diagnostic': 'Medical',
+      'pathology': 'Medical',
       // Recharge & Telecom
       'airtel': 'Recharge',
       'jio': 'Recharge',
@@ -423,6 +428,7 @@ class AppDatabase extends _$AppDatabase {
       'water bill': 'Bills',
       'rent': 'Rent',
       'emi': 'Bills',
+      'loan': 'Bills',
       // Entertainment
       'bookmyshow': 'Entertainment',
       'bms': 'Entertainment',
@@ -431,11 +437,24 @@ class AppDatabase extends _$AppDatabase {
       'cinepolis': 'Entertainment',
       'steam': 'Entertainment',
       'playstation': 'Entertainment',
+      'xbox': 'Entertainment',
+      'nintendo': 'Entertainment',
+      // Investment & Finance
+      'zerodha': 'Other',
+      'groww': 'Other',
+      'upstox': 'Other',
+      'paytm money': 'Other',
+      'kuvera': 'Other',
+      'et money': 'Other',
+      'mutual fund': 'Other',
+      'sip': 'Other',
+      'lic': 'Other',
       // Payment utilities / generic
       'paytm': 'Other',
       'phonepe': 'Other',
       'google pay': 'Other',
       'gpay': 'Other',
+      'cred': 'Other',
     };
     for (final entry in ruleMap.entries) {
       final cat = await (select(categories)..where((t) => t.name.equals(entry.value))).getSingleOrNull();

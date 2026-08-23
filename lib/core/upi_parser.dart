@@ -161,6 +161,7 @@ final _nonTransactionRe = RegExp(
   // 4. Marketing promos & Loan offers
   r'pre-approved|pre approved|loan offer|apply for loan|instant loan|personal loan of|'
   r'win up to|stand a chance to win|congratulations you won|claim your reward|'
+  r'flat off|supercoins|free delivery|shop for|save extra|enjoy flat|use code|'
   // 5. Payment requests & Collect requests (not completed payments)
   r'requesting payment|requested payment|payment request|has requested|collect request|'
   r'approve request|autopay request|mandate request|request to pay|'
