@@ -85,14 +85,17 @@ class UpiNotificationListener : NotificationListenerService() {
     }
 
     private fun appendToInbox(line: String) {
-        try {
-            val file = File(cacheDir, "upi_inbox.jsonl")
-            file.parentFile?.mkdirs()
-            file.appendText(line)
-        } catch (_: Exception) {
-            // Never crash the service on a file-write failure; the notification
-            // is lost rather than double-captured. Underlying errors are rare.
-        }
+        Thread {
+            try {
+                val file = File(cacheDir, "upi_inbox.jsonl")
+                file.parentFile?.mkdirs()
+                synchronized("upi_inbox_lock".intern()) {
+                    file.appendText(line)
+                }
+            } catch (_: Exception) {
+                // Never crash the service on a file-write failure.
+            }
+        }.start()
     }
 
     private fun escape(s: String): String =

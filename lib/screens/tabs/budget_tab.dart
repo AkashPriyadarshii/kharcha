@@ -279,7 +279,8 @@ class _BudgetDialogState extends ConsumerState<_BudgetDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             DropdownButtonFormField<int>(
-              initialValue: _categoryId,
+              // ignore: deprecated_member_use
+              value: categories.any((c) => c.id == _categoryId) ? _categoryId : null,
               decoration: const InputDecoration(labelText: 'Category'),
               items: [
                 for (final c in categories)

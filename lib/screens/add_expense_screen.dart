@@ -170,7 +170,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             DropdownButtonFormField<int>(
               decoration: const InputDecoration(labelText: 'Category'),
               hint: const Text('Uncategorized'),
-              initialValue: _categoryId,
+              // ignore: deprecated_member_use
+              value: cats.any((c) => c.id == _categoryId) ? _categoryId : null,
               items: [
                 for (final c in cats)
                   DropdownMenuItem(value: c.id, child: Text('${c.emoji}  ${c.name}')),
@@ -181,8 +182,10 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             DropdownButtonFormField<int?>(
               decoration: const InputDecoration(labelText: 'Wallet'),
               hint: const Text('No wallet'),
-              initialValue: _walletId,
+              // ignore: deprecated_member_use
+              value: wallets.any((w) => w.id == _walletId) ? _walletId : null,
               items: [
+                const DropdownMenuItem(value: null, child: Text('No wallet')),
                 for (final w in wallets)
                   DropdownMenuItem(value: w.id, child: Text(w.name)),
               ],
