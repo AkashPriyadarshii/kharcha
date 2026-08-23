@@ -49,40 +49,32 @@
     const downloadBtns = document.querySelectorAll('.js-download-btn');
     const toast = document.getElementById('download-toast');
     
+    // 1. Fetch exact APK URL on page load to prevent popup blockers
+    fetch('https://api.github.com/repos/AkashPriyadarshii/kharcha/releases/latest')
+      .then(res => res.json())
+      .then(data => {
+        const apkAsset = data.assets.find(asset => asset.name.endsWith('.apk'));
+        if (apkAsset && apkAsset.browser_download_url) {
+          // Update all buttons to point directly to the raw file
+          downloadBtns.forEach(btn => {
+            btn.setAttribute('href', apkAsset.browser_download_url);
+          });
+        }
+      })
+      .catch(err => console.error("Could not fetch latest release", err));
+
+    // 2. Handle UX on click (No preventDefault, let native download happen)
     downloadBtns.forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        const fallbackUrl = btn.getAttribute('href');
+      btn.addEventListener('click', () => {
         const originalText = btn.textContent;
         
-        // Update UI State
+        // Show Toast
         toast.classList.add('show');
-        btn.textContent = 'Fetching APK...';
+        
+        // Update Button State
+        btn.textContent = 'Downloading... ↓';
         btn.style.pointerEvents = 'none';
         btn.style.opacity = '0.8';
-        
-        try {
-          // Dynamically fetch the latest release data from GitHub API
-          const response = await fetch('https://api.github.com/repos/AkashPriyadarshii/kharcha/releases/latest');
-          if (!response.ok) throw new Error('API Rate Limit or Error');
-          
-          const data = await response.json();
-          // Find the first attached asset that is an APK
-          const apkAsset = data.assets.find(asset => asset.name.endsWith('.apk'));
-          
-          if (apkAsset && apkAsset.browser_download_url) {
-            btn.textContent = 'Downloading... ↓';
-            setTimeout(() => {
-              window.location.href = apkAsset.browser_download_url;
-            }, 300);
-          } else {
-            // No APK found in the latest release, fallback to releases page
-            window.location.href = fallbackUrl;
-          }
-        } catch (error) {
-          // If the fetch fails (e.g., adblocker, rate limit), fallback to the releases page
-          window.location.href = fallbackUrl;
-        }
         
         // Reset UI State after 8 seconds
         setTimeout(() => {
