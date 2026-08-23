@@ -1,4 +1,4 @@
-﻿<div align="center">
+<div align="center">
   <img src="assets/icon/app_icon.png" width="128" height="128" alt="Kharcha Logo">
   <h1>Kharcha</h1>
   <p><strong>India's Zero-Friction UPI Expense Tracker for Android.</strong></p>
@@ -10,9 +10,11 @@
 
 ---
 
-**Kharcha** is a native Android expense tracker purpose-built for India's UPI ecosystem. Every payment from **GPay, PhonePe, Paytm, or CRED** is automatically captured, categorized, and added to your ledger instantly without manual entry. 
+**by Akash Priyadarshi & Priyaranjan** · [github.com/AkashPriyadarshii](https://github.com/AkashPriyadarshii) · [github.com/priyaranjan122002](https://github.com/priyaranjan122002) · [akashpriyadarshi.vercel.app](https://akashpriyadarshi.vercel.app)
 
-Built with an offline-first architecture, Kharcha relies on **100% deterministic, rule-based automation**—zero AI hallucination, zero manual logging, and absolute data ownership.
+**🌐 Website:** [**kharcha.github.io**](https://AkashPriyadarshii.github.io/kharcha/) — features, screenshots, FAQ, direct download.
+
+India-first UPI expense tracker for Android. Every UPI payment from GPay, PhonePe, or Paytm auto-appears as an expense — no manual entry. Offline-first, rule-based automation (no AI), Supabase sync. Built with Flutter/Dart, Drift/SQLite.
 
 ## 📲 Download
 
