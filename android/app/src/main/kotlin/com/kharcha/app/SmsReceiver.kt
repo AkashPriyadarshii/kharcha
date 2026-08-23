@@ -1,4 +1,4 @@
-﻿package com.kharcha.app
+package com.kharcha.app
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -63,6 +63,7 @@ class SmsReceiver : BroadcastReceiver() {
                 synchronized("upi_inbox_lock".intern()) {
                     file.appendText(line)
                 }
+                showInstantNotification(context)
             } catch (_: Exception) {
                 // Never crash
             } finally {
@@ -71,7 +72,22 @@ class SmsReceiver : BroadcastReceiver() {
         }.start()
     }
 
+    private fun showInstantNotification(context: Context) {
+        try {
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+            val channelId = "kharcha_transactions" 
+            
+            val notification = android.app.Notification.Builder(context, channelId)
+                .setContentTitle("Payment recorded")
+                .setContentText("Kharcha logged a new SMS transaction.")
+                .setSmallIcon(android.R.drawable.ic_menu_info_details)
+                .setAutoCancel(true)
+                .build()
+                
+            notificationManager.notify((System.currentTimeMillis() % 100000).toInt(), notification)
+        } catch (_: Exception) {}
+    }
+
     private fun escape(s: String): String =
         s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ").replace("\r", " ")
 }
-
