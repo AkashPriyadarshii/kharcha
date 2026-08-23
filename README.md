@@ -10,6 +10,10 @@
 
 ---
 
+**Kharcha** is a native Android expense tracker purpose-built for India's UPI ecosystem. Every payment from **GPay, PhonePe, Paytm, or CRED** is automatically captured, categorized, and added to your ledger instantly without manual entry.
+
+Built with an offline-first architecture, Kharcha relies on **100% deterministic, rule-based automation**—zero AI hallucination, zero manual logging, and absolute data ownership.
+
 **by Akash Priyadarshi & Priyaranjan** · [github.com/AkashPriyadarshii](https://github.com/AkashPriyadarshii) · [github.com/priyaranjan122002](https://github.com/priyaranjan122002) · [akashpriyadarshi.vercel.app](https://akashpriyadarshi.vercel.app)
 
 **🌐 Website:** [**kharcha.github.io**](https://AkashPriyadarshii.github.io/kharcha/) — features, screenshots, FAQ, direct download.
