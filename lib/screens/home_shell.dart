@@ -33,12 +33,13 @@ class HomeShell extends ConsumerStatefulWidget {
   ConsumerState<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends ConsumerState<HomeShell> {
+class _HomeShellState extends ConsumerState<HomeShell> with WidgetsBindingObserver {
   Timer? _syncTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _drainInbox();
     // Auto-backup: flush any dirty rows every 30s while the app is open, so a
     // budget/edit made a minute ago reaches Supabase without reaching a
@@ -54,11 +55,26 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _syncTimer?.cancel();
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Drain captured transactions immediately when the user returns to the app.
+    // Without this, payments made while backgrounded only appear on the next
+    // 30s timer tick (if the timer survived Android battery optimization).
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_drainInbox());
+    }
+  }
+
+  bool _isDrainingInbox = false;
+
   Future<void> _drainInbox() async {
+    if (_isDrainingInbox) return;
+    _isDrainingInbox = true;
     try {
       final repo = ref.read(transactionRepositoryProvider);
       final notif = ref.read(notificationsProvider);
@@ -71,6 +87,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       await syncIfSignedIn(widget.container);
     } catch (_) {
       // Opportunistic; never block the shell on a capture failure.
+    } finally {
+      _isDrainingInbox = false;
     }
   }
 
