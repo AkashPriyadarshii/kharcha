@@ -74,6 +74,9 @@ class _BillSplitterScreenState extends ConsumerState<BillSplitterScreen> {
                   ? () async {
                       final repo = ref.read(transactionRepositoryProvider);
                       for (var i = 0; i < shares.length; i++) {
+                        // A sub-paisa share splits to 0 (₹0.01 / 3) — never
+                        // insert a zero-amount expense (insertManual rejects).
+                        if (shares[i] <= 0) continue;
                         await repo.insertManual(
                           amount: shares[i] / 100,
                           merchant: _merchant.trim(),

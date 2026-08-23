@@ -12,7 +12,6 @@ const seed = Color(0xFF0A6B4D);
 
 /// Money numeral style — strong condensed treatment shared by every screen.
 const moneyStyle = TextStyle(
-  fontFamily: 'monospace',
   fontWeight: FontWeight.w700,
   fontFeatures: [FontFeature.tabularFigures()],
 );

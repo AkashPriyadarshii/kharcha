@@ -274,9 +274,9 @@ final syncEngineProvider = Provider<SyncEngine>((ref) {
 /// Offline is the expected case — rows stay dirty and flush on the next
 /// trigger (app start, login, or a later write).
 Future<void> syncIfSignedIn(ProviderContainer container) async {
-  final user = Supabase.instance.client.auth.currentUser;
-  if (user == null) return;
   try {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
     await container.read(syncEngineProvider).syncNow();
   } catch (e) {
     debugPrint('sync deferred (offline or transient): $e');

@@ -130,6 +130,19 @@ void main() {
     expect(row!.categoryId, food.id);
   });
 
+  test('insertCaptured income goes to "Other income", never Salary', () async {
+    final other = await (db.select(db.categories)..where((c) => c.name.equals('Other income'))).getSingle();
+    final salary = await (db.select(db.categories)..where((c) => c.name.equals('Salary'))).getSingle();
+
+    // A UPI credit (refund/cashback/friend) is not a salary payment.
+    final row = await repo.insertCaptured(
+      amount: 200, merchant: 'Zomato refund', upiRef: 'REF789',
+      txnDate: DateTime.now(), isIncome: true);
+
+    expect(row!.categoryId, other.id);
+    expect(row.categoryId, isNot(salary.id));
+  });
+
   test('watchAll emits inserted rows newest-first', () async {
     await repo.insertManual(amount: 100, merchant: 'A', paymentMethod: 'upi', txnDate: DateTime(2026, 8, 1));
     await repo.insertManual(amount: 200, merchant: 'B', paymentMethod: 'upi', txnDate: DateTime(2026, 8, 2));

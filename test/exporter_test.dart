@@ -65,4 +65,23 @@ void main() {
     final json = await Exporter(repo).exportJson(dir, 'inc.json');
     expect(await json.readAsString(), contains('"type": "income"'));
   });
+
+  test('exportFullBackup exports all tables in structured JSON', () async {
+    final food = await (db.select(db.categories)..where((c) => c.name.equals('Food'))).getSingle();
+    await repo.insertManual(amount: 450, merchant: 'Zomato', categoryId: food.id, paymentMethod: 'upi', txnDate: DateTime(2026, 8, 6));
+    await repo.upsertBudget(categoryId: food.id, amount: 5000);
+    await repo.insertDebt(name: 'Rahul', amount: 1500, isLent: true);
+    await repo.insertObjective(name: 'MacBook', target: 120000);
+
+    final file = await Exporter(repo).exportFullBackup(dir, 'kharcha_backup.json');
+    final content = await file.readAsString();
+
+    expect(content, contains('"app": "Kharcha"'));
+    expect(content, contains('"transactions":'));
+    expect(content, contains('"budgets":'));
+    expect(content, contains('"debts":'));
+    expect(content, contains('"objectives":'));
+    expect(content, contains('Rahul'));
+    expect(content, contains('MacBook'));
+  });
 }

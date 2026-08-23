@@ -18,6 +18,8 @@ class DebtsScreen extends ConsumerStatefulWidget {
 }
 
 class _DebtsScreenState extends ConsumerState<DebtsScreen> {
+  bool _onlyPending = false;
+
   Future<void> _confirmDelete(BuildContext context, Debt d) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -105,8 +107,19 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
     final debts = ref.watch(debtsProvider).value ?? const <Debt>[];
     final lent = debts.where((d) => d.isLent && !d.settled).fold(0.0, (s, d) => s + d.amount);
     final borrowed = debts.where((d) => !d.isLent && !d.settled).fold(0.0, (s, d) => s + d.amount);
+    final shown = _onlyPending ? debts.where((d) => !d.settled).toList() : debts;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Credit & debt')),
+      appBar: AppBar(
+        title: const Text('Credit & debt'),
+        actions: [
+          IconButton(
+            tooltip: _onlyPending ? 'Show all' : 'Show pending only',
+            icon: Icon(_onlyPending ? Icons.list : Icons.filter_list),
+            onPressed: () => setState(() => _onlyPending = !_onlyPending),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAdd,
         icon: const Icon(Icons.add),
@@ -148,30 +161,41 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          if (debts.isEmpty)
+          if (shown.isEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 40),
               child: Column(
                 children: [
                   const Text('🤝', style: TextStyle(fontSize: 44)),
                   const SizedBox(height: 12),
-                  Text('Nothing tracked yet.', style: Theme.of(context).textTheme.titleMedium),
+                  Text(_onlyPending ? 'No pending debts!' : 'Nothing tracked yet.', style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 4),
                   Text('Lent ₹500 to Ravi? Borrowed from Priya?', style: Theme.of(context).textTheme.bodySmall),
                 ],
               ),
             )
           else
-            for (final d in debts)
+            for (final d in shown)
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: CircleAvatar(
                   backgroundColor: d.isLent ? const Color(0xFF0A6B4D) : const Color(0xFFB08900),
                   child: Icon(d.isLent ? Icons.south_west : Icons.north_east, color: Colors.white, size: 18),
                 ),
-                title: Text(d.name,
-                    style: d.settled ? TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant) : null),
-                subtitle: Text([d.note ?? '', d.isLent ? 'lent' : 'borrowed'].where((s) => s.isNotEmpty).join(' · ')),
+                title: Text(
+                  d.name,
+                  style: d.settled
+                      ? TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          decoration: TextDecoration.lineThrough,
+                        )
+                      : null,
+                ),
+                subtitle: Text([
+                  d.note ?? '',
+                  d.isLent ? 'lent' : 'borrowed',
+                  if (d.settled) 'settled'
+                ].where((s) => s.isNotEmpty).join(' · ')),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
