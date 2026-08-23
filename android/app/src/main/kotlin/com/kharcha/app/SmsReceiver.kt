@@ -53,10 +53,10 @@ class SmsReceiver : BroadcastReceiver() {
                     ,"parsed":{
                         "amount":${parsedTxn.amount},
                         "merchant":"${escape(parsedTxn.merchant ?: "Unknown")}",
-                        "type":"${parsedTxn.type.name}",
-                        "reference":${if (parsedTxn.referenceNumber != null) "\"${escape(parsedTxn.referenceNumber!!)}\"" else "null"},
-                        "balance":${parsedTxn.balance},
-                        "accountMask":${if (parsedTxn.accountMask != null) "\"${escape(parsedTxn.accountMask!!)}\"" else "null"},
+                        "type":"${escape(parsedTxn.type.name)}",
+                        "reference":${if (parsedTxn.reference != null) "\"${escape(parsedTxn.reference!!)}\"" else "null"},
+                        "balance":${parsedTxn.balance?.toPlainString() ?: "null"},
+                        "accountMask":${if (parsedTxn.accountLast4 != null) "\"${escape(parsedTxn.accountLast4!!)}\"" else "null"},
                         "bankName":${if (parsedTxn.bankName != null) "\"${escape(parsedTxn.bankName!!)}\"" else "null"}
                     }
                     """.trimIndent().replace("\n", "")
