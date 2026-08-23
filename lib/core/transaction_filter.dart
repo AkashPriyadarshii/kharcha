@@ -49,13 +49,17 @@ class TransactionFilter {
   /// Rows matching every active criterion, keeping input order.
   List<Transaction> apply(List<Transaction> all) {
     final q = query.trim().toLowerCase();
+    final tokens = q.split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toList();
     final f = from;
     final t2 = to;
     return [
       for (final t in all)
-        if ((q.isEmpty ||
-                t.merchant.toLowerCase().contains(q) ||
-                (t.note?.toLowerCase().contains(q) ?? false)) &&
+        if ((tokens.isEmpty ||
+                tokens.every((tok) =>
+                    t.merchant.toLowerCase().contains(tok) ||
+                    (t.note?.toLowerCase().contains(tok) ?? false) ||
+                    (t.upiRef?.toLowerCase().contains(tok) ?? false) ||
+                    t.amount.toString().contains(tok))) &&
             (categoryId == null || t.categoryId == categoryId) &&
             (merchant == null || t.merchant == merchant) &&
             (paymentMethod == null || t.paymentMethod == paymentMethod) &&

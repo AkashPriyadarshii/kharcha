@@ -2,6 +2,17 @@
 
 All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
 
+## [v0.2.7] — 2026-08-23
+
+- **Non-Transaction Spam & Reminder Rejection Filter** — `_nonTransactionRe` in `lib/core/upi_parser.dart` immediately returns `null` (step 0, before any amount extraction) for recharge expiry notices ("plz recharge with 196rs", "validity expires"), bill due/overdue alerts, OTP/verification codes, pre-approved loan promos, payment/collect requests, and failed/declined transactions. Non-spends are never stored as expenses.
+- **Onboarding SMS step** — Step 1 ("Auto-capture UPI & Bank SMS") now shows an optional secondary action to enable SMS capture (`RECEIVE_SMS` + `READ_SMS`) alongside the existing notification listener path. Either path alone marks the step done so the user can proceed. `_PermissionStep` gains optional `secondaryActionLabel`/`secondaryDone`/`onSecondaryAction` params; `_stepDone` for step 1 is now `_capture || _sms`.
+- **SMS runtime permission channel** — `MainActivity.kt` gains a `requestSmsPermission` method handler (requests both `RECEIVE_SMS` + `READ_SMS` at runtime) and `getCaptureStatus` now returns a `sms` boolean key alongside the existing `capture`/`notifications`/`battery` keys.
+- **Full Notification & Background Automation Test Suite** — `test/capture_inbox_test.dart` added; `test/upi_parser_test.dart` & `test/transaction_filter_test.dart` expanded. Total: **187/187 tests passing**, 28 files, 0 analyzer warnings.
+- **SMS & UPI Multi-Bank Parser Hardening** — robust regex cascade for HDFC Bank SMS balance formats, SBI transfer messages, Axis Bank credit card notifications, and refund messages with VPA cleaning.
+- **Budget Threshold Alert Triggers** — automated push notifications when an auto-captured transaction pushes a category budget to ≥80% or >100%.
+- **Diagnostic Unrecognized Queue** — unparsed financial messages stored into `unrecognized_inbox.jsonl` (circular buffer) for zero-data-loss diagnostics.
+- **arm64 APK** — `app-arm64-v8a-release.apk` (28.3 MB) built debug-signed for sideloading. `pubspec.yaml` bumped to `0.2.7+9`. Auto-update trigger will prompt installed devices.
+
 ## [Site] — 2026-08-09
 
 - **Mobile UI/UX pass (marketing site)** — the landing page (`site/index.html`, GitHub Pages) is now genuinely mobile-first:
@@ -44,6 +55,17 @@ All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
 
 ## [unreleased]
 
+- **Pennywise Architecture Parity & Deep Upgrades** —
+  1. *Full Backup JSON Export/Import*: Added `exportFullBackup` and `importJson` across [`lib/data/exporter.dart`](file:///C:/Users/saves/Desktop/kharcha/lib/data/exporter.dart) and [`lib/data/importer.dart`](file:///C:/Users/saves/Desktop/kharcha/lib/data/importer.dart) supporting full database snapshots (transactions, budgets, debts, recurring, goals, wallets, custom categories, and metadata) with automatic table restoration.
+  2. *Flexible Multi-Source CSV Importer*: Enhanced `importCsv` to support case-insensitive headers, column aliases (`Merchant`, `Payee`, `Vendor`, `Amount`, `Total`, `Date`, `Description`, `Bank`, `UPI Ref`), and flexible date schemes (`dd/MM/yyyy`, `dd-MM-yyyy`, ISO).
+  3. *Comprehensive Indian Merchant Categorizer*: Expanded `ruleMap` in [`lib/data/database.dart`](file:///C:/Users/saves/Desktop/kharcha/lib/data/database.dart) with over 80+ top Indian merchants and services (KFC, Starbucks, Namma Yatri, Fastag, Fuel/Petrol pumps, Ajio, Nykaa, Blinkit, Instamart, Netmeds, Tata 1mg, Tata Power, Indane Gas, etc.).
+  4. *Raw UPI VPA & Merchant Name Normalization*: Upgraded `_cleanMerchant()` in [`lib/core/upi_parser.dart`](file:///C:/Users/saves/Desktop/kharcha/lib/core/upi_parser.dart) to automatically normalize ugly raw VPA handles (`paytmqr281001@paytm` $\rightarrow$ `Paytm Merchant`, `swiggy.orders@icici` $\rightarrow$ `Swiggy`).
+  5. *Proactive Real-Time Budget Threshold Alerts*: Added `showBudgetThresholdAlert()` in [`lib/data/notifications.dart`](file:///C:/Users/saves/Desktop/kharcha/lib/data/notifications.dart) and category budget checker in `TransactionRepository`; auto-triggers high-priority push warnings when spending reaches $\ge 80\%$ or exceeds $100\%$ limit.
+  6. *Multi-Token & Hashtag Search Engine*: Enhanced [`lib/core/transaction_filter.dart`](file:///C:/Users/saves/Desktop/kharcha/lib/core/transaction_filter.dart) to support multi-token queries and `#tag` searching in notes (e.g. `Swiggy #lunch`, `#goa2026`).
+  7. *Unrecognized Message Diagnostic Queue*: Added `unrecognized_inbox.jsonl` queue in [`lib/data/capture_inbox.dart`](file:///C:/Users/saves/Desktop/kharcha/lib/data/capture_inbox.dart) capturing skipped financial messages for diagnostics.
+  8. *Subscriptions Monthly Commitment Hero*: Added a live recurring commitment summary (`₹/mo committed`, active count, and due count) in [`lib/screens/subscriptions_screen.dart`](file:///C:/Users/saves/Desktop/kharcha/lib/screens/subscriptions_screen.dart).
+  9. *Credit/Debt Ledger Filters & Settle UX*: Added pending/all filter toggle and strikethrough styling for settled records in [`lib/screens/debts_screen.dart`](file:///C:/Users/saves/Desktop/kharcha/lib/screens/debts_screen.dart).
+- **Audit & Test Suite Hardening** — Full 26-file test suite passing (166/166 tests) with zero analyzer issues.
 - **Live fixes (v0.2.2)** — (1) **UPI capture was dead: path mismatch.** Kotlin `UpiNotificationListener` wrote the inbox to `context.cacheDir` (`cache/`), Dart read `getApplicationCacheDirectory()` (`code_cache/`) — a different dir, so the inbox was never drained and every capture silently vanished. Dart now reads `getTemporaryDirectory()` (= `getCacheDir()`). (2) **Real-time capture** — inbox drained every 30s (was startup-only), so payments appear ~live while the app is open. (3) **Feature deletes now sync** — deleting a budget/wallet/recurring/objective/debt/custom category writes a tombstone (`deleted_features`, schema v11) that the SyncEngine drains as a remote DELETE + skips on pull; no more resurrection after reinstall. (4) **App lock fixed** — `MainActivity` is now `FlutterFragmentActivity` (local_auth requires it for the biometric prompt; `FlutterActivity` made `authenticate()` fail). (5) **Profile "Open source" → "Source"** — matches the all-rights-reserved LICENSE (view-only, no fork/copy/derivative/commercial).
 - **Capture everything** — any app's notification with a ₹ amount is captured (UPI + bank + messaging); Dart parser gates on payment keywords so "bhej de ₹200" chats don't become expenses. Money IN captured too (income transactions). Schema v10, parser rework + tests.
 - **Custom-category sync** — custom categories now push to Supabase (per-user rows, migration 0004), budgets/recurring translate category ids. Server `categories` seed (0003).

@@ -65,6 +65,19 @@ class MainActivity : FlutterFragmentActivity() {
                         )
                         result.success(null)
                     }
+                    "requestSmsPermission" -> {
+                        if (ContextCompat.checkSelfPermission(
+                                this, Manifest.permission.RECEIVE_SMS
+                            ) != PackageManager.PERMISSION_GRANTED
+                        ) {
+                            ActivityCompat.requestPermissions(
+                                this,
+                                arrayOf(Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS),
+                                REQ_SMS
+                            )
+                        }
+                        result.success(true)
+                    }
                     "getCaptureStatus" -> {
                         val pm = getSystemService(POWER_SERVICE) as PowerManager
                         val enabledListeners = Settings.Secure.getString(
@@ -73,6 +86,9 @@ class MainActivity : FlutterFragmentActivity() {
                         result.success(
                             mapOf(
                                 "capture" to enabledListeners.contains(packageName),
+                                "sms" to (ContextCompat.checkSelfPermission(
+                                    this, Manifest.permission.RECEIVE_SMS
+                                ) == PackageManager.PERMISSION_GRANTED),
                                 "notifications" to (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
                                     ContextCompat.checkSelfPermission(
                                         this, Manifest.permission.POST_NOTIFICATIONS
@@ -121,5 +137,6 @@ class MainActivity : FlutterFragmentActivity() {
 
     companion object {
         private const val REQ_NOTIFICATIONS = 3001
+        private const val REQ_SMS = 3002
     }
 }

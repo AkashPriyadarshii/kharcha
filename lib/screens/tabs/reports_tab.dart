@@ -70,18 +70,20 @@ class _MonthSummary extends StatelessWidget {
     final net = income - spend;
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         child: Row(
           children: [
             Expanded(
               child: _ColumnStat(label: 'Income', amount: income, color: incomeGreen),
             ),
+            Container(width: 1, height: 32, color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5)),
             Expanded(
               child: _ColumnStat(label: 'Spent', amount: spend, color: expenseRed),
             ),
+            Container(width: 1, height: 32, color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5)),
             Expanded(
               child: _ColumnStat(
-                label: 'Net',
+                label: 'Net savings',
                 amount: net,
                 color: net >= 0 ? incomeGreen : expenseRed,
               ),
@@ -109,7 +111,11 @@ class _ColumnStat extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           _currency.format(amount),
-          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800, color: color),
+          style: moneyStyle.copyWith(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: color,
+          ),
         ),
       ],
     );
