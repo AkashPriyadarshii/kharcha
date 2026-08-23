@@ -52,6 +52,9 @@ Map<String, dynamic> localToRemoteFeatureJson(SyncKind kind, dynamic row, String
         'name': w.name,
         'currency': w.currency,
         'initial_balance': w.initialBalance,
+        'account_mask': w.accountMask,
+        'bank_name': w.bankName,
+        'latest_sms_balance': w.latestSmsBalance,
         'created_at': w.createdAt.toUtc().toIso8601String(),
       };
     case SyncKind.recurring:

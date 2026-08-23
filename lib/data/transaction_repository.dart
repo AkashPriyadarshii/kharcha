@@ -131,6 +131,7 @@ class TransactionRepository {
   /// Watches all transactions, newest first.
   Stream<List<Transaction>> watchAll() {
     return (_db.select(_db.transactions)
+          ..where((t) => t.isDeleted.equals(false))
           ..orderBy([(t) => OrderingTerm.desc(t.txnDate), (t) => OrderingTerm.desc(t.id)]))
         .watch();
   }
@@ -162,11 +163,16 @@ class TransactionRepository {
     // Auto-categorize when the caller left it blank: known merchant → rule.
     // Income never auto-categorizes from expense rules.
     var resolvedCategory = categoryId;
+    String? ruleEmoji;
     if (!isIncome) {
-      resolvedCategory ??= categorize(
+      final rule = categorize(
         merchant: merchant,
         rules: await _db.select(_db.rules).get(),
       );
+      if (rule != null) {
+        resolvedCategory ??= rule.categoryId;
+        ruleEmoji = rule.emoji;
+      }
     }
 
     final id = await _db.into(_db.transactions).insert(
@@ -181,6 +187,7 @@ class TransactionRepository {
             source: 'manual',
             txnDate: txnDate,
             isIncome: Value(isIncome),
+            emoji: Value(ruleEmoji),
           ),
         );
     final row = await (_db.select(_db.transactions)..where((t) => t.id.equals(id))).getSingle();
@@ -206,6 +213,9 @@ class TransactionRepository {
     required DateTime txnDate,
     bool isIncome = false,
     double? balance,
+    String? accountMask,
+    String? bankName,
+    bool needsReview = false,
   }) async {
     final trimmedRef = upiRef?.trim();
     if (trimmedRef != null && trimmedRef.isNotEmpty && await existsUpiRef(trimmedRef)) {
@@ -237,10 +247,13 @@ class TransactionRepository {
       }
     }
 
-    var categoryId = categorize(
+    final rule = categorize(
       merchant: merchant,
       rules: await _db.select(_db.rules).get(),
     );
+    var categoryId = rule?.categoryId;
+    var ruleEmoji = rule?.emoji;
+    
     // Income rows get the catch-all income category — "Other income", never
     // "Salary". A UPI credit (refund, cashback, a friend's money) is not a
     // salary payment; labeling it Salary would pollute income reports.
@@ -249,10 +262,21 @@ class TransactionRepository {
             ..where((c) => c.name.equals('Other income')))
           .getSingleOrNull();
       categoryId = other?.id;
+      ruleEmoji = null;
     }
 
-    // Get default wallet (if any)
-    final defaultWallet = await (_db.select(_db.wallets)..limit(1)).getSingleOrNull();
+    // Wallet matching logic
+    Wallet? defaultWallet;
+    if (accountMask != null) {
+      final wallets = await _db.select(_db.wallets).get();
+      for (final w in wallets) {
+        if (w.accountMask != null && w.accountMask!.isNotEmpty && accountMask.contains(w.accountMask!)) {
+          defaultWallet = w;
+          break;
+        }
+      }
+    }
+    defaultWallet ??= await (_db.select(_db.wallets)..limit(1)).getSingleOrNull();
 
     final id = await _db.into(_db.transactions).insert(
           TransactionsCompanion.insert(
@@ -266,6 +290,9 @@ class TransactionRepository {
             source: 'notification',
             txnDate: txnDate,
             isIncome: Value(isIncome),
+            emoji: Value(ruleEmoji),
+            accountMask: Value(accountMask),
+            needsReview: Value(needsReview),
           ),
         );
         
@@ -274,7 +301,7 @@ class TransactionRepository {
     // initialBalance so that the computed current balance exactly matches it.
     if (balance != null && defaultWallet != null) {
       final txns = await (_db.select(_db.transactions)
-            ..where((t) => t.walletId.equals(defaultWallet.id)))
+            ..where((t) => t.walletId.equals(defaultWallet!.id)))
           .get();
       
       double sumTxns = 0.0;
@@ -286,8 +313,11 @@ class TransactionRepository {
       // Therefore: initialBalance = balance - sumTxns
       final newInitial = balance - sumTxns;
       
-      await (_db.update(_db.wallets)..where((w) => w.id.equals(defaultWallet.id)))
-          .write(WalletsCompanion(initialBalance: Value(newInitial)));
+      await (_db.update(_db.wallets)..where((w) => w.id.equals(defaultWallet!.id)))
+          .write(WalletsCompanion(
+            initialBalance: Value(newInitial),
+            latestSmsBalance: Value(balance),
+          ));
     }
 
     final row = await (_db.select(_db.transactions)..where((t) => t.id.equals(id))).getSingle();
@@ -298,11 +328,19 @@ class TransactionRepository {
   Stream<List<Wallet>> watchWallets() => _db.select(_db.wallets).watch();
 
   /// Creates a wallet.
-  Future<Wallet> insertWallet({required String name, required String currency, double initialBalance = 0}) {
+  Future<Wallet> insertWallet({
+    required String name, 
+    required String currency, 
+    double initialBalance = 0,
+    String? accountMask,
+    String? bankName,
+  }) {
     return _db.into(_db.wallets).insertReturning(WalletsCompanion.insert(
           name: name,
           currency: currency,
           initialBalance: Value(initialBalance),
+          accountMask: Value(accountMask),
+          bankName: Value(bankName),
         ));
   }
 
@@ -334,7 +372,8 @@ class TransactionRepository {
     final earned = await (_db.selectOnly(_db.transactions)
           ..addColumns([sum])
           ..where(_db.transactions.walletId.equals(walletId) &
-              _db.transactions.isIncome.equals(true)))
+              _db.transactions.isIncome.equals(true) &
+              _db.transactions.isDeleted.equals(false)))
         .getSingle();
     return ((earned.read(sum) ?? 0) - (spent.read(sum) ?? 0)).toDouble();
   }
@@ -621,7 +660,7 @@ class TransactionRepository {
 
   /// [Expression] that matches expense rows. Spend aggregates are expense-only;
   /// income is tracked separately so it never inflates "how much did I spend".
-  Expression<bool> _expenseOnly() => _db.transactions.isIncome.equals(false);
+  Expression<bool> _expenseOnly() => _db.transactions.isIncome.equals(false) & _db.transactions.isDeleted.equals(false);
 
   /// Total spent on [day] (local calendar day). 0 when none. Expense-only.
   Future<double> dayTotal(DateTime day) {
@@ -645,7 +684,8 @@ class TransactionRepository {
       ..addColumns([sum])
       ..where(_db.transactions.txnDate.isBiggerOrEqualValue(start) &
           _db.transactions.txnDate.isSmallerThanValue(end) &
-          _db.transactions.isIncome.equals(true));
+          _db.transactions.isIncome.equals(true) &
+          _db.transactions.isDeleted.equals(false));
     return query.getSingle().then((row) => row.read(sum) ?? 0);
   }
 
@@ -657,7 +697,8 @@ class TransactionRepository {
           ..where((t) =>
               t.txnDate.isBiggerOrEqualValue(start) &
               t.txnDate.isSmallerThanValue(end) &
-              t.categoryId.isNull()))
+              t.categoryId.isNull() &
+              t.isDeleted.equals(false)))
         .get();
     return rows.length;
   }
@@ -684,7 +725,8 @@ class TransactionRepository {
       ..addColumns([sum])
       ..where(_db.transactions.txnDate.isBiggerOrEqualValue(start) &
           _db.transactions.txnDate.isSmallerThanValue(end) &
-          _db.transactions.isIncome.equals(true));
+          _db.transactions.isIncome.equals(true) &
+          _db.transactions.isDeleted.equals(false));
     return q.getSingle().then((row) => row.read(sum) ?? 0);
   }
 
@@ -785,7 +827,7 @@ class TransactionRepository {
   Future<List<(String, double)>> monthlyTrend(DateTime end, {int months = 6}) async {
     // Scan newest-first, stop once we've covered [months] distinct months.
     final rows = await (_db.select(_db.transactions)
-          ..where((t) => t.isIncome.equals(false))
+          ..where((t) => t.isIncome.equals(false) & t.isDeleted.equals(false))
           ..orderBy([(t) => OrderingTerm.desc(t.txnDate)]))
         .get();
     final per = <DateTime, double>{};
@@ -808,7 +850,7 @@ class TransactionRepository {
     final count = _db.transactions.id.count();
     final query = _db.selectOnly(_db.transactions)
       ..addColumns([_db.transactions.merchant, amountSum, count])
-      ..where(_db.transactions.isIncome.equals(false))
+      ..where(_db.transactions.isIncome.equals(false) & _db.transactions.isDeleted.equals(false))
       ..groupBy([_db.transactions.merchant])
       ..orderBy([OrderingTerm.desc(amountSum)])
       ..limit(n);
@@ -827,7 +869,7 @@ class TransactionRepository {
     final count = _db.transactions.id.count();
     final query = _db.selectOnly(_db.transactions)
       ..addColumns([_db.transactions.paymentMethod, amountSum, count])
-      ..where(_db.transactions.isIncome.equals(false))
+      ..where(_db.transactions.isIncome.equals(false) & _db.transactions.isDeleted.equals(false))
       ..groupBy([_db.transactions.paymentMethod])
       ..orderBy([OrderingTerm.desc(amountSum)]);
       
@@ -1000,6 +1042,9 @@ class TransactionRepository {
           'name': r['name'],
           'currency': r['currency'],
           'initialBalance': parseAmount(r['initial_balance']?.toString()) ?? 0.0,
+          'accountMask': r['account_mask'],
+          'bankName': r['bank_name'],
+          'latestSmsBalance': r['latest_sms_balance'] == null ? null : parseAmount(r['latest_sms_balance']?.toString()),
           'createdAt': DateTime.parse(r['created_at'] as String).toLocal(),
           'dirty': false,
           'remoteId': r['id'],
@@ -1231,6 +1276,7 @@ class TransactionRepository {
           ..where((t) =>
               t.categoryId.equals(categoryId) &
               t.isIncome.equals(false) &
+              t.isDeleted.equals(false) &
               t.txnDate.isBiggerOrEqualValue(startOfMonth) &
               t.txnDate.isSmallerThanValue(endOfMonth)))
         .get();
@@ -1299,6 +1345,17 @@ class TransactionRepository {
     );
   }
 
+  /// Sets the review status of a transaction (for confirming captured ones).
+  Future<void> setTransactionReviewStatus(int id, bool needsReview) {
+    return (_db.update(_db.transactions)..where((t) => t.id.equals(id))).write(
+      TransactionsCompanion(
+        needsReview: Value(needsReview),
+        dirty: const Value(true),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
   /// Local delete of a transaction. If it was already pushed (has a remote_id),
   /// a tombstone records the remote row for deletion on the next sync — this
   /// keeps a stale pull from resurrecting the row. Unsynced rows just vanish.
@@ -1349,6 +1406,12 @@ class TransactionRepository {
     return (_db.delete(_db.deletedFeatures)
           ..where((f) => f.kind.equals(kind) & f.remoteId.equals(remoteId)))
         .go();
+  }
+
+  /// Physically deletes a transaction by its remote ID, without creating a tombstone.
+  /// Used when pulling a remote transaction with `is_deleted = true`.
+  Future<void> physicalDeleteByRemoteId(int remoteId) {
+    return (_db.delete(_db.transactions)..where((t) => t.remoteId.equals(remoteId))).go();
   }
 
   Future<Transaction?> findByUpiRef(String upiRef) {
@@ -1414,7 +1477,7 @@ class TransactionRepository {
         : categorize(
             merchant: r.merchant,
             rules: await _db.select(_db.rules).get(),
-          );
+          )?.categoryId;
     final id = await _db.into(_db.transactions).insert(
           TransactionsCompanion.insert(
             amount: r.amount,

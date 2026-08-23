@@ -25,6 +25,8 @@ Transaction _tx({
       updatedAt: DateTime(2026),
       dirty: false,
       remoteId: null,
+      isDeleted: false,
+      needsReview: false,
     );
 
 void main() {

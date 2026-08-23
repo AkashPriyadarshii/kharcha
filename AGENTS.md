@@ -53,6 +53,61 @@ Rules: no unrequested abstractions, no boilerplate, no scaffolding "for later", 
 - Input validated at every trust boundary.
 - **Tests with every change. MANDATORY.** Every feature, bug fix, or non-trivial logic change ships test file(s) in the same commit. No exceptions. A change without tests is not done. `flutter test` is the gate.
 
+## Run / verify
+
+```bash
+flutter pub get
+flutter analyze        # MUST pass before any PR
+flutter test           # MUST pass before any PR
+flutter build apk      # sanity check before merge to main
+```
+
+**CI:** none (removed 2026-08-06 — free-tier Actions not reliable). Test gate = local `flutter analyze` + `flutter test`. **Do NOT run the full `flutter test` suite** — it crashes on Windows hosts via a sqlite3 native-assets Flutter tool bug (see `docs/troubleshooting.md`). Test individual files or a named batch instead, e.g. `flutter test test/update_checker_test.dart` or `flutter test test/money_test.dart test/update_checker_test.dart`.
+
+
+## Build APK (learned from past errors)
+
+Proven recipe — do NOT deviate:
+
+```bash
+# 1. Clear the Windows native-assets lock first (a leftover sqlite3.dll blocks
+#    the build tool from cleaning — "Flutter failed to delete ... sqlite3.dll").
+rm -rf build/native_assets/windows .dart_tool/hooks_runner
+# 2. Build split-per-abi (NOT --target-platform android-arm64).
+flutter build apk --release --split-per-abi
+# 3. Arm64 APK → build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+```
+
+- **Auto-update trigger = version bump.** The in-app update checker compares
+  installed `versionName` to the latest GitHub release tag and only prompts when
+  a newer release with a `kharcha-armv8a-release.apk` asset exists. If you push
+  a fix without bumping `version` in `pubspec.yaml`, users never update. Every
+  release = bump `version:` first, upload the APK to the same-tag release.
+- **Rate caps (in-app): 1 auto-check/day + 3 manual checks/hour** per device.
+  GitHub's unauthenticated limit is 60 req/hr per IP, so 1000 devices never
+  flag the account; 429 fails silent. Do not raise these.
+- **Always `--split-per-abi`.** `--target-platform android-arm64` produced a
+  broken universal APK ("package is invalid" on install).
+- **`packaging { jniLibs { useLegacyPackaging = false } }`** in
+  `android/app/build.gradle.kts` is REQUIRED — page-aligned (uncompressed)
+  native libs are the real fix for the install error. Keep it.
+- **Do NOT add an `ndk { abiFilters }` block** — it conflicts with
+  `--split-per-abi` ("Conflicting configuration: 'arm64-v8a' in ndk abiFilters
+  cannot be present when splits abi filters are set").
+- Release upload: replace `kharcha-armv8a-release.apk` on the latest GitHub
+  release (delete-asset + upload --clobber). Size sanity: ~24-26MB.
+- **Signing — MUST stay debug-signed for sideload.** `buildTypes.release` falls
+  back to debug signing when `android/key.properties` is absent. This is
+  REQUIRED: the debug key signed every released APK since v0.2.1, and Android
+  refuses to install over an app signed with a different key. A release keystore
+  was generated (2026-08-09) but is PARKED at `android/key.properties.release` —
+  do NOT restore `key.properties` while sideloading or every device hits
+  "package conflicts with existing package" until uninstall. Re-enable it only
+  when publishing to Play Store (which requires real signing), and accept the
+  one-time uninstall across devices. Keystore + password in `android/BACKUP_KEYS.txt`
+  (gitignored).
+
+
 ## Git workflow
 
 - Branch off `main`: `feat/<short-name>` or `fix/<short-name>`.
@@ -80,7 +135,7 @@ Rules: no unrequested abstractions, no boilerplate, no scaffolding "for later", 
 - Build order changed → `docs/implementation-plan.md`
 - Gotchas/decisions → `docs/handoff.md`
 - Version change → `docs/changelog.md`
-- Team/rules changed → `CLAUDE.md` + `agents.md`
+- Team/rules changed → `CLAUDE.md` + `AGENTS.md`
 
 If no md needs updating, say why in the PR. The md files are the source of truth for the next session.
 

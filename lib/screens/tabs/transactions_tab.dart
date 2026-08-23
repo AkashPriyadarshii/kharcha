@@ -316,6 +316,7 @@ class _TransactionList extends ConsumerWidget {
         final t = transactions[i];
         final cat = _categoryFor(t.categoryId);
         return ListTile(
+          tileColor: t.needsReview ? Colors.yellow.withValues(alpha: 0.15) : null,
           title: Text(t.merchant),
           subtitle: Text(
             [
@@ -331,7 +332,7 @@ class _TransactionList extends ConsumerWidget {
                   backgroundColor: cat == null
                       ? const Color(0xFF8D99AE)
                       : Color(int.parse('FF${cat.color.replaceFirst('#', '')}', radix: 16)),
-                  child: Text(cat?.emoji ?? '📦'),
+                  child: Text(t.emoji ?? cat?.emoji ?? '📦'),
                 ),
                 if (t.isIncome)
                   Container(
@@ -354,6 +355,12 @@ class _TransactionList extends ConsumerWidget {
                   color: t.isIncome ? incomeGreen : expenseRed,
                 ),
               ),
+              if (t.needsReview)
+                IconButton(
+                  icon: const Icon(Icons.check_circle_outline, color: Colors.green),
+                  tooltip: 'Confirm',
+                  onPressed: () => ref.read(transactionRepositoryProvider).setTransactionReviewStatus(t.id, false),
+                ),
               IconButton(
                 icon: const Icon(Icons.edit_outlined),
                 tooltip: 'Edit',

@@ -934,8 +934,21 @@ class $RulesTable extends Rules with TableInfo<$RulesTable, Rule> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _emojiMeta = const VerificationMeta('emoji');
   @override
-  List<GeneratedColumn> get $columns => [id, pattern, categoryId, type];
+  late final GeneratedColumn<String> emoji = GeneratedColumn<String>(
+    'emoji',
+    aliasedName,
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 8,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, pattern, categoryId, type, emoji];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -975,6 +988,12 @@ class $RulesTable extends Rules with TableInfo<$RulesTable, Rule> {
     } else if (isInserting) {
       context.missing(_typeMeta);
     }
+    if (data.containsKey('emoji')) {
+      context.handle(
+        _emojiMeta,
+        emoji.isAcceptableOrUnknown(data['emoji']!, _emojiMeta),
+      );
+    }
     return context;
   }
 
@@ -1000,6 +1019,10 @@ class $RulesTable extends Rules with TableInfo<$RulesTable, Rule> {
         DriftSqlType.string,
         data['${effectivePrefix}type'],
       )!,
+      emoji: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}emoji'],
+      ),
     );
   }
 
@@ -1014,11 +1037,13 @@ class Rule extends DataClass implements Insertable<Rule> {
   final String pattern;
   final int categoryId;
   final String type;
+  final String? emoji;
   const Rule({
     required this.id,
     required this.pattern,
     required this.categoryId,
     required this.type,
+    this.emoji,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1027,6 +1052,9 @@ class Rule extends DataClass implements Insertable<Rule> {
     map['pattern'] = Variable<String>(pattern);
     map['category_id'] = Variable<int>(categoryId);
     map['type'] = Variable<String>(type);
+    if (!nullToAbsent || emoji != null) {
+      map['emoji'] = Variable<String>(emoji);
+    }
     return map;
   }
 
@@ -1036,6 +1064,9 @@ class Rule extends DataClass implements Insertable<Rule> {
       pattern: Value(pattern),
       categoryId: Value(categoryId),
       type: Value(type),
+      emoji: emoji == null && nullToAbsent
+          ? const Value.absent()
+          : Value(emoji),
     );
   }
 
@@ -1049,6 +1080,7 @@ class Rule extends DataClass implements Insertable<Rule> {
       pattern: serializer.fromJson<String>(json['pattern']),
       categoryId: serializer.fromJson<int>(json['categoryId']),
       type: serializer.fromJson<String>(json['type']),
+      emoji: serializer.fromJson<String?>(json['emoji']),
     );
   }
   @override
@@ -1059,16 +1091,23 @@ class Rule extends DataClass implements Insertable<Rule> {
       'pattern': serializer.toJson<String>(pattern),
       'categoryId': serializer.toJson<int>(categoryId),
       'type': serializer.toJson<String>(type),
+      'emoji': serializer.toJson<String?>(emoji),
     };
   }
 
-  Rule copyWith({int? id, String? pattern, int? categoryId, String? type}) =>
-      Rule(
-        id: id ?? this.id,
-        pattern: pattern ?? this.pattern,
-        categoryId: categoryId ?? this.categoryId,
-        type: type ?? this.type,
-      );
+  Rule copyWith({
+    int? id,
+    String? pattern,
+    int? categoryId,
+    String? type,
+    Value<String?> emoji = const Value.absent(),
+  }) => Rule(
+    id: id ?? this.id,
+    pattern: pattern ?? this.pattern,
+    categoryId: categoryId ?? this.categoryId,
+    type: type ?? this.type,
+    emoji: emoji.present ? emoji.value : this.emoji,
+  );
   Rule copyWithCompanion(RulesCompanion data) {
     return Rule(
       id: data.id.present ? data.id.value : this.id,
@@ -1077,6 +1116,7 @@ class Rule extends DataClass implements Insertable<Rule> {
           ? data.categoryId.value
           : this.categoryId,
       type: data.type.present ? data.type.value : this.type,
+      emoji: data.emoji.present ? data.emoji.value : this.emoji,
     );
   }
 
@@ -1086,13 +1126,14 @@ class Rule extends DataClass implements Insertable<Rule> {
           ..write('id: $id, ')
           ..write('pattern: $pattern, ')
           ..write('categoryId: $categoryId, ')
-          ..write('type: $type')
+          ..write('type: $type, ')
+          ..write('emoji: $emoji')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, pattern, categoryId, type);
+  int get hashCode => Object.hash(id, pattern, categoryId, type, emoji);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1100,7 +1141,8 @@ class Rule extends DataClass implements Insertable<Rule> {
           other.id == this.id &&
           other.pattern == this.pattern &&
           other.categoryId == this.categoryId &&
-          other.type == this.type);
+          other.type == this.type &&
+          other.emoji == this.emoji);
 }
 
 class RulesCompanion extends UpdateCompanion<Rule> {
@@ -1108,17 +1150,20 @@ class RulesCompanion extends UpdateCompanion<Rule> {
   final Value<String> pattern;
   final Value<int> categoryId;
   final Value<String> type;
+  final Value<String?> emoji;
   const RulesCompanion({
     this.id = const Value.absent(),
     this.pattern = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.type = const Value.absent(),
+    this.emoji = const Value.absent(),
   });
   RulesCompanion.insert({
     this.id = const Value.absent(),
     required String pattern,
     required int categoryId,
     required String type,
+    this.emoji = const Value.absent(),
   }) : pattern = Value(pattern),
        categoryId = Value(categoryId),
        type = Value(type);
@@ -1127,12 +1172,14 @@ class RulesCompanion extends UpdateCompanion<Rule> {
     Expression<String>? pattern,
     Expression<int>? categoryId,
     Expression<String>? type,
+    Expression<String>? emoji,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (pattern != null) 'pattern': pattern,
       if (categoryId != null) 'category_id': categoryId,
       if (type != null) 'type': type,
+      if (emoji != null) 'emoji': emoji,
     });
   }
 
@@ -1141,12 +1188,14 @@ class RulesCompanion extends UpdateCompanion<Rule> {
     Value<String>? pattern,
     Value<int>? categoryId,
     Value<String>? type,
+    Value<String?>? emoji,
   }) {
     return RulesCompanion(
       id: id ?? this.id,
       pattern: pattern ?? this.pattern,
       categoryId: categoryId ?? this.categoryId,
       type: type ?? this.type,
+      emoji: emoji ?? this.emoji,
     );
   }
 
@@ -1165,6 +1214,9 @@ class RulesCompanion extends UpdateCompanion<Rule> {
     if (type.present) {
       map['type'] = Variable<String>(type.value);
     }
+    if (emoji.present) {
+      map['emoji'] = Variable<String>(emoji.value);
+    }
     return map;
   }
 
@@ -1174,7 +1226,8 @@ class RulesCompanion extends UpdateCompanion<Rule> {
           ..write('id: $id, ')
           ..write('pattern: $pattern, ')
           ..write('categoryId: $categoryId, ')
-          ..write('type: $type')
+          ..write('type: $type, ')
+          ..write('emoji: $emoji')
           ..write(')'))
         .toString();
   }
@@ -1274,6 +1327,39 @@ class $WalletsTable extends Wallets with TableInfo<$WalletsTable, Wallet> {
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _accountMaskMeta = const VerificationMeta(
+    'accountMask',
+  );
+  @override
+  late final GeneratedColumn<String> accountMask = GeneratedColumn<String>(
+    'account_mask',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _bankNameMeta = const VerificationMeta(
+    'bankName',
+  );
+  @override
+  late final GeneratedColumn<String> bankName = GeneratedColumn<String>(
+    'bank_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _latestSmsBalanceMeta = const VerificationMeta(
+    'latestSmsBalance',
+  );
+  @override
+  late final GeneratedColumn<double> latestSmsBalance = GeneratedColumn<double>(
+    'latest_sms_balance',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1283,6 +1369,9 @@ class $WalletsTable extends Wallets with TableInfo<$WalletsTable, Wallet> {
     createdAt,
     dirty,
     remoteId,
+    accountMask,
+    bankName,
+    latestSmsBalance,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1342,6 +1431,30 @@ class $WalletsTable extends Wallets with TableInfo<$WalletsTable, Wallet> {
         remoteId.isAcceptableOrUnknown(data['remote_id']!, _remoteIdMeta),
       );
     }
+    if (data.containsKey('account_mask')) {
+      context.handle(
+        _accountMaskMeta,
+        accountMask.isAcceptableOrUnknown(
+          data['account_mask']!,
+          _accountMaskMeta,
+        ),
+      );
+    }
+    if (data.containsKey('bank_name')) {
+      context.handle(
+        _bankNameMeta,
+        bankName.isAcceptableOrUnknown(data['bank_name']!, _bankNameMeta),
+      );
+    }
+    if (data.containsKey('latest_sms_balance')) {
+      context.handle(
+        _latestSmsBalanceMeta,
+        latestSmsBalance.isAcceptableOrUnknown(
+          data['latest_sms_balance']!,
+          _latestSmsBalanceMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1379,6 +1492,18 @@ class $WalletsTable extends Wallets with TableInfo<$WalletsTable, Wallet> {
         DriftSqlType.int,
         data['${effectivePrefix}remote_id'],
       ),
+      accountMask: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}account_mask'],
+      ),
+      bankName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}bank_name'],
+      ),
+      latestSmsBalance: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}latest_sms_balance'],
+      ),
     );
   }
 
@@ -1398,6 +1523,9 @@ class Wallet extends DataClass implements Insertable<Wallet> {
   final DateTime createdAt;
   final bool dirty;
   final int? remoteId;
+  final String? accountMask;
+  final String? bankName;
+  final double? latestSmsBalance;
   const Wallet({
     required this.id,
     required this.name,
@@ -1406,6 +1534,9 @@ class Wallet extends DataClass implements Insertable<Wallet> {
     required this.createdAt,
     required this.dirty,
     this.remoteId,
+    this.accountMask,
+    this.bankName,
+    this.latestSmsBalance,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1418,6 +1549,15 @@ class Wallet extends DataClass implements Insertable<Wallet> {
     map['dirty'] = Variable<bool>(dirty);
     if (!nullToAbsent || remoteId != null) {
       map['remote_id'] = Variable<int>(remoteId);
+    }
+    if (!nullToAbsent || accountMask != null) {
+      map['account_mask'] = Variable<String>(accountMask);
+    }
+    if (!nullToAbsent || bankName != null) {
+      map['bank_name'] = Variable<String>(bankName);
+    }
+    if (!nullToAbsent || latestSmsBalance != null) {
+      map['latest_sms_balance'] = Variable<double>(latestSmsBalance);
     }
     return map;
   }
@@ -1433,6 +1573,15 @@ class Wallet extends DataClass implements Insertable<Wallet> {
       remoteId: remoteId == null && nullToAbsent
           ? const Value.absent()
           : Value(remoteId),
+      accountMask: accountMask == null && nullToAbsent
+          ? const Value.absent()
+          : Value(accountMask),
+      bankName: bankName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(bankName),
+      latestSmsBalance: latestSmsBalance == null && nullToAbsent
+          ? const Value.absent()
+          : Value(latestSmsBalance),
     );
   }
 
@@ -1449,6 +1598,9 @@ class Wallet extends DataClass implements Insertable<Wallet> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       dirty: serializer.fromJson<bool>(json['dirty']),
       remoteId: serializer.fromJson<int?>(json['remoteId']),
+      accountMask: serializer.fromJson<String?>(json['accountMask']),
+      bankName: serializer.fromJson<String?>(json['bankName']),
+      latestSmsBalance: serializer.fromJson<double?>(json['latestSmsBalance']),
     );
   }
   @override
@@ -1462,6 +1614,9 @@ class Wallet extends DataClass implements Insertable<Wallet> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'dirty': serializer.toJson<bool>(dirty),
       'remoteId': serializer.toJson<int?>(remoteId),
+      'accountMask': serializer.toJson<String?>(accountMask),
+      'bankName': serializer.toJson<String?>(bankName),
+      'latestSmsBalance': serializer.toJson<double?>(latestSmsBalance),
     };
   }
 
@@ -1473,6 +1628,9 @@ class Wallet extends DataClass implements Insertable<Wallet> {
     DateTime? createdAt,
     bool? dirty,
     Value<int?> remoteId = const Value.absent(),
+    Value<String?> accountMask = const Value.absent(),
+    Value<String?> bankName = const Value.absent(),
+    Value<double?> latestSmsBalance = const Value.absent(),
   }) => Wallet(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -1481,6 +1639,11 @@ class Wallet extends DataClass implements Insertable<Wallet> {
     createdAt: createdAt ?? this.createdAt,
     dirty: dirty ?? this.dirty,
     remoteId: remoteId.present ? remoteId.value : this.remoteId,
+    accountMask: accountMask.present ? accountMask.value : this.accountMask,
+    bankName: bankName.present ? bankName.value : this.bankName,
+    latestSmsBalance: latestSmsBalance.present
+        ? latestSmsBalance.value
+        : this.latestSmsBalance,
   );
   Wallet copyWithCompanion(WalletsCompanion data) {
     return Wallet(
@@ -1493,6 +1656,13 @@ class Wallet extends DataClass implements Insertable<Wallet> {
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       dirty: data.dirty.present ? data.dirty.value : this.dirty,
       remoteId: data.remoteId.present ? data.remoteId.value : this.remoteId,
+      accountMask: data.accountMask.present
+          ? data.accountMask.value
+          : this.accountMask,
+      bankName: data.bankName.present ? data.bankName.value : this.bankName,
+      latestSmsBalance: data.latestSmsBalance.present
+          ? data.latestSmsBalance.value
+          : this.latestSmsBalance,
     );
   }
 
@@ -1505,7 +1675,10 @@ class Wallet extends DataClass implements Insertable<Wallet> {
           ..write('initialBalance: $initialBalance, ')
           ..write('createdAt: $createdAt, ')
           ..write('dirty: $dirty, ')
-          ..write('remoteId: $remoteId')
+          ..write('remoteId: $remoteId, ')
+          ..write('accountMask: $accountMask, ')
+          ..write('bankName: $bankName, ')
+          ..write('latestSmsBalance: $latestSmsBalance')
           ..write(')'))
         .toString();
   }
@@ -1519,6 +1692,9 @@ class Wallet extends DataClass implements Insertable<Wallet> {
     createdAt,
     dirty,
     remoteId,
+    accountMask,
+    bankName,
+    latestSmsBalance,
   );
   @override
   bool operator ==(Object other) =>
@@ -1530,7 +1706,10 @@ class Wallet extends DataClass implements Insertable<Wallet> {
           other.initialBalance == this.initialBalance &&
           other.createdAt == this.createdAt &&
           other.dirty == this.dirty &&
-          other.remoteId == this.remoteId);
+          other.remoteId == this.remoteId &&
+          other.accountMask == this.accountMask &&
+          other.bankName == this.bankName &&
+          other.latestSmsBalance == this.latestSmsBalance);
 }
 
 class WalletsCompanion extends UpdateCompanion<Wallet> {
@@ -1541,6 +1720,9 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
   final Value<DateTime> createdAt;
   final Value<bool> dirty;
   final Value<int?> remoteId;
+  final Value<String?> accountMask;
+  final Value<String?> bankName;
+  final Value<double?> latestSmsBalance;
   const WalletsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -1549,6 +1731,9 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     this.createdAt = const Value.absent(),
     this.dirty = const Value.absent(),
     this.remoteId = const Value.absent(),
+    this.accountMask = const Value.absent(),
+    this.bankName = const Value.absent(),
+    this.latestSmsBalance = const Value.absent(),
   });
   WalletsCompanion.insert({
     this.id = const Value.absent(),
@@ -1558,6 +1743,9 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     this.createdAt = const Value.absent(),
     this.dirty = const Value.absent(),
     this.remoteId = const Value.absent(),
+    this.accountMask = const Value.absent(),
+    this.bankName = const Value.absent(),
+    this.latestSmsBalance = const Value.absent(),
   }) : name = Value(name),
        currency = Value(currency);
   static Insertable<Wallet> custom({
@@ -1568,6 +1756,9 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     Expression<DateTime>? createdAt,
     Expression<bool>? dirty,
     Expression<int>? remoteId,
+    Expression<String>? accountMask,
+    Expression<String>? bankName,
+    Expression<double>? latestSmsBalance,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1577,6 +1768,9 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
       if (createdAt != null) 'created_at': createdAt,
       if (dirty != null) 'dirty': dirty,
       if (remoteId != null) 'remote_id': remoteId,
+      if (accountMask != null) 'account_mask': accountMask,
+      if (bankName != null) 'bank_name': bankName,
+      if (latestSmsBalance != null) 'latest_sms_balance': latestSmsBalance,
     });
   }
 
@@ -1588,6 +1782,9 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     Value<DateTime>? createdAt,
     Value<bool>? dirty,
     Value<int?>? remoteId,
+    Value<String?>? accountMask,
+    Value<String?>? bankName,
+    Value<double?>? latestSmsBalance,
   }) {
     return WalletsCompanion(
       id: id ?? this.id,
@@ -1597,6 +1794,9 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
       createdAt: createdAt ?? this.createdAt,
       dirty: dirty ?? this.dirty,
       remoteId: remoteId ?? this.remoteId,
+      accountMask: accountMask ?? this.accountMask,
+      bankName: bankName ?? this.bankName,
+      latestSmsBalance: latestSmsBalance ?? this.latestSmsBalance,
     );
   }
 
@@ -1624,6 +1824,15 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     if (remoteId.present) {
       map['remote_id'] = Variable<int>(remoteId.value);
     }
+    if (accountMask.present) {
+      map['account_mask'] = Variable<String>(accountMask.value);
+    }
+    if (bankName.present) {
+      map['bank_name'] = Variable<String>(bankName.value);
+    }
+    if (latestSmsBalance.present) {
+      map['latest_sms_balance'] = Variable<double>(latestSmsBalance.value);
+    }
     return map;
   }
 
@@ -1636,7 +1845,10 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
           ..write('initialBalance: $initialBalance, ')
           ..write('createdAt: $createdAt, ')
           ..write('dirty: $dirty, ')
-          ..write('remoteId: $remoteId')
+          ..write('remoteId: $remoteId, ')
+          ..write('accountMask: $accountMask, ')
+          ..write('bankName: $bankName, ')
+          ..write('latestSmsBalance: $latestSmsBalance')
           ..write(')'))
         .toString();
   }
@@ -1841,6 +2053,60 @@ class $TransactionsTable extends Transactions
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _needsReviewMeta = const VerificationMeta(
+    'needsReview',
+  );
+  @override
+  late final GeneratedColumn<bool> needsReview = GeneratedColumn<bool>(
+    'needs_review',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("needs_review" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _accountMaskMeta = const VerificationMeta(
+    'accountMask',
+  );
+  @override
+  late final GeneratedColumn<String> accountMask = GeneratedColumn<String>(
+    'account_mask',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _emojiMeta = const VerificationMeta('emoji');
+  @override
+  late final GeneratedColumn<String> emoji = GeneratedColumn<String>(
+    'emoji',
+    aliasedName,
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 8,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1858,6 +2124,10 @@ class $TransactionsTable extends Transactions
     updatedAt,
     dirty,
     remoteId,
+    needsReview,
+    isDeleted,
+    accountMask,
+    emoji,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1971,6 +2241,36 @@ class $TransactionsTable extends Transactions
         remoteId.isAcceptableOrUnknown(data['remote_id']!, _remoteIdMeta),
       );
     }
+    if (data.containsKey('needs_review')) {
+      context.handle(
+        _needsReviewMeta,
+        needsReview.isAcceptableOrUnknown(
+          data['needs_review']!,
+          _needsReviewMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
+    if (data.containsKey('account_mask')) {
+      context.handle(
+        _accountMaskMeta,
+        accountMask.isAcceptableOrUnknown(
+          data['account_mask']!,
+          _accountMaskMeta,
+        ),
+      );
+    }
+    if (data.containsKey('emoji')) {
+      context.handle(
+        _emojiMeta,
+        emoji.isAcceptableOrUnknown(data['emoji']!, _emojiMeta),
+      );
+    }
     return context;
   }
 
@@ -2040,6 +2340,22 @@ class $TransactionsTable extends Transactions
         DriftSqlType.int,
         data['${effectivePrefix}remote_id'],
       ),
+      needsReview: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}needs_review'],
+      )!,
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
+      )!,
+      accountMask: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}account_mask'],
+      ),
+      emoji: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}emoji'],
+      ),
     );
   }
 
@@ -2071,6 +2387,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
 
   /// Supabase row id once pushed; null while unsynced.
   final int? remoteId;
+  final bool needsReview;
+  final bool isDeleted;
+  final String? accountMask;
+  final String? emoji;
   const Transaction({
     required this.id,
     required this.amount,
@@ -2087,6 +2407,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     required this.updatedAt,
     required this.dirty,
     this.remoteId,
+    required this.needsReview,
+    required this.isDeleted,
+    this.accountMask,
+    this.emoji,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2116,6 +2440,14 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     if (!nullToAbsent || remoteId != null) {
       map['remote_id'] = Variable<int>(remoteId);
     }
+    map['needs_review'] = Variable<bool>(needsReview);
+    map['is_deleted'] = Variable<bool>(isDeleted);
+    if (!nullToAbsent || accountMask != null) {
+      map['account_mask'] = Variable<String>(accountMask);
+    }
+    if (!nullToAbsent || emoji != null) {
+      map['emoji'] = Variable<String>(emoji);
+    }
     return map;
   }
 
@@ -2144,6 +2476,14 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       remoteId: remoteId == null && nullToAbsent
           ? const Value.absent()
           : Value(remoteId),
+      needsReview: Value(needsReview),
+      isDeleted: Value(isDeleted),
+      accountMask: accountMask == null && nullToAbsent
+          ? const Value.absent()
+          : Value(accountMask),
+      emoji: emoji == null && nullToAbsent
+          ? const Value.absent()
+          : Value(emoji),
     );
   }
 
@@ -2168,6 +2508,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       dirty: serializer.fromJson<bool>(json['dirty']),
       remoteId: serializer.fromJson<int?>(json['remoteId']),
+      needsReview: serializer.fromJson<bool>(json['needsReview']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      accountMask: serializer.fromJson<String?>(json['accountMask']),
+      emoji: serializer.fromJson<String?>(json['emoji']),
     );
   }
   @override
@@ -2189,6 +2533,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'dirty': serializer.toJson<bool>(dirty),
       'remoteId': serializer.toJson<int?>(remoteId),
+      'needsReview': serializer.toJson<bool>(needsReview),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
+      'accountMask': serializer.toJson<String?>(accountMask),
+      'emoji': serializer.toJson<String?>(emoji),
     };
   }
 
@@ -2208,6 +2556,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     DateTime? updatedAt,
     bool? dirty,
     Value<int?> remoteId = const Value.absent(),
+    bool? needsReview,
+    bool? isDeleted,
+    Value<String?> accountMask = const Value.absent(),
+    Value<String?> emoji = const Value.absent(),
   }) => Transaction(
     id: id ?? this.id,
     amount: amount ?? this.amount,
@@ -2224,6 +2576,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     updatedAt: updatedAt ?? this.updatedAt,
     dirty: dirty ?? this.dirty,
     remoteId: remoteId.present ? remoteId.value : this.remoteId,
+    needsReview: needsReview ?? this.needsReview,
+    isDeleted: isDeleted ?? this.isDeleted,
+    accountMask: accountMask.present ? accountMask.value : this.accountMask,
+    emoji: emoji.present ? emoji.value : this.emoji,
   );
   Transaction copyWithCompanion(TransactionsCompanion data) {
     return Transaction(
@@ -2246,6 +2602,14 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       dirty: data.dirty.present ? data.dirty.value : this.dirty,
       remoteId: data.remoteId.present ? data.remoteId.value : this.remoteId,
+      needsReview: data.needsReview.present
+          ? data.needsReview.value
+          : this.needsReview,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      accountMask: data.accountMask.present
+          ? data.accountMask.value
+          : this.accountMask,
+      emoji: data.emoji.present ? data.emoji.value : this.emoji,
     );
   }
 
@@ -2266,7 +2630,11 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('dirty: $dirty, ')
-          ..write('remoteId: $remoteId')
+          ..write('remoteId: $remoteId, ')
+          ..write('needsReview: $needsReview, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('accountMask: $accountMask, ')
+          ..write('emoji: $emoji')
           ..write(')'))
         .toString();
   }
@@ -2288,6 +2656,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     updatedAt,
     dirty,
     remoteId,
+    needsReview,
+    isDeleted,
+    accountMask,
+    emoji,
   );
   @override
   bool operator ==(Object other) =>
@@ -2307,7 +2679,11 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.dirty == this.dirty &&
-          other.remoteId == this.remoteId);
+          other.remoteId == this.remoteId &&
+          other.needsReview == this.needsReview &&
+          other.isDeleted == this.isDeleted &&
+          other.accountMask == this.accountMask &&
+          other.emoji == this.emoji);
 }
 
 class TransactionsCompanion extends UpdateCompanion<Transaction> {
@@ -2326,6 +2702,10 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<DateTime> updatedAt;
   final Value<bool> dirty;
   final Value<int?> remoteId;
+  final Value<bool> needsReview;
+  final Value<bool> isDeleted;
+  final Value<String?> accountMask;
+  final Value<String?> emoji;
   const TransactionsCompanion({
     this.id = const Value.absent(),
     this.amount = const Value.absent(),
@@ -2342,6 +2722,10 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.updatedAt = const Value.absent(),
     this.dirty = const Value.absent(),
     this.remoteId = const Value.absent(),
+    this.needsReview = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.accountMask = const Value.absent(),
+    this.emoji = const Value.absent(),
   });
   TransactionsCompanion.insert({
     this.id = const Value.absent(),
@@ -2359,6 +2743,10 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.updatedAt = const Value.absent(),
     this.dirty = const Value.absent(),
     this.remoteId = const Value.absent(),
+    this.needsReview = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.accountMask = const Value.absent(),
+    this.emoji = const Value.absent(),
   }) : amount = Value(amount),
        merchant = Value(merchant),
        txnDate = Value(txnDate),
@@ -2380,6 +2768,10 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Expression<DateTime>? updatedAt,
     Expression<bool>? dirty,
     Expression<int>? remoteId,
+    Expression<bool>? needsReview,
+    Expression<bool>? isDeleted,
+    Expression<String>? accountMask,
+    Expression<String>? emoji,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2397,6 +2789,10 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       if (updatedAt != null) 'updated_at': updatedAt,
       if (dirty != null) 'dirty': dirty,
       if (remoteId != null) 'remote_id': remoteId,
+      if (needsReview != null) 'needs_review': needsReview,
+      if (isDeleted != null) 'is_deleted': isDeleted,
+      if (accountMask != null) 'account_mask': accountMask,
+      if (emoji != null) 'emoji': emoji,
     });
   }
 
@@ -2416,6 +2812,10 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Value<DateTime>? updatedAt,
     Value<bool>? dirty,
     Value<int?>? remoteId,
+    Value<bool>? needsReview,
+    Value<bool>? isDeleted,
+    Value<String?>? accountMask,
+    Value<String?>? emoji,
   }) {
     return TransactionsCompanion(
       id: id ?? this.id,
@@ -2433,6 +2833,10 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       updatedAt: updatedAt ?? this.updatedAt,
       dirty: dirty ?? this.dirty,
       remoteId: remoteId ?? this.remoteId,
+      needsReview: needsReview ?? this.needsReview,
+      isDeleted: isDeleted ?? this.isDeleted,
+      accountMask: accountMask ?? this.accountMask,
+      emoji: emoji ?? this.emoji,
     );
   }
 
@@ -2484,6 +2888,18 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     if (remoteId.present) {
       map['remote_id'] = Variable<int>(remoteId.value);
     }
+    if (needsReview.present) {
+      map['needs_review'] = Variable<bool>(needsReview.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
+    if (accountMask.present) {
+      map['account_mask'] = Variable<String>(accountMask.value);
+    }
+    if (emoji.present) {
+      map['emoji'] = Variable<String>(emoji.value);
+    }
     return map;
   }
 
@@ -2504,7 +2920,11 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('dirty: $dirty, ')
-          ..write('remoteId: $remoteId')
+          ..write('remoteId: $remoteId, ')
+          ..write('needsReview: $needsReview, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('accountMask: $accountMask, ')
+          ..write('emoji: $emoji')
           ..write(')'))
         .toString();
   }
@@ -6651,6 +7071,7 @@ typedef $$RulesTableCreateCompanionBuilder =
       required String pattern,
       required int categoryId,
       required String type,
+      Value<String?> emoji,
     });
 typedef $$RulesTableUpdateCompanionBuilder =
     RulesCompanion Function({
@@ -6658,6 +7079,7 @@ typedef $$RulesTableUpdateCompanionBuilder =
       Value<String> pattern,
       Value<int> categoryId,
       Value<String> type,
+      Value<String?> emoji,
     });
 
 final class $$RulesTableReferences
@@ -6702,6 +7124,11 @@ class $$RulesTableFilterComposer extends Composer<_$AppDatabase, $RulesTable> {
 
   ColumnFilters<String> get type => $composableBuilder(
     column: $table.type,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get emoji => $composableBuilder(
+    column: $table.emoji,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6753,6 +7180,11 @@ class $$RulesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get emoji => $composableBuilder(
+    column: $table.emoji,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$CategoriesTableOrderingComposer get categoryId {
     final $$CategoriesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -6794,6 +7226,9 @@ class $$RulesTableAnnotationComposer
 
   GeneratedColumn<String> get type =>
       $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<String> get emoji =>
+      $composableBuilder(column: $table.emoji, builder: (column) => column);
 
   $$CategoriesTableAnnotationComposer get categoryId {
     final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
@@ -6851,11 +7286,13 @@ class $$RulesTableTableManager
                 Value<String> pattern = const Value.absent(),
                 Value<int> categoryId = const Value.absent(),
                 Value<String> type = const Value.absent(),
+                Value<String?> emoji = const Value.absent(),
               }) => RulesCompanion(
                 id: id,
                 pattern: pattern,
                 categoryId: categoryId,
                 type: type,
+                emoji: emoji,
               ),
           createCompanionCallback:
               ({
@@ -6863,11 +7300,13 @@ class $$RulesTableTableManager
                 required String pattern,
                 required int categoryId,
                 required String type,
+                Value<String?> emoji = const Value.absent(),
               }) => RulesCompanion.insert(
                 id: id,
                 pattern: pattern,
                 categoryId: categoryId,
                 type: type,
+                emoji: emoji,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -6943,6 +7382,9 @@ typedef $$WalletsTableCreateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<bool> dirty,
       Value<int?> remoteId,
+      Value<String?> accountMask,
+      Value<String?> bankName,
+      Value<double?> latestSmsBalance,
     });
 typedef $$WalletsTableUpdateCompanionBuilder =
     WalletsCompanion Function({
@@ -6953,6 +7395,9 @@ typedef $$WalletsTableUpdateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<bool> dirty,
       Value<int?> remoteId,
+      Value<String?> accountMask,
+      Value<String?> bankName,
+      Value<double?> latestSmsBalance,
     });
 
 final class $$WalletsTableReferences
@@ -7019,6 +7464,21 @@ class $$WalletsTableFilterComposer
 
   ColumnFilters<int> get remoteId => $composableBuilder(
     column: $table.remoteId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get accountMask => $composableBuilder(
+    column: $table.accountMask,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get bankName => $composableBuilder(
+    column: $table.bankName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get latestSmsBalance => $composableBuilder(
+    column: $table.latestSmsBalance,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7091,6 +7551,21 @@ class $$WalletsTableOrderingComposer
     column: $table.remoteId,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get accountMask => $composableBuilder(
+    column: $table.accountMask,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get bankName => $composableBuilder(
+    column: $table.bankName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get latestSmsBalance => $composableBuilder(
+    column: $table.latestSmsBalance,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$WalletsTableAnnotationComposer
@@ -7124,6 +7599,19 @@ class $$WalletsTableAnnotationComposer
 
   GeneratedColumn<int> get remoteId =>
       $composableBuilder(column: $table.remoteId, builder: (column) => column);
+
+  GeneratedColumn<String> get accountMask => $composableBuilder(
+    column: $table.accountMask,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get bankName =>
+      $composableBuilder(column: $table.bankName, builder: (column) => column);
+
+  GeneratedColumn<double> get latestSmsBalance => $composableBuilder(
+    column: $table.latestSmsBalance,
+    builder: (column) => column,
+  );
 
   Expression<T> transactionsRefs<T extends Object>(
     Expression<T> Function($$TransactionsTableAnnotationComposer a) f,
@@ -7186,6 +7674,9 @@ class $$WalletsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<bool> dirty = const Value.absent(),
                 Value<int?> remoteId = const Value.absent(),
+                Value<String?> accountMask = const Value.absent(),
+                Value<String?> bankName = const Value.absent(),
+                Value<double?> latestSmsBalance = const Value.absent(),
               }) => WalletsCompanion(
                 id: id,
                 name: name,
@@ -7194,6 +7685,9 @@ class $$WalletsTableTableManager
                 createdAt: createdAt,
                 dirty: dirty,
                 remoteId: remoteId,
+                accountMask: accountMask,
+                bankName: bankName,
+                latestSmsBalance: latestSmsBalance,
               ),
           createCompanionCallback:
               ({
@@ -7204,6 +7698,9 @@ class $$WalletsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<bool> dirty = const Value.absent(),
                 Value<int?> remoteId = const Value.absent(),
+                Value<String?> accountMask = const Value.absent(),
+                Value<String?> bankName = const Value.absent(),
+                Value<double?> latestSmsBalance = const Value.absent(),
               }) => WalletsCompanion.insert(
                 id: id,
                 name: name,
@@ -7212,6 +7709,9 @@ class $$WalletsTableTableManager
                 createdAt: createdAt,
                 dirty: dirty,
                 remoteId: remoteId,
+                accountMask: accountMask,
+                bankName: bankName,
+                latestSmsBalance: latestSmsBalance,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -7285,6 +7785,10 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<DateTime> updatedAt,
       Value<bool> dirty,
       Value<int?> remoteId,
+      Value<bool> needsReview,
+      Value<bool> isDeleted,
+      Value<String?> accountMask,
+      Value<String?> emoji,
     });
 typedef $$TransactionsTableUpdateCompanionBuilder =
     TransactionsCompanion Function({
@@ -7303,6 +7807,10 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<DateTime> updatedAt,
       Value<bool> dirty,
       Value<int?> remoteId,
+      Value<bool> needsReview,
+      Value<bool> isDeleted,
+      Value<String?> accountMask,
+      Value<String?> emoji,
     });
 
 final class $$TransactionsTableReferences
@@ -7415,6 +7923,26 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<int> get remoteId => $composableBuilder(
     column: $table.remoteId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get needsReview => $composableBuilder(
+    column: $table.needsReview,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get accountMask => $composableBuilder(
+    column: $table.accountMask,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get emoji => $composableBuilder(
+    column: $table.emoji,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7539,6 +8067,26 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get needsReview => $composableBuilder(
+    column: $table.needsReview,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get accountMask => $composableBuilder(
+    column: $table.accountMask,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get emoji => $composableBuilder(
+    column: $table.emoji,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$CategoriesTableOrderingComposer get categoryId {
     final $$CategoriesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -7636,6 +8184,22 @@ class $$TransactionsTableAnnotationComposer
   GeneratedColumn<int> get remoteId =>
       $composableBuilder(column: $table.remoteId, builder: (column) => column);
 
+  GeneratedColumn<bool> get needsReview => $composableBuilder(
+    column: $table.needsReview,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<String> get accountMask => $composableBuilder(
+    column: $table.accountMask,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get emoji =>
+      $composableBuilder(column: $table.emoji, builder: (column) => column);
+
   $$CategoriesTableAnnotationComposer get categoryId {
     final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -7726,6 +8290,10 @@ class $$TransactionsTableTableManager
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> dirty = const Value.absent(),
                 Value<int?> remoteId = const Value.absent(),
+                Value<bool> needsReview = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<String?> accountMask = const Value.absent(),
+                Value<String?> emoji = const Value.absent(),
               }) => TransactionsCompanion(
                 id: id,
                 amount: amount,
@@ -7742,6 +8310,10 @@ class $$TransactionsTableTableManager
                 updatedAt: updatedAt,
                 dirty: dirty,
                 remoteId: remoteId,
+                needsReview: needsReview,
+                isDeleted: isDeleted,
+                accountMask: accountMask,
+                emoji: emoji,
               ),
           createCompanionCallback:
               ({
@@ -7760,6 +8332,10 @@ class $$TransactionsTableTableManager
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> dirty = const Value.absent(),
                 Value<int?> remoteId = const Value.absent(),
+                Value<bool> needsReview = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<String?> accountMask = const Value.absent(),
+                Value<String?> emoji = const Value.absent(),
               }) => TransactionsCompanion.insert(
                 id: id,
                 amount: amount,
@@ -7776,6 +8352,10 @@ class $$TransactionsTableTableManager
                 updatedAt: updatedAt,
                 dirty: dirty,
                 remoteId: remoteId,
+                needsReview: needsReview,
+                isDeleted: isDeleted,
+                accountMask: accountMask,
+                emoji: emoji,
               ),
           withReferenceMapper: (p0) => p0
               .map(

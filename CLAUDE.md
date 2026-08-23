@@ -5,7 +5,7 @@
 >
 > **Required method: the ponytail method.** Read `docs/ponytail.md` and follow it for every change — shortest path to done, smallest diff, no unrequested abstractions, stdlib/native/existing-dep first, deletion over addition, boring over clever, `ponytail:` comments on real shortcuts, code-first output. This is not optional.
 >
-> For non-Claude AI agents (Cursor/Copilot/Cline/Codex/etc.), read `agents.md` — the same contract, adapted.
+> For non-Claude AI agents (Cursor/Copilot/Cline/Codex/etc.), read `AGENTS.md` — the same contract, adapted.
 
 ## CodeGraph — use it first
 
@@ -206,7 +206,7 @@ Required md updates per change:
 - **Build order / steps change** → `docs/implementation-plan.md`
 - **Handover context, gotchas, decisions** → `docs/handoff.md`
 - **Version-level change** → `docs/changelog.md`
-- **Team/roles/rules change** → `CLAUDE.md` + `agents.md`
+- **Team/roles/rules change** → `CLAUDE.md` + `AGENTS.md`
 - **Any decision the next session must know** → `docs/handoff.md` log
 
 If a commit changes code but none of these md files need an update, say why in the PR description. Do not skip doc updates "because it's a small change." Small changes accumulate and the md files are the source of truth for the next session.

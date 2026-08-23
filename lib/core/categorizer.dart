@@ -13,11 +13,11 @@ String normalizeMerchant(String raw) {
   return raw.toLowerCase().replaceAll(_nonAlnum, ' ').trim();
 }
 
-/// Returns the matching rule's [Rule.categoryId] for a merchant, or null.
+/// Returns the matching [Rule] for a merchant, or null.
 ///
 /// Priority: learned rules beat builtin; within one type, the longest pattern
 /// first. So a user-learned "zomato → Shopping" overrides the builtin Food.
-int? categorize({required String merchant, required List<Rule> rules}) {
+Rule? categorize({required String merchant, required List<Rule> rules}) {
   final normalized = normalizeMerchant(merchant);
   if (normalized.isEmpty) return null;
 
@@ -31,7 +31,7 @@ int? categorize({required String merchant, required List<Rule> rules}) {
     final pattern = normalizeMerchant(rule.pattern);
     if (pattern.isEmpty) continue;
     // patterns are [a-z0-9 ] after normalization — regex-safe, no escaping.
-    if (RegExp('\\b$pattern\\b').hasMatch(normalized)) return rule.categoryId;
+    if (RegExp('\\b$pattern\\b').hasMatch(normalized)) return rule;
   }
   return null;
 }
