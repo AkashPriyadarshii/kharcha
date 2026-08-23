@@ -78,7 +78,8 @@
   - **Ground Truth Wallet Sync**: SMS captures update wallet `initialBalance` to align exactly with bank-reported balance without destroying local ledgers.
   - **Income Autopay**: `RecurringTransactions` are processed automatically on app boot.
   - **Privacy-First Export**: Data export feature hashing merchant PII and stripping notes for safe analysis.
-  - **Smart Rules UI**: Added `/rules` screen so users can view and define regex rules that get executed in `categorizer.dart`.
+  - [x] **Smart Rules UI**: Added `/rules` screen so users can view and define regex rules that get executed in `categorizer.dart`.
+- [x] **Notification Spam Fix**: Used a static notification ID in `SmsReceiver.kt` and `UpiNotificationListener.kt` so background triggers only show 1 overwriting notification instead of 5-10 distinct notifications per message.
 
 ## Next up
 

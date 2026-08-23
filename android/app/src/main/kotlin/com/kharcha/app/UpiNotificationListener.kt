@@ -116,7 +116,7 @@ class UpiNotificationListener : NotificationListenerService() {
                 .setAutoCancel(true)
                 .build()
                 
-            notificationManager.notify((System.currentTimeMillis() % 100000).toInt(), notification)
+            notificationManager.notify(8001, notification)
         } catch (_: Exception) {}
     }
 

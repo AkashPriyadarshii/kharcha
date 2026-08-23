@@ -63,8 +63,25 @@ Future<int> drainCaptureInbox({
 
   if (!inbox.existsSync()) return 0;
 
+  // Atomically rename the file to avoid race conditions with Kotlin appenders.
+  final processingFile = File('${inbox.path}_processing');
+  if (processingFile.existsSync()) {
+    try {
+      processingFile.deleteSync();
+    } catch (_) {}
+  }
+  
+  File fileToProcess = inbox;
+  bool renamed = false;
+  try {
+    fileToProcess = inbox.renameSync(processingFile.path);
+    renamed = true;
+  } catch (e, st) {
+    AppLogger().e('CaptureInbox', 'Failed to rename inbox, falling back to truncation', e, st);
+  }
+
   var added = 0;
-  for (final line in inbox.readAsLinesSync()) {
+  for (final line in fileToProcess.readAsLinesSync()) {
     final lineTrim = line.trim();
     if (lineTrim.isEmpty) continue;
 
@@ -141,7 +158,13 @@ Future<int> drainCaptureInbox({
     }
   }
 
-  // Consumed the whole file — truncate so a notification is never replayed.
-  inbox.writeAsStringSync('');
+  // Consumed the whole file. Delete if renamed, else truncate fallback.
+  if (renamed) {
+    try {
+      fileToProcess.deleteSync();
+    } catch (_) {}
+  } else {
+    inbox.writeAsStringSync('');
+  }
   return added;
 }
