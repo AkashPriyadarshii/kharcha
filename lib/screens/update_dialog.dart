@@ -58,7 +58,7 @@ Future<void> manualCheckForUpdate(BuildContext context) async {
   final recent = await _recentManualChecks();
   recent.retainWhere(
       (t) => DateTime.now().difference(t) < const Duration(hours: 1));
-  if (recent.length >= 60) {
+  if (recent.length >= 3) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('You\'ve checked recently — try again in an hour.')),
@@ -91,11 +91,14 @@ Future<void> manualCheckForUpdate(BuildContext context) async {
 }
 
 Future<void> _promptAndInstall(BuildContext context, UpdateInfo info) async {
+  await recordPrompt(); // Throttle regardless of user choice — without this,
+  // dismissing with "Not now" meant no record, re-prompted every app open.
+  if (!context.mounted) return;
   final doUpdate = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
       title: const Text('Update available'),
-      content: const Text('A newer version of Kharcha is ready. Download now?'),
+      content: Text('Kharcha ${info.tag ?? ''} is ready. Download now?'),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
@@ -109,7 +112,6 @@ Future<void> _promptAndInstall(BuildContext context, UpdateInfo info) async {
     ),
   );
   if (doUpdate != true) return;
-  await recordPrompt(); // only after the user said yes / no
 
   final ok = await _downloadAndInstall(info.apkUrl!, info.apkSize!);
   if (!ok && context.mounted) {
@@ -124,8 +126,9 @@ Future<void> _promptAndInstall(BuildContext context, UpdateInfo info) async {
 Future<bool> _downloadAndInstall(String url, int expectedSize) async {
   final cacheDir = await getTemporaryDirectory(); // getCacheDir() on Android
   final apk = File('${cacheDir.path}/kharcha-update.apk');
+  final client = HttpClient();
   try {
-    final req = await HttpClient().getUrl(Uri.parse(url))
+    final req = await client.getUrl(Uri.parse(url))
       ..headers.set('User-Agent', 'Kharcha-updater');
     final res = await req.close();
     if (res.statusCode != 200) return false;
@@ -146,6 +149,8 @@ Future<bool> _downloadAndInstall(String url, int expectedSize) async {
     } catch (e, st) {
     AppLogger().e('App', 'Exception caught', e, st);}
     return false;
+  } finally {
+    client.close(force: true);
   }
 }
 

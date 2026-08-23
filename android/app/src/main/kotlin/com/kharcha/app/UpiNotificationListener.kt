@@ -1,4 +1,4 @@
-﻿package com.kharcha.app
+package com.kharcha.app
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -37,10 +37,13 @@ class UpiNotificationListener : NotificationListenerService() {
         private const val LAST_SEEN = "last_seen_utc_ms"
         private const val LAST_TEXT = "last_text"
         // Re-posts of the identical notification (e.g. an in-place update)
-        // within this window are treated as the same payment. Real payments
-        // have distinct UPI refs, so the Dart-side dedupe is authoritative;
-        // this window only stops the loudest spam.
-        private const val DEDUPE_WINDOW_MS = 60_000L
+        // within this window are treated as the same event. This is strictly
+        // for Android notification spam (re-post within seconds), NOT for
+        // payment dedup — the Dart-side upi_ref + time-window check is the
+        // real authority. 60s was too aggressive: paying the same friend ₹1
+        // twice within a minute produced identical text and the second was
+        // silently dropped before Dart ever saw it.
+        private const val DEDUPE_WINDOW_MS = 5_000L
         private val AMOUNT_RE = Regex("""(?:₹|Rs\.?|INR|inr)\s*\d""")
 
         private val dateFmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {

@@ -160,6 +160,7 @@ class MainActivity : FlutterFragmentActivity() {
                         val sinceMs = prefs.getLong("last_sms_time", System.currentTimeMillis() - 7L * 24 * 60 * 60 * 1000)
                         val newLastSmsTime = System.currentTimeMillis()
                         
+                        val amountRe = Regex("""(?:₹|Rs\.?|INR|inr)\s*\d""")
                         val uri = android.net.Uri.parse("content://sms/inbox")
                         val projection = arrayOf("address", "body", "date")
                         val selection = "date > ?"
@@ -176,6 +177,9 @@ class MainActivity : FlutterFragmentActivity() {
                                 
                                 while (cursor.moveToNext()) {
                                     val body = cursor.getString(bodyIdx) ?: ""
+                                    // Skip non-financial SMS early — no point sending
+                                    // OTPs, spam, and marketing to the Dart parser.
+                                    if (!amountRe.containsMatchIn(body)) continue
                                     val address = cursor.getString(addressIdx) ?: ""
                                     val date = cursor.getLong(dateIdx)
                                     
@@ -184,7 +188,7 @@ class MainActivity : FlutterFragmentActivity() {
                                     val dateStr = df.format(java.util.Date(date))
                                     
                                     val json = org.json.JSONObject()
-                                    json.put("package", address)
+                                    json.put("package", "sms.$address")
                                     json.put("text", body)
                                     json.put("seenAt", dateStr)
                                     sb.append(json.toString()).append("\n")

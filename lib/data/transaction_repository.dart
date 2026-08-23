@@ -194,11 +194,14 @@ class TransactionRepository {
     return row;
   }
 
-  /// Returns true when a row already exists for [upiRef]. UPI refs are unique
-  /// per payment — the dedupe that keeps notification + manual (and later SMS)
-  /// from double-adding.
+  /// Returns true when a non-deleted row already exists for [upiRef]. UPI refs
+  /// are unique per payment — the dedupe that keeps notification + manual (and
+  /// later SMS) from double-adding. Soft-deleted rows are excluded so a
+  /// re-sent notification after deletion can be re-captured.
   Future<bool> existsUpiRef(String upiRef) async {
-    final row = await (_db.select(_db.transactions)..where((t) => t.upiRef.equals(upiRef)))
+    final row = await (_db.select(_db.transactions)
+          ..where((t) => t.upiRef.equals(upiRef))
+          ..where((t) => t.isDeleted.equals(false)))
         .getSingleOrNull();
     return row != null;
   }
@@ -224,15 +227,17 @@ class TransactionRepository {
 
     // Pennywise-style cross-channel deduplication: 
     // Prevent duplicate SMS + Notification captures by checking for the same 
-    // amount within a ±2 minute window. We don't check exact merchant because
-    // SMS and Notification text often parse merchants slightly differently.
-    final twoMinsBefore = txnDate.subtract(const Duration(minutes: 2));
-    final twoMinsAfter = txnDate.add(const Duration(minutes: 2));
+    // amount within a ±5 minute window. Window is 5min (not 2) because SMS 
+    // catch-up uses the carrier's date column while notifications use 
+    // DateTime.now() — those clocks can drift by several minutes.
+    final windowBefore = txnDate.subtract(const Duration(minutes: 5));
+    final windowAfter = txnDate.add(const Duration(minutes: 5));
     
     final duplicate = await (_db.select(_db.transactions)
           ..where((t) => t.amount.equals(amount))
           ..where((t) => t.isIncome.equals(isIncome))
-          ..where((t) => t.txnDate.isBetweenValues(twoMinsBefore, twoMinsAfter))
+          ..where((t) => t.txnDate.isBetweenValues(windowBefore, windowAfter))
+          ..where((t) => t.isDeleted.equals(false))
           ..limit(1))
         .getSingleOrNull();
         
@@ -243,6 +248,13 @@ class TransactionRepository {
           trimmedRef != duplicate.upiRef;
           
       if (!hasDistinctRefs) {
+        // Backfill: if we have a ref but the existing row doesn't, enrich it.
+        // This strengthens future dedup (upiRef check at line 221 catches it).
+        if (trimmedRef != null && trimmedRef.isNotEmpty && 
+            (duplicate.upiRef == null || duplicate.upiRef!.isEmpty)) {
+          await (_db.update(_db.transactions)..where((t) => t.id.equals(duplicate.id)))
+              .write(TransactionsCompanion(upiRef: Value(trimmedRef)));
+        }
         return null; // Already captured via the other channel
       }
     }
