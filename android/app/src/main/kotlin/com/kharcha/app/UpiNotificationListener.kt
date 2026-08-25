@@ -12,37 +12,12 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
-/**
- * Watches UPI payment notifications and appends them to an inbox file the
- * Flutter side drains on startup (offline-first; works with app not running).
- *
- * Writes raw text as JSONL lines: {"package","text","seenAt"}. Parsing +
- * dedupe happens in Dart (`lib/core/upi_parser.dart`), so the Kotlin side
- * stays dumb and the logic stays unit-testable.
- *
- * A NotificationListenerService must be explicitly enabled by the user in
- * Settings — see the capture-disclosure screen.
- *
- * v0.1.1 fixes: (1) drop the per-key tombstone set (it grew forever and
- * `sbn.key` survives some re-posts) — dedupe is now a short rolling time
- * window, Dart's `upi_ref` check is the real authority; (2) only write
- * notifications that look like a payment (contain an amount); (3) read the
- * amount from title OR text (some UPI apps put it in the title); (4) the whole
- * handler is crash-contained so a bad notification never kills the service.
- */
 class UpiNotificationListener : NotificationListenerService() {
 
     companion object {
         private const val PREFS = "kharcha_inbox"
         private const val LAST_SEEN = "last_seen_utc_ms"
         private const val LAST_TEXT = "last_text"
-        // Re-posts of the identical notification (e.g. an in-place update)
-        // within this window are treated as the same event. This is strictly
-        // for Android notification spam (re-post within seconds), NOT for
-        // payment dedup — the Dart-side upi_ref + time-window check is the
-        // real authority. 60s was too aggressive: paying the same friend ₹1
-        // twice within a minute produced identical text and the second was
-        // silently dropped before Dart ever saw it.
         private const val DEDUPE_WINDOW_MS = 5_000L
         private val AMOUNT_RE = Regex("""(?:₹|Rs\.?|INR|inr)\s*\d""")
 
@@ -65,7 +40,6 @@ class UpiNotificationListener : NotificationListenerService() {
                     ?: ""
                 )
 
-            // Block social/messaging apps which send ads with ₹ and keywords
             if (pkg.contains("whatsapp", ignoreCase = true) ||
                 pkg.contains("telegram", ignoreCase = true) ||
                 pkg.contains("instagram", ignoreCase = true) ||
@@ -75,7 +49,7 @@ class UpiNotificationListener : NotificationListenerService() {
                 return
             }
 
-            if (!AMOUNT_RE.containsMatchIn(text)) return // not a payment
+            if (!AMOUNT_RE.containsMatchIn(text)) return
             if (text.isBlank()) return
 
             val prefs: SharedPreferences = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -86,7 +60,7 @@ class UpiNotificationListener : NotificationListenerService() {
 
             prefs.edit().putLong(LAST_SEEN, now).putString(LAST_TEXT, text).apply()
 
-            val parsedTxn = com.pennywiseai.parser.core.bank.BankParserFactory.parse(text, pkg, now)
+            val parsedTxn = com.pennywiseai.parser.core.bank.BankParserFactory.parse(text, pkg, now) ?: GenericUpiParser.parse(text, pkg, now)
             val parsedJson = if (parsedTxn != null) {
                 """
                 ,"parsed":{
@@ -103,39 +77,31 @@ class UpiNotificationListener : NotificationListenerService() {
 
             val line =
                 "{\"package\":\"${escape(pkg)}\",\"text\":\"${escape(text)}\",\"seenAt\":\"${dateFmt.format(Date(now))}\"$parsedJson}\n"
-            appendToInbox(line)
-
-            // Show rich notification with parsed details (PennyWise-style)
-            if (parsedTxn != null) {
-                val insertRes = KharchaDatabaseHelper(this).insertTransaction(parsedTxn, now)
-                    if (insertRes != null && !insertRes.isDuplicate) {
-                        TransactionNotifier.show(this, parsedTxn)
+            
+            Thread {
+                try {
+                    val file = File(cacheDir, "upi_inbox.jsonl")
+                    file.parentFile?.mkdirs()
+                    synchronized("upi_inbox_lock".intern()) {
+                        file.appendText(line)
                     }
-            }
+                    if (parsedTxn != null) {
+                        val insertRes = KharchaDatabaseHelper(this@UpiNotificationListener).insertTransaction(parsedTxn, now)
+                        if (insertRes != null && !insertRes.isDuplicate) {
+                            TransactionNotifier.show(this@UpiNotificationListener, parsedTxn)
+                        }
+                    }
+                } catch (_: Exception) {
+                }
+            }.start()
+
         } catch (_: Exception) {
-            // A bad notification must never crash the service — skip it.
         }
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
-        // no-op: capture already happened on post.
-    }
-
-    private fun appendToInbox(line: String) {
-        Thread {
-            try {
-                val file = File(cacheDir, "upi_inbox.jsonl")
-                file.parentFile?.mkdirs()
-                synchronized("upi_inbox_lock".intern()) {
-                    file.appendText(line)
-                }
-            } catch (_: Exception) {
-                // Never crash the service on a file-write failure.
-            }
-        }.start()
     }
 
     private fun escape(s: String): String =
         s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ").replace("\r", " ")
 }
-
