@@ -74,15 +74,15 @@ final _gpayMerchantRe = RegExp(
 
 // High-priority explicit recipient: "to X", "paid to X", "at X", "done at X"
 final _recipientMerchantRe = RegExp(
-  r'(?:paid to|transferred to|sent to|payment to|spent on .*? at|sent .{0,12}to|done at|\bto\b|\bat\b)\s+'
-  r'(?!you\b)([A-Za-z0-9][A-Za-z0-9 &.\-@]{1,60}?)(?=,|\.|$|:|\s+(?:of\s*(?:₹|Rs\.?|INR|\d)|upi|ref|utr|trans|txn|bal|balance|on\s+\d|on\s+[A-Za-z]|via|bank|a/c|by|from|using|credited|debited|successful|is\s+successful|was\s+successful))',
+  r'(?:spent on .*? at|(?:paid|payment|transferred|sent)\s+(?:(?:₹|rs\.?|inr)\s*[0-9,.]+\s+)?(?:to|at|on)|paid to|transferred to|sent to|payment to|sent .{0,12}to|done at|\bto\b|\bat\b)\s+'
+  r'(?!(?:you|rs\.?|inr|₹|\d)\b)([A-Za-z0-9][A-Za-z0-9 &.\-@]{1,60}?)(?=,|\.|$|:|\s+(?:of\s*(?:₹|Rs\.?|INR|\d)|upi|ref|utr|trans|txn|bal|balance|on\s+\d|on\s+[A-Za-z]|at\s+\d|via|bank|a/c|by|from|using|credited|debited|successful|is\s+successful|was\s+successful))',
   caseSensitive: false,
 );
 
 // Fallback purpose/source: "from X", "towards X", "for X", "debited from X"
 final _fallbackMerchantRe = RegExp(
   r'(?:from|towards|for|debited (?:at|from))\s+'
-  r'(?!you\b)([A-Za-z0-9][A-Za-z0-9 &.\-@]{1,60}?)(?=,|\.|$|:|\s+(?:of\s*(?:₹|Rs\.?|INR|\d)|upi|ref|utr|trans|txn|bal|balance|on\s+\d|on\s+[A-Za-z]|via|bank|a/c|by|from|using|credited|debited|successful|is\s+successful|was\s+successful))',
+  r'(?!(?:you|rs\.?|inr|₹|\d)\b)([A-Za-z0-9][A-Za-z0-9 &.\-@]{1,60}?)(?=,|\.|$|:|\s+(?:of\s*(?:₹|Rs\.?|INR|\d)|upi|ref|utr|trans|txn|bal|balance|on\s+\d|on\s+[A-Za-z]|at\s+\d|via|bank|a/c|by|from|using|credited|debited|successful|is\s+successful|was\s+successful))',
   caseSensitive: false,
 );
 
@@ -93,7 +93,7 @@ final _upiRefRe = RegExp(
 );
 final _upiRefBareRe = RegExp(r'\b(\d{12})\b');
 
-final _accountMaskRe = RegExp(r'(?:a/c|acct|account)(?:\s*no\.?|\s*number)?(?:\s*ending\s*(?:in|with))?\s*(?:x|X|\*)*(\d{3,6})\b', caseSensitive: false);
+final _accountMaskRe = RegExp(r'(?:a/c|acct|account)(?:\s*no\.?|\s*number)?(?:\s*ending\s*(?:in|with))?\s*(?:x|X|\*)*(\d{3,18})\b', caseSensitive: false);
 final _bankNameRe = RegExp(r'\b(SBI|HDFC|ICICI|Axis|Kotak|PNB|BOB|IDFC|IndusInd|Yes Bank|Canara|Union Bank|Indian Bank|State Bank of India|Bank of Baroda|Paytm Payments Bank|Airtel Payments Bank|Jio Payments Bank|Federal Bank|South Indian Bank)\b', caseSensitive: false);
 
 String _cleanMerchant(String raw) {
@@ -133,7 +133,7 @@ String _cleanMerchant(String raw) {
   // Strip trailing punctuation
   name = name.replaceAll(RegExp(r'[\s.,:;/\-]+$'), '').trim();
   // Filter generic invalid names
-  if (RegExp(r'^(?:your|your a/c|your account|account|bank|upi|self|vpa)$', caseSensitive: false).hasMatch(name)) {
+  if (RegExp(r'^(?:your|your a/c|your account|account|bank|upi|self|vpa|cashback|\d+|rs\.?.*|inr.*)$', caseSensitive: false).hasMatch(name)) {
     return 'Unknown';
   }
   if (name.isNotEmpty && name == name.toLowerCase()) {
@@ -211,11 +211,12 @@ ParsedUpiPayment? parseUpiNotification(String text) {
   final isIncome = hasReceive &&
       (!hasSpend ||
           clean.toLowerCase().contains('paid you') ||
-          clean.toLowerCase().contains('sent you') || RegExp(r'(?:sent|paid|transferred|given|credited).{0,20}to you', caseSensitive: false).hasMatch(clean) ||
+          clean.toLowerCase().contains('sent you') ||
+          clean.toLowerCase().contains('received') ||
+          RegExp(r'(?:sent|paid|transferred|given|credited).{0,20}to you', caseSensitive: false).hasMatch(clean) ||
           clean.toLowerCase().contains('credited to') ||
           clean.toLowerCase().contains('credited with') ||
-          clean.toLowerCase().contains('refund') ||
-          clean.toLowerCase().contains('cashback'));
+          clean.toLowerCase().contains('refund'));
 
   // 3. Merchant extraction
   String? merchant;
@@ -274,8 +275,19 @@ ParsedUpiPayment? parseUpiNotification(String text) {
   merchant ??= 'Unknown';
 
   // 4. UPI Ref / UTR extraction
-  ref ??= _upiRefRe.firstMatch(clean)?.group(1) ??
-      (hasSpend || hasReceive ? _upiRefBareRe.firstMatch(clean)?.group(1) : null);
+  ref ??= _upiRefRe.firstMatch(clean)?.group(1);
+  if (ref == null && (hasSpend || hasReceive)) {
+    for (final m in _upiRefBareRe.allMatches(clean)) {
+      final cand = m.group(1)!;
+      final prefix = clean.substring(0, m.start);
+      // Exclude 12-digit numbers preceded by account/card identifiers
+      if (RegExp(r'(?:a/c|acct|account|card)(?:\s*no\.?|\s*number)?(?:\s*ending\s*(?:in|with))?\s*(?:x|X|\*)*\s*$', caseSensitive: false).hasMatch(prefix)) {
+        continue;
+      }
+      ref = cand;
+      break;
+    }
+  }
       
   // 5. Balance extraction (e.g. "Avail Bal: Rs 10000", "Balance is INR 500.00")
   double? balance;

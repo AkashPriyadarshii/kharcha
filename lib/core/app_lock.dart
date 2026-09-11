@@ -23,7 +23,9 @@ class AppLockStore {
       if (!await file.exists()) return false;
       return jsonDecode(await file.readAsString()) == true;
     } catch (_) {
-      return false; // missing/corrupt → unlocked.
+      // Corrupted file → fail closed (locked) so corrupted storage cannot bypass security gate.
+      if (await file.exists()) return true;
+      return false; // missing → unlocked.
     }
   }
 

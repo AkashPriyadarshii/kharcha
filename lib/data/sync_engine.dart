@@ -82,11 +82,14 @@ class SyncEngine {
   }
 
   Future<void> _pull() async {
-    final rows = await _client
-        .from('transactions')
-        .select()
-        .order('updated_at', ascending: false)
-        .limit(1000);
+    const pageSize = 500;
+    var offset = 0;
+    while (true) {
+      final rows = await _client
+          .from('transactions')
+          .select()
+          .order('updated_at', ascending: false)
+          .range(offset, offset + pageSize - 1);
     final tombstones = await _repo.deletedRemoteIds().then((ids) => ids.toSet());
     for (final r in rows) {
       final remote = RemoteTransaction.fromRemoteJson(r);
@@ -100,6 +103,9 @@ class SyncEngine {
         continue;
       }
       await _repo.applyRemote(remote);
+      }
+      if (rows.length < pageSize) break;
+      offset += pageSize;
     }
   }
 
@@ -146,12 +152,15 @@ class SyncEngine {
         .where((d) => d.kind == 'categories')
         .map((d) => d.remoteId)
         .toSet();
-    final rows = await _client
-        .from('categories')
-        .select()
-        .eq('user_id', _userId)
-        .order('id', ascending: false)
-        .limit(500);
+    const pageSize = 500;
+    var offset = 0;
+    while (true) {
+      final rows = await _client
+          .from('categories')
+          .select()
+          .eq('user_id', _userId)
+          .order('id', ascending: false)
+          .range(offset, offset + pageSize - 1);
     for (final r in rows) {
       final remoteId = r['id'] as int;
       // Locally deleted but the DELETE hasn't reached the server yet — the
@@ -173,7 +182,10 @@ class SyncEngine {
         await _repo.updateCategoryFromRemote(existing.id, map);
       }
     }
+    if (rows.length < pageSize) break;
+    offset += pageSize;
   }
+}
 
   Future<void> _pushFeatures() async {
     // Deletes first: removes remote rows before anything could re-pull them.
@@ -234,12 +246,15 @@ class SyncEngine {
       <String>{},
       (set, d) => set..add('${d.kind}:${d.remoteId}'),
     );
+    const pageSize = 500;
     for (final kind in SyncKind.values) {
-      final rows = await _client
-          .from(featureTableFor(kind))
-          .select()
-          .order('id', ascending: false)
-          .limit(500);
+      var offset = 0;
+      while (true) {
+        final rows = await _client
+            .from(featureTableFor(kind))
+            .select()
+            .order('id', ascending: false)
+            .range(offset, offset + pageSize - 1);
       for (final r in rows) {
         final remoteId = r['id'] as int;
         // Locally deleted but the DELETE hasn't reached the server yet — the
@@ -262,8 +277,11 @@ class SyncEngine {
           await _repo.updateFeatureFromRemote(kind, existing.id, map);
         }
       }
+      if (rows.length < pageSize) break;
+      offset += pageSize;
     }
   }
+}
 }
 
 /// The sync engine for the signed-in user. Builds only when a session exists.

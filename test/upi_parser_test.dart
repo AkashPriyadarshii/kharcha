@@ -218,4 +218,46 @@ void main() {
     expect(parsed!.amount, 500.0);
     expect(parsed.isIncome, true);
   });
+
+  test('Payment received phrasing is classified as income', () {
+    final p = parseUpiNotification('Payment received Rs 500 from John Doe. UPI Ref 123456789012');
+    expect(p, isNotNull);
+    expect(p!.amount, 500);
+    expect(p.isIncome, isTrue);
+    expect(p.merchant, 'John Doe');
+    expect(p.upiRef, '123456789012');
+  });
+
+  test('Merchant name lookahead terminates before timestamp with at HH:MM', () {
+    final p = parseUpiNotification('Paid Rs.500 to Swiggy at 14:32 IST. UPI Ref 123456789012');
+    expect(p, isNotNull);
+    expect(p!.amount, 500);
+    expect(p.merchant, 'Swiggy');
+    expect(p.isIncome, isFalse);
+  });
+
+  test('Fallback merchant lookahead terminates before timestamp with at HH:MM', () {
+    final p = parseUpiNotification('Rs. 300 debited from Uber at 09:15. Ref 987654321012');
+    expect(p, isNotNull);
+    expect(p!.amount, 300);
+    expect(p.merchant, 'Uber');
+    expect(p.isIncome, isFalse);
+  });
+
+  test('Bare 12-digit account number is not captured as UPI ref', () {
+    final p = parseUpiNotification('Rs 500 debited from A/c 123456789012 at Starbucks');
+    expect(p, isNotNull);
+    expect(p!.amount, 500);
+    expect(p.merchant, 'Starbucks');
+    expect(p.upiRef, isNull);
+    expect(p.accountMask, '123456789012');
+  });
+
+  test('Spend SMS with cashback footnote remains expense', () {
+    final p = parseUpiNotification('Paid Rs 150 on Swiggy. Earn up to Rs 20 cashback on next order.');
+    expect(p, isNotNull);
+    expect(p!.amount, 150);
+    expect(p.merchant, 'Swiggy');
+    expect(p.isIncome, isFalse);
+  });
 }

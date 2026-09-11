@@ -47,21 +47,18 @@ Future<int> drainCaptureInbox({
   required TransactionRepository repo,
   Notifications? notifications,
 }) async {
+  List<String> smsLines = [];
   try {
     const channel = MethodChannel('com.kharcha.app/sms');
     final String? smsJsonl = await channel.invokeMethod<String>('catchUpSms');
     if (smsJsonl != null && smsJsonl.isNotEmpty) {
-      if (inbox.existsSync()) {
-        inbox.writeAsStringSync(smsJsonl, mode: FileMode.append);
-      } else {
-        inbox.writeAsStringSync(smsJsonl);
-      }
+      smsLines = const LineSplitter().convert(smsJsonl);
     }
   } catch (e, st) {
     AppLogger().e('CaptureInbox', 'Error catching up SMS', e, st);
   }
 
-  if (!inbox.existsSync()) return 0;
+  if (!inbox.existsSync() && smsLines.isEmpty) return 0;
 
   // Atomically rename the file to avoid race conditions with Kotlin appenders.
   final processingFile = File('${inbox.path}_processing');
@@ -73,15 +70,24 @@ Future<int> drainCaptureInbox({
   
   File fileToProcess = inbox;
   bool renamed = false;
-  try {
-    fileToProcess = inbox.renameSync(processingFile.path);
-    renamed = true;
-  } catch (e, st) {
-    AppLogger().e('CaptureInbox', 'Failed to rename inbox, falling back to truncation', e, st);
+  String? preReadSnapshot;
+  if (inbox.existsSync()) {
+    try {
+      fileToProcess = inbox.renameSync(processingFile.path);
+      renamed = true;
+    } catch (e, st) {
+      AppLogger().e('CaptureInbox', 'Failed to rename inbox, falling back to truncation', e, st);
+      preReadSnapshot = inbox.existsSync() ? inbox.readAsStringSync() : '';
+      fileToProcess = inbox;
+    }
   }
 
   var added = 0;
-  for (final line in fileToProcess.readAsLinesSync()) {
+  final fileLines = renamed
+      ? fileToProcess.readAsLinesSync()
+      : (preReadSnapshot != null ? const LineSplitter().convert(preReadSnapshot) : <String>[]);
+  final lines = [...smsLines, ...fileLines];
+  for (final line in lines) {
     final lineTrim = line.trim();
     if (lineTrim.isEmpty) continue;
 
@@ -179,7 +185,10 @@ Future<int> drainCaptureInbox({
       fileToProcess.deleteSync();
     } catch (_) {}
   } else {
-    inbox.writeAsStringSync('');
+    final current = inbox.existsSync() ? inbox.readAsStringSync() : '';
+    if (preReadSnapshot != null && current.startsWith(preReadSnapshot)) {
+      inbox.writeAsStringSync(current.substring(preReadSnapshot.length));
+    }
   }
   return added;
 }
