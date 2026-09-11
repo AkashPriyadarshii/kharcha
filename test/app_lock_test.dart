@@ -108,4 +108,9 @@ void main() {
     expect(await controller.unlock(), isTrue);
     expect(lock.prompts, 0);
   });
+
+  test('corrupted file fails closed (locked)', () async {
+    await storeFile.writeAsString('NOT_VALID_JSON{[');
+    expect(await store.load(), isTrue);
+  });
 }

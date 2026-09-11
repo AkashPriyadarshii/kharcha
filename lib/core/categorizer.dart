@@ -13,6 +13,8 @@ String normalizeMerchant(String raw) {
   return raw.toLowerCase().replaceAll(_nonAlnum, ' ').trim();
 }
 
+final _regexCache = <String, RegExp>{};
+
 /// Returns the matching [Rule] for a merchant, or null.
 ///
 /// Priority: learned rules beat builtin; within one type, the longest pattern
@@ -31,7 +33,8 @@ Rule? categorize({required String merchant, required List<Rule> rules}) {
     final pattern = normalizeMerchant(rule.pattern);
     if (pattern.isEmpty) continue;
     // patterns are [a-z0-9 ] after normalization — regex-safe, no escaping.
-    if (RegExp('\\b$pattern\\b').hasMatch(normalized)) return rule;
+    final regex = _regexCache.putIfAbsent(pattern, () => RegExp('\\b$pattern\\b'));
+    if (regex.hasMatch(normalized)) return rule;
   }
   return null;
 }

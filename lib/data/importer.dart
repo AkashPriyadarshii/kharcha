@@ -25,18 +25,26 @@ DateTime? _parseFlexibleDate(String? raw) {
   final iso = DateTime.tryParse(text);
   if (iso != null) return iso;
 
-  // Match dd/MM/yyyy or dd-MM-yyyy with optional time
+  // Match dd/MM/yyyy, MM/dd/yyyy, dd-MM-yyyy with optional time
   final dmy = RegExp(r'^(\d{1,2})[/\-](\d{1,2})[/\-](\d{2,4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?').firstMatch(text);
   if (dmy != null) {
-    final day = int.parse(dmy.group(1)!);
-    final month = int.parse(dmy.group(2)!);
+    final first = int.parse(dmy.group(1)!);
+    final second = int.parse(dmy.group(2)!);
     var year = int.parse(dmy.group(3)!);
     if (year < 100) year += 2000;
     final hour = dmy.group(4) != null ? int.parse(dmy.group(4)!) : 0;
     final minute = dmy.group(5) != null ? int.parse(dmy.group(5)!) : 0;
-    final second = dmy.group(6) != null ? int.parse(dmy.group(6)!) : 0;
+    final secondSec = dmy.group(6) != null ? int.parse(dmy.group(6)!) : 0;
+
+    int day = first;
+    int month = second;
+    if (second > 12 && first <= 12) {
+      // Ambiguity resolved: second number is > 12, so it must be day (MM/dd/yyyy)
+      month = first;
+      day = second;
+    }
     try {
-      return DateTime(year, month, day, hour, minute, second);
+      return DateTime(year, month, day, hour, minute, secondSec);
     } catch (_) {
       return null;
     }

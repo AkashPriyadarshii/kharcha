@@ -84,4 +84,17 @@ void main() {
     expect(content, contains('Rahul'));
     expect(content, contains('MacBook'));
   });
+
+  test('exportAnonymizedCsv writes deterministic sha256 merchant pseudonyms', () async {
+    await repo.insertManual(
+      amount: 450, merchant: 'Zomato',
+      paymentMethod: 'upi', txnDate: DateTime(2026, 8, 6),
+    );
+
+    final file = await Exporter(repo).exportAnonymizedCsv(dir, 'anon.csv');
+    final lines = await file.readAsLines();
+    expect(lines.first, contains('merchant_hash'));
+    expect(lines.last, isNot(contains('Zomato')));
+    expect(lines.last, contains('MERCHANT_'));
+  });
 }

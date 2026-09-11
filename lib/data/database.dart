@@ -381,7 +381,6 @@ class AppDatabase extends _$AppDatabase {
       'reliance fresh': 'Grocery',
       'reliance retail': 'Grocery',
       'reliance smart': 'Grocery',
-      'reliance': 'Grocery',
       'jiomart': 'Grocery',
       'dunzo': 'Grocery',
       'spencer': 'Grocery',

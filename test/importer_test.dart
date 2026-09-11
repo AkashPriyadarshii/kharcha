@@ -176,4 +176,20 @@ void main() {
     final budgets = await db.select(db.budgets).get();
     expect(budgets.any((b) => b.amount == 6000), isTrue);
   });
+
+  test('parses MM/dd/yyyy dates where day is greater than 12', () async {
+    final f = await writeCsv(
+      'date,amount,merchant,category,note,payment_method,upi_ref,source\n'
+      '05/23/2026 14:30,450,Zomato,Food,lunch,upi,REF_MDY,manual\n',
+    );
+
+    final result = await importCsv(f, repo);
+    expect(result.added, 1);
+    expect(result.errors, isEmpty);
+
+    final txn = await db.select(db.transactions).getSingle();
+    expect(txn.txnDate.year, 2026);
+    expect(txn.txnDate.month, 5);
+    expect(txn.txnDate.day, 23);
+  });
 }

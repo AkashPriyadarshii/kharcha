@@ -248,14 +248,18 @@ class TransactionRepository {
           trimmedRef != duplicate.upiRef;
           
       if (!hasDistinctRefs) {
-        // Backfill: if we have a ref but the existing row doesn't, enrich it.
-        // This strengthens future dedup (upiRef check at line 221 catches it).
-        if (trimmedRef != null && trimmedRef.isNotEmpty && 
-            (duplicate.upiRef == null || duplicate.upiRef!.isEmpty)) {
-          await (_db.update(_db.transactions)..where((t) => t.id.equals(duplicate.id)))
-              .write(TransactionsCompanion(upiRef: Value(trimmedRef)));
+        // Narrow the window for missing-UTR dedupe to 60s.
+        // A full 5min window destroys legitimate back-to-back identical purchases.
+        final driftSeconds = txnDate.difference(duplicate.txnDate).inSeconds.abs();
+        if (driftSeconds <= 60) {
+          // Backfill: if we have a ref but the existing row doesn't, enrich it.
+          if (trimmedRef != null && trimmedRef.isNotEmpty && 
+              (duplicate.upiRef == null || duplicate.upiRef!.isEmpty)) {
+            await (_db.update(_db.transactions)..where((t) => t.id.equals(duplicate.id)))
+                .write(TransactionsCompanion(upiRef: Value(trimmedRef)));
+          }
+          return null; // Cross-channel duplicate within 60s window
         }
-        return null; // Already captured via the other channel
       }
     }
 
@@ -340,6 +344,7 @@ class TransactionRepository {
           .write(WalletsCompanion(
             initialBalance: Value(newInitial),
             latestSmsBalance: Value(balance),
+            dirty: const Value(true),
           ));
     }
 
@@ -498,20 +503,22 @@ class TransactionRepository {
   /// next-due date forward. Returns the inserted transaction.
   Future<Transaction> payRecurring(RecurringTransaction r, {int? walletId, DateTime? on}) async {
     final paidOn = on ?? DateTime.now();
-    final txn = await insertManual(
-      amount: r.amount,
-      merchant: r.merchant,
-      categoryId: r.categoryId,
-      paymentMethod: 'upi',
-      txnDate: paidOn,
-      walletId: walletId,
-    );
-    await (_db.update(_db.recurringTransactions)..where((x) => x.id.equals(r.id)))
-        .write(RecurringTransactionsCompanion(
-      nextDue: Value(nextDueAfter(r, paidOn)),
-      dirty: const Value(true),
-    ));
-    return txn;
+    return _db.transaction(() async {
+      final txn = await insertManual(
+        amount: r.amount,
+        merchant: r.merchant,
+        categoryId: r.categoryId,
+        paymentMethod: 'upi',
+        txnDate: paidOn,
+        walletId: walletId,
+      );
+      await (_db.update(_db.recurringTransactions)..where((x) => x.id.equals(r.id)))
+          .write(RecurringTransactionsCompanion(
+        nextDue: Value(nextDueAfter(r, paidOn)),
+        dirty: const Value(true),
+      ));
+      return txn;
+    });
   }
 
   /// Watches savings goals.
@@ -633,7 +640,11 @@ class TransactionRepository {
         await _deleteFeature('categories', row.remoteId);
       }
       await (_db.update(_db.transactions)..where((t) => t.categoryId.equals(id)))
-          .write(TransactionsCompanion(categoryId: const Value(null)));
+          .write(TransactionsCompanion(
+            categoryId: const Value(null),
+            dirty: const Value(true),
+            updatedAt: Value(DateTime.now()),
+          ));
       await (_db.delete(_db.categories)..where((c) => c.id.equals(id))).go();
     });
   }
@@ -1468,10 +1479,18 @@ class TransactionRepository {
     }
     if (local.updatedAt.isBefore(r.updatedAt)) {
       // Remote is newer → local copy is stale; overwrite and sync clean.
+      // Derive categoryId locally if not income (remote does not carry categoryId).
+      final categoryId = r.isIncome
+          ? null
+          : categorize(
+              merchant: r.merchant,
+              rules: await _db.select(_db.rules).get(),
+            )?.categoryId;
       await (_db.update(_db.transactions)..where((t) => t.id.equals(local.id))).write(
         TransactionsCompanion(
           amount: Value(r.amount),
           merchant: Value(r.merchant),
+          categoryId: Value(categoryId),
           txnDate: Value(r.txnDate),
           note: Value(r.note),
           paymentMethod: Value(r.paymentMethod),
@@ -1532,35 +1551,37 @@ class TransactionRepository {
         .get();
 
     for (final r in due) {
-      await insertManual(
-        amount: r.amount,
-        merchant: r.merchant,
-        categoryId: r.categoryId,
-        paymentMethod: 'upi',
-        txnDate: r.nextDue,
-        isIncome: false,
-      );
+      await _db.transaction(() async {
+        await insertManual(
+          amount: r.amount,
+          merchant: r.merchant,
+          categoryId: r.categoryId,
+          paymentMethod: 'upi',
+          txnDate: r.nextDue,
+          isIncome: false,
+        );
 
-      // Advance date
-      DateTime next;
-      switch (r.period) {
-        case 'daily':
-          next = r.nextDue.add(const Duration(days: 1));
-          break;
-        case 'weekly':
-          next = r.nextDue.add(const Duration(days: 7));
-          break;
-        case 'yearly':
-          next = DateTime(r.nextDue.year + 1, r.nextDue.month, r.nextDue.day);
-          break;
-        case 'monthly':
-        default:
-          next = DateTime(r.nextDue.year, r.nextDue.month + 1, r.nextDue.day);
-      }
+        // Advance date
+        DateTime next;
+        switch (r.period) {
+          case 'daily':
+            next = r.nextDue.add(const Duration(days: 1));
+            break;
+          case 'weekly':
+            next = r.nextDue.add(const Duration(days: 7));
+            break;
+          case 'yearly':
+            next = DateTime(r.nextDue.year + 1, r.nextDue.month, r.nextDue.day);
+            break;
+          case 'monthly':
+          default:
+            next = DateTime(r.nextDue.year, r.nextDue.month + 1, r.nextDue.day);
+        }
 
-      await (_db.update(_db.recurringTransactions)..where((t) => t.id.equals(r.id))).write(
-        RecurringTransactionsCompanion(nextDue: Value(next), dirty: const Value(true)),
-      );
+        await (_db.update(_db.recurringTransactions)..where((t) => t.id.equals(r.id))).write(
+          RecurringTransactionsCompanion(nextDue: Value(next), dirty: const Value(true)),
+        );
+      });
     }
   }
 

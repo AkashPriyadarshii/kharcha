@@ -4,6 +4,11 @@
 
 ## Current status
 
+**v0.1.9999 released (2026-09-11).** Reliability, Parsing, and Sync Hardening.
+- **Sync & Data Layer:** Range pagination (500 rows/page) implemented across `_pull()`, `_pullCategories()`, and `_pullFeatures()` in `SyncEngine`, preventing data loss on fresh device setups. Detached category transactions mark `dirty: true` and update timestamps. Autopay and recurring payment executions wrapped in atomic database transactions. Wallet balance ground truth updates flagged `dirty: true`.
+- **Capture Pipeline & Parsing:** Thread-safe SMS catch-up lines processed in-memory to prevent Kotlin file contention. Fixed income classification for "Payment received" phrasings. Isolated bare 12-digit account numbers from being falsely captured as UPI references. Precedence and regex lookaheads hardened against promotional cashback text and numeric merchant suffixes.
+- **Import/Export & Security:** Deterministic SHA-256 merchant pseudonymization in CSV exports. Date parser supports `MM/dd/yyyy` with day > 12 disambiguation. `AppLockStore` fails closed if lock file is corrupted.
+
 **v0.2.9 released (2026-08-23).** UI, Sync, and Automation updates. 
 - **Automation & UX:** Split Wallets UI into explicitly separated `Accounts (Auto-tracked)` and `Wallets (Manual)`. Engine now natively auto-creates accounts on the fly when an unrecognized bank mask is detected in a captured SMS. Added native instant Android background push notifications (Kotlin-level) for captured expenses so users get instant feedback. Auto-update mechanism fixed (asset name mismatch resolved) and now pushes a persistent local notification when an update is found.
 - **Data & Sync:** Added `accountMask`, `bankName`, and `latestSmsBalance` to `Wallets`, and `needsReview`, `isDeleted`, `accountMask`, and `emoji` to `Transactions` and `Rules` in Drift (schema v12). Updated UI: wallets screen takes account mask/bank name and flags drift; transactions list highlights `needsReview` (pale yellow) with a confirm checkmark and displays rule-based emojis instead of category icons. Sync engine adapted: pushing local deletes now sets `is_deleted = true` remotely instead of hard-deleting, and pulling `is_deleted = true` physically deletes locally.

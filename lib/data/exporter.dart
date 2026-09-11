@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:csv/csv.dart';
 
 import 'transaction_repository.dart';
@@ -45,7 +46,7 @@ class Exporter {
           t.txnDate.toIso8601String(),
           t.amount.toString(),
           t.isIncome ? 'income' : 'expense',
-          'MERCHANT_${t.merchant.hashCode.abs().toString().padLeft(8, '0')}',
+          'MERCHANT_${sha256.convert(utf8.encode(t.merchant.toLowerCase().trim())).toString().substring(0, 8)}',
           cat ?? '',
           t.paymentMethod,
           t.source,

@@ -2,6 +2,16 @@
 
 All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
 
+## [v0.1.9999] — 2026-09-11
+
+- **Sync Engine Pagination** — Added range pagination (500 rows/page) to transaction, category, and feature pulls (`_pull`, `_pullCategories`, `_pullFeatures`). Accounts with large transaction histories now restore completely on new devices without data truncation.
+- **Capture Inbox Thread Safety** — Process SMS catch-up lines directly in-memory instead of synchronously appending to active `inbox` file. Eliminates OS-level byte interleaving and file corruption with background Kotlin listeners.
+- **Income & Spend Disambiguation Hardening** — Fixed income classification for "Payment received" SMS; prevented promotional footnote keywords like "cashback" inside spend SMS from mistakenly converting expenses into income.
+- **Account Number UTR Isolation** — Hardened bare 12-digit UPI reference extraction to strictly ignore numbers preceded by account/card indicators (`a/c`, `account`, `card`), preventing account numbers from colliding with UPI refs and dropping subsequent transactions.
+- **Database & Sync Engine Integrity** — Detaching categories marks associated transactions `dirty: true` and updates timestamp; autopay and recurring payment executions wrapped in atomic database transactions; wallet balance ground truth sync marked `dirty: true`.
+- **Categorizer Caching & Rule Tie-Breaking** — Added static RegExp cache to avoid recompilation overhead in categorizer; removed broad `reliance` rule that was shadowing `Jio` recharge SMS.
+- **Import/Export Reliability** — CSV importer intelligently disambiguates `MM/dd/yyyy` dates when day > 12; exporter uses stable SHA-256 hashing for merchant pseudonymization; AppLockStore fails closed on corrupted state files.
+
 ## [v0.2.9] — 2026-08-23
 
 - **Accounts vs Wallets Auto-Management** — Split the Wallets screen into `Accounts (Auto-tracked)` and `Wallets (Manual)`. Upgraded the auto-capture engine: if an SMS arrives with an unrecognized bank account mask (e.g., HDFC 1234), Kharcha will now automatically create that account on the fly instead of dumping it into the default wallet.
