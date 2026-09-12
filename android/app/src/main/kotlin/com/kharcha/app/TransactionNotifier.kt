@@ -31,9 +31,10 @@ object TransactionNotifier {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_DEFAULT
+                NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "Alerts for captured UPI/bank transactions"
+                enableVibration(true)
             }
             nm.createNotificationChannel(channel)
 
@@ -76,14 +77,32 @@ object TransactionNotifier {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
+            val smallIcon = if (context.applicationInfo.icon != 0) {
+                context.applicationInfo.icon
+            } else {
+                R.drawable.ic_launcher_foreground
+            }
+
             val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setSmallIcon(smallIcon)
                 .setContentTitle(title)
                 .setContentText(subtitle)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setDefaults(NotificationCompat.DEFAULT_ALL)
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
                 .build()
+
+            // Check POST_NOTIFICATIONS permission on Android 13+
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                if (androidx.core.content.ContextCompat.checkSelfPermission(
+                        context,
+                        android.Manifest.permission.POST_NOTIFICATIONS
+                    ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                ) {
+                    return
+                }
+            }
 
             // Unique ID per transaction so multiple captures don't clobber each other
             val notifId = (parsed.hashCode() and 0x7FFFFFFF) % 100_000 + 1000

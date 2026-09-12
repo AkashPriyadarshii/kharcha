@@ -2,6 +2,13 @@
 
 All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
 
+## [v0.2.99999] — 2026-09-12
+
+- **Non-Transaction Spam & Recharge Protection** — Reject telecom operator recharge confirmations/promos (`recharge of`, `recharge successful`, `credited to prepaid`, `validity`, `data pack`, `benefits`), payment requests / collect requests (`requested`, `collect request`), pending/initiated alerts (`pending`, `initiated`, `in progress`), marketing loans, rewards/scratch cards, and statements across Dart (`_nonTransactionRe`) and Kotlin (`GenericUpiParser`).
+- **Income Disambiguation Hardening** — Prevent bare "received" from classifying merchant receipts or service payments as income. Strictly require incoming recipient phrasings (`received from`, `credited to your account`, `paid you`, `sent you`, `refund credited`).
+- **Realtime Background Notification Fix** — Fixed Android 12+ background notification delivery: `UpiNotificationListener` marked `android:exported="true"`, `BROADCAST_SMS` signature restriction removed from `SmsReceiver`, notification channel elevated to `IMPORTANCE_HIGH`, and `bigText` multi-line notification content captured.
+- **Notification Spam Prevention on App Launch** — Solved notification flood when opening the app days later. Dart `drainCaptureInbox` marks catch-up SMS and Kotlin-notified lines as `notified: true` / `catchUp: true`, suppressing redundant alert dialogs and budget popups during batch drains.
+
 ## [v0.1.9999] — 2026-09-11
 
 - **Sync Engine Pagination** — Added range pagination (500 rows/page) to transaction, category, and feature pulls (`_pull`, `_pullCategories`, `_pullFeatures`). Accounts with large transaction histories now restore completely on new devices without data truncation.

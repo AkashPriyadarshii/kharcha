@@ -17,6 +17,23 @@ class SmsReceiver : BroadcastReceiver() {
         private val dateFmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
             timeZone = TimeZone.getTimeZone("UTC")
         }
+
+        fun isBlockedSender(sender: String): Boolean {
+            val upper = sender.uppercase()
+            return upper.contains("JIO") ||
+                   upper.contains("AIRTEL") ||
+                   upper.contains("VICARE") ||
+                   upper.contains("VIALRT") ||
+                   upper.contains("BSNL") ||
+                   upper.contains("IDEA") ||
+                   upper.contains("VODAFONE") ||
+                   upper.contains("PROMO") ||
+                   upper.contains("OFFER") ||
+                   upper.contains("ALERTS") ||
+                   upper.contains("REMIND") ||
+                   upper.contains("COUPON") ||
+                   upper.contains("DEALS")
+        }
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -42,7 +59,8 @@ class SmsReceiver : BroadcastReceiver() {
                     val text = bodyBuilder.toString().trim()
                     if (!AMOUNT_RE.containsMatchIn(text)) continue
 
-                    val parsedTxn = com.pennywiseai.parser.core.bank.BankParserFactory.parse(text, sender, now) ?: GenericUpiParser.parse(text, sender, now)
+                    val parsedTxn = com.pennywiseai.parser.core.bank.BankParserFactory.parse(text, sender, now)
+                        ?: if (!isBlockedSender(sender)) GenericUpiParser.parse(text, sender, now) else null
                     
                     val parsedJson = if (parsedTxn != null) {
                         """
@@ -58,19 +76,21 @@ class SmsReceiver : BroadcastReceiver() {
                         """.trimIndent().replace("\n", "")
                     } else ""
 
-                    val line = "{\"package\":\"sms.${escape(sender)}\",\"text\":\"${escape(text)}\",\"seenAt\":\"$seenAt\"$parsedJson}\n"
+                    var wasNotified = false
+                    if (parsedTxn != null) {
+                        val insertRes = KharchaDatabaseHelper(context).insertTransaction(parsedTxn, now)
+                        if (insertRes != null && !insertRes.isDuplicate) {
+                            TransactionNotifier.show(context, parsedTxn)
+                            wasNotified = true
+                        }
+                    }
+
+                    val line = "{\"package\":\"sms.${escape(sender)}\",\"text\":\"${escape(text)}\",\"seenAt\":\"$seenAt\",\"notified\":$wasNotified$parsedJson}\n"
                     
                     val file = File(context.cacheDir, "upi_inbox.jsonl")
                     file.parentFile?.mkdirs()
                     synchronized("upi_inbox_lock".intern()) {
                         file.appendText(line)
-                    }
-
-                    if (parsedTxn != null) {
-                        val insertRes = KharchaDatabaseHelper(context).insertTransaction(parsedTxn, now)
-                        if (insertRes != null && !insertRes.isDuplicate) {
-                            TransactionNotifier.show(context, parsedTxn)
-                        }
                     }
                 }
             } catch (_: Exception) {

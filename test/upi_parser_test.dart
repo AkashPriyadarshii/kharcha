@@ -260,4 +260,42 @@ void main() {
     expect(p.merchant, 'Swiggy');
     expect(p.isIncome, isFalse);
   });
+
+  test('Rejects telecom operator recharge confirmation and success messages', () {
+    expect(parseUpiNotification('Recharge of Rs 299 is successful for your Jio number 9876543210. Transaction ID: 123456789. Your plan validity is 28 days.'), isNull);
+    expect(parseUpiNotification('Recharge of Rs. 199 is successful for mobile 9876543210. Benefits: 1.5GB/day.'), isNull);
+    expect(parseUpiNotification('Recharge Successful! Rs 299 credited to your Jio prepaid account. Validity: 28 days.'), isNull);
+    expect(parseUpiNotification('Payment received of Rs 299 for recharge of Airtel mobile 9876543210.'), isNull);
+    expect(parseUpiNotification('Recharge done for Rs 479 on Vi mobile 9876543210.'), isNull);
+    expect(parseUpiNotification('Your recharge of Rs 666 for Jio number 9876543210 is processed.'), isNull);
+  });
+
+  test('Rejects incomplete transactions, payment requests, and collect requests', () {
+    expect(parseUpiNotification('Akash has requested Rs 500 from you on PhonePe. Click here to approve.'), isNull);
+    expect(parseUpiNotification('Payment request of Rs 1,200 received from Ramesh on Google Pay.'), isNull);
+    expect(parseUpiNotification('Collect request of Rs 350 initiated by Zomato. Authorize in your UPI app.'), isNull);
+    expect(parseUpiNotification('Request to pay INR 450 from merchant ABC. Approve to pay.'), isNull);
+    expect(parseUpiNotification('Mandate created for Rs 199/month for Netflix.'), isNull);
+    expect(parseUpiNotification('Autopay scheduled for Rs 499 on 15th.'), isNull);
+    expect(parseUpiNotification('Payment of Rs 1,000 is pending.'), isNull);
+    expect(parseUpiNotification('Transaction of Rs 500 initiated.'), isNull);
+    expect(parseUpiNotification('Payment of Rs 800 in progress.'), isNull);
+  });
+
+  test('Rejects financial marketing, loan offers, rewards, and statements', () {
+    expect(parseUpiNotification('Pre-approved personal loan of ₹5,00,000 at 10.5% interest. Apply now.'), isNull);
+    expect(parseUpiNotification('Congratulations! You have won Rs 500 cashback voucher on PhonePe. Claim now.'), isNull);
+    expect(parseUpiNotification('Win up to Rs 10,000 on Cred. Spin now.'), isNull);
+    expect(parseUpiNotification('Your credit limit of Rs 75,000 is approved. Click to activate.'), isNull);
+    expect(parseUpiNotification('Earn Rs 500 by referring your friends to the app.'), isNull);
+    expect(parseUpiNotification('Invest Rs 500 in top mutual funds today.'), isNull);
+    expect(parseUpiNotification('Your ICICI Credit Card statement for Dec has been generated. Total amount due: Rs 4,500.'), isNull);
+  });
+
+  test('Payment received by merchant is not income', () {
+    final p = parseUpiNotification('Paid ₹450 to Swiggy. Payment received by merchant. Ref 112233445566');
+    expect(p, isNotNull);
+    expect(p!.amount, 450);
+    expect(p.isIncome, isFalse);
+  });
 }

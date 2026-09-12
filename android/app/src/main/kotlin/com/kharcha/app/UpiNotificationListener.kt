@@ -32,13 +32,11 @@ class UpiNotificationListener : NotificationListenerService() {
         try {
             val pkg = sbn.packageName
             val extras = sbn.notification?.extras ?: return
-            val text = (
-                extras.getCharSequence("android.title")?.toString()
-                    ?: ""
-                ) + " " + (
-                extras.getCharSequence("android.text")?.toString()
-                    ?: ""
-                )
+            val title = extras.getCharSequence("android.title")?.toString() ?: ""
+            val textContent = extras.getCharSequence("android.text")?.toString() ?: ""
+            val bigText = extras.getCharSequence("android.bigText")?.toString() ?: ""
+            val subText = extras.getCharSequence("android.subText")?.toString() ?: ""
+            val text = "$title $textContent $bigText $subText".trim()
 
             if (pkg.contains("whatsapp", ignoreCase = true) ||
                 pkg.contains("telegram", ignoreCase = true) ||
@@ -75,21 +73,24 @@ class UpiNotificationListener : NotificationListenerService() {
                 """.trimIndent().replace("\n", "")
             } else ""
 
-            val line =
-                "{\"package\":\"${escape(pkg)}\",\"text\":\"${escape(text)}\",\"seenAt\":\"${dateFmt.format(Date(now))}\"$parsedJson}\n"
-            
             Thread {
                 try {
-                    val file = File(cacheDir, "upi_inbox.jsonl")
-                    file.parentFile?.mkdirs()
-                    synchronized("upi_inbox_lock".intern()) {
-                        file.appendText(line)
-                    }
+                    var wasNotified = false
                     if (parsedTxn != null) {
                         val insertRes = KharchaDatabaseHelper(this@UpiNotificationListener).insertTransaction(parsedTxn, now)
                         if (insertRes != null && !insertRes.isDuplicate) {
                             TransactionNotifier.show(this@UpiNotificationListener, parsedTxn)
+                            wasNotified = true
                         }
+                    }
+
+                    val line =
+                        "{\"package\":\"${escape(pkg)}\",\"text\":\"${escape(text)}\",\"seenAt\":\"${dateFmt.format(Date(now))}\",\"notified\":$wasNotified$parsedJson}\n"
+
+                    val file = File(cacheDir, "upi_inbox.jsonl")
+                    file.parentFile?.mkdirs()
+                    synchronized("upi_inbox_lock".intern()) {
+                        file.appendText(line)
                     }
                 } catch (_: Exception) {
                 }

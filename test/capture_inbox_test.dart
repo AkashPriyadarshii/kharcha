@@ -168,4 +168,41 @@ void main() {
     expect(lines.length, 1);
     expect(lines.first, contains('500 off'));
   });
+
+  test('drainCaptureInbox drops recharge and payment requests even if parsed payload is present', () async {
+    inboxFile.writeAsStringSync([
+      jsonEncode({
+        'package': 'sms.JM-JIOINF',
+        'text': 'Recharge of Rs 299 is successful for your Jio number 9876543210. Rs 299 credited to your Jio prepaid account.',
+        'seenAt': '2026-08-23T10:00:00Z',
+        'parsed': {
+          'amount': 299.0,
+          'merchant': 'Jio',
+          'type': 'INCOME',
+          'reference': '123456',
+        }
+      }),
+      jsonEncode({
+        'package': 'com.phonepe.app',
+        'text': 'Akash has requested Rs 500 from you on PhonePe.',
+        'seenAt': '2026-08-23T10:05:00Z',
+        'parsed': {
+          'amount': 500.0,
+          'merchant': 'Akash',
+          'type': 'INCOME',
+          'reference': null,
+        }
+      }),
+    ].join('\n'));
+
+    final added = await drainCaptureInbox(
+      inbox: inboxFile,
+      repo: repo,
+      notifications: fakeNotifications,
+    );
+
+    expect(added, 0);
+    final all = await db.select(db.transactions).get();
+    expect(all, isEmpty);
+  });
 }
