@@ -79,7 +79,7 @@ class KharchaDatabaseHelper(private val context: Context) {
                     val emoji = rCursor.getString(2)
                     val type = rCursor.getString(3)
                     
-                    if (pattern.isNotEmpty() && Regex("\\\\b\\\\\b").containsMatchIn(normalized)) {
+                    if (pattern.isNotEmpty() && Regex("\\b${Regex.escape(pattern)}\\b").containsMatchIn(normalized)) {
                         val isLearned = type == "learned"
                         val currentIsLearned = bestRuleType == "learned"
                         
@@ -123,8 +123,7 @@ class KharchaDatabaseHelper(private val context: Context) {
                         put("account_mask", txn.accountLast4)
                         put("bank_name", txn.bankName)
                         put("dirty", 1)
-                        put("created_at", (System.currentTimeMillis() / 1000).toString())
-                        put("updated_at", (System.currentTimeMillis() / 1000).toString())
+                        put("created_at", System.currentTimeMillis() / 1000)
                     }
                     walletId = db.insert("wallets", null, wValues).toInt()
                 }
@@ -151,8 +150,8 @@ class KharchaDatabaseHelper(private val context: Context) {
                 put("account_mask", txn.accountLast4)
                 put("needs_review", 0)
                 put("dirty", 1)
-                put("created_at", (System.currentTimeMillis() / 1000).toString())
-                put("updated_at", (System.currentTimeMillis() / 1000).toString())
+                put("created_at", System.currentTimeMillis() / 1000)
+                put("updated_at", System.currentTimeMillis() / 1000)
             }
             
             val id = db.insert("transactions", null, values)

@@ -88,6 +88,7 @@ class SyncEngine {
       final rows = await _client
           .from('transactions')
           .select()
+          .eq('user_id', _userId)
           .order('updated_at', ascending: false)
           .range(offset, offset + pageSize - 1);
     final tombstones = await _repo.deletedRemoteIds().then((ids) => ids.toSet());
@@ -222,13 +223,14 @@ class SyncEngine {
             await _repo.markFeatureSynced(kind, row.id, resp['id'] as int);
           }
         } on PostgrestException catch (e) {
-          if (e.code == '23505') {
+          if (e.code == '23505' && kind == SyncKind.budgets && json['category_id'] != null) {
             // Unique (user_id, category_id) on budgets — the remote already
             // has this budget (retry after a lost ack). Claim its id.
             final existing = await _client
                 .from(table)
                 .select('id')
-                .eq('category_id', json['category_id'])
+                .eq('category_id', json['category_id'] as Object)
+                .eq('user_id', _userId)
                 .maybeSingle();
             if (existing != null) {
               await _repo.markFeatureSynced(kind, row.id, existing['id'] as int);
@@ -253,6 +255,7 @@ class SyncEngine {
         final rows = await _client
             .from(featureTableFor(kind))
             .select()
+            .eq('user_id', _userId)
             .order('id', ascending: false)
             .range(offset, offset + pageSize - 1);
       for (final r in rows) {

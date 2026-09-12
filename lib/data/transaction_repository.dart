@@ -248,17 +248,16 @@ class TransactionRepository {
           trimmedRef != duplicate.upiRef;
           
       if (!hasDistinctRefs) {
-        // Narrow the window for missing-UTR dedupe to 60s.
-        // A full 5min window destroys legitimate back-to-back identical purchases.
+        // Cross-channel dedupe window: 300s (matches Kotlin background capture window).
         final driftSeconds = txnDate.difference(duplicate.txnDate).inSeconds.abs();
-        if (driftSeconds <= 60) {
+        if (driftSeconds <= 300) {
           // Backfill: if we have a ref but the existing row doesn't, enrich it.
           if (trimmedRef != null && trimmedRef.isNotEmpty && 
               (duplicate.upiRef == null || duplicate.upiRef!.isEmpty)) {
             await (_db.update(_db.transactions)..where((t) => t.id.equals(duplicate.id)))
                 .write(TransactionsCompanion(upiRef: Value(trimmedRef)));
           }
-          return null; // Cross-channel duplicate within 60s window
+          return null; // Cross-channel duplicate within 300s window
         }
       }
     }
@@ -378,9 +377,13 @@ class TransactionRepository {
       );
 
   Future<void> deleteWallet(int id) async {
-    // Null out wallet_id on its transactions so they don't disappear.
+    // Null out wallet_id on its transactions so they don't disappear and mark them dirty for sync.
     await (_db.update(_db.transactions)..where((t) => t.walletId.equals(id)))
-        .write(const TransactionsCompanion(walletId: Value(null)));
+        .write(TransactionsCompanion(
+          walletId: const Value(null),
+          dirty: const Value(true),
+          updatedAt: Value(DateTime.now()),
+        ));
     final row = await (_db.select(_db.wallets)..where((w) => w.id.equals(id))).getSingleOrNull();
     if (row == null) return;
     await _deleteFeature('wallets', row.remoteId);
@@ -639,6 +642,24 @@ class TransactionRepository {
       if (row.isCustom) {
         await _deleteFeature('categories', row.remoteId);
       }
+      // Detach recurring transactions referencing this category
+      await (_db.update(_db.recurringTransactions)..where((r) => r.categoryId.equals(id)))
+          .write(const RecurringTransactionsCompanion(
+            categoryId: Value(null),
+            dirty: Value(true),
+          ));
+      // Detach merchants referencing this category
+      await (_db.update(_db.merchants)..where((m) => m.categoryId.equals(id)))
+          .write(const MerchantsCompanion(categoryId: Value(null)));
+      // Delete rules referencing this category
+      await (_db.delete(_db.rules)..where((r) => r.categoryId.equals(id))).go();
+      // Delete and tombstone budgets referencing this category
+      final budgets = await (_db.select(_db.budgets)..where((b) => b.categoryId.equals(id))).get();
+      for (final b in budgets) {
+        await _deleteFeature('budgets', b.remoteId);
+      }
+      await (_db.delete(_db.budgets)..where((b) => b.categoryId.equals(id))).go();
+      // Detach transactions
       await (_db.update(_db.transactions)..where((t) => t.categoryId.equals(id)))
           .write(TransactionsCompanion(
             categoryId: const Value(null),
@@ -859,9 +880,13 @@ class TransactionRepository {
   /// Spend per calendar month over the last [months] months ending at
   /// [end], oldest first. Returns (monthLabel, total) — for the trend chart.
   Future<List<(String, double)>> monthlyTrend(DateTime end, {int months = 6}) async {
-    // Scan newest-first, stop once we've covered [months] distinct months.
+    // Only query transactions within the requested months window
+    final cutoff = DateTime(end.year, end.month - months + 1, 1);
     final rows = await (_db.select(_db.transactions)
-          ..where((t) => t.isIncome.equals(false) & t.isDeleted.equals(false))
+          ..where((t) =>
+              t.isIncome.equals(false) &
+              t.isDeleted.equals(false) &
+              t.txnDate.isBiggerOrEqualValue(cutoff))
           ..orderBy([(t) => OrderingTerm.desc(t.txnDate)]))
         .get();
     final per = <DateTime, double>{};
@@ -1359,6 +1384,7 @@ class TransactionRepository {
     required double amount,
     required String merchant,
     int? categoryId,
+    int? walletId,
     String note = '',
     String paymentMethod = 'upi',
     DateTime? txnDate,
@@ -1369,6 +1395,7 @@ class TransactionRepository {
         amount: Value(amount),
         merchant: Value(merchant.trim()),
         categoryId: Value(categoryId),
+        walletId: Value(walletId),
         note: Value(note.trim().isEmpty ? null : note.trim()),
         paymentMethod: Value(paymentMethod),
         txnDate: Value(txnDate ?? DateTime.now()),
@@ -1497,6 +1524,10 @@ class TransactionRepository {
           upiRef: Value(r.upiRef),
           source: Value(r.source),
           isIncome: Value(r.isIncome),
+          needsReview: Value(r.needsReview),
+          isDeleted: Value(r.isDeleted),
+          accountMask: Value(r.accountMask),
+          emoji: Value(r.emoji),
           updatedAt: Value(r.updatedAt),
           remoteId: Value(r.id),
           dirty: const Value(false),
@@ -1530,6 +1561,10 @@ class TransactionRepository {
             upiRef: Value(r.upiRef),
             source: r.source,
             isIncome: Value(r.isIncome),
+            needsReview: Value(r.needsReview),
+            isDeleted: Value(r.isDeleted),
+            accountMask: Value(r.accountMask),
+            emoji: Value(r.emoji),
             txnDate: r.txnDate,
             updatedAt: Value(r.updatedAt),
             dirty: const Value(false),
@@ -1561,22 +1596,8 @@ class TransactionRepository {
           isIncome: false,
         );
 
-        // Advance date
-        DateTime next;
-        switch (r.period) {
-          case 'daily':
-            next = r.nextDue.add(const Duration(days: 1));
-            break;
-          case 'weekly':
-            next = r.nextDue.add(const Duration(days: 7));
-            break;
-          case 'yearly':
-            next = DateTime(r.nextDue.year + 1, r.nextDue.month, r.nextDue.day);
-            break;
-          case 'monthly':
-          default:
-            next = DateTime(r.nextDue.year, r.nextDue.month + 1, r.nextDue.day);
-        }
+        // Advance date with month-end clamping (Jan 31 -> Feb 28, not Mar 3)
+        final next = nextDueAfter(r, r.nextDue);
 
         await (_db.update(_db.recurringTransactions)..where((t) => t.id.equals(r.id))).write(
           RecurringTransactionsCompanion(nextDue: Value(next), dirty: const Value(true)),

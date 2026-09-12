@@ -102,7 +102,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                 if (trimmed.isEmpty) return;
                 final repo = ref.read(transactionRepositoryProvider);
                 if (existing == null) {
-                  await repo.insertCategory(name: trimmed, emoji: emoji, color: color);
+                  await repo.insertCategory(name: trimmed, emoji: emoji, color: color, isIncome: _tab == 1);
                 } else {
                   await repo.updateCategory(existing.id, name: trimmed, emoji: emoji, color: color);
                 }

@@ -298,4 +298,21 @@ void main() {
     expect(p!.amount, 450);
     expect(p.isIncome, isFalse);
   });
+
+  test('Balance prefix does not corrupt transaction amount', () {
+    final p = parseUpiNotification('Avail Bal: Rs 45,000. Your A/c debited for Rs 150 at Swiggy. UPI Ref 123456789012');
+    expect(p, isNotNull);
+    expect(p!.amount, 150);
+    expect(p.merchant, 'Swiggy');
+    expect(p.isIncome, isFalse);
+  });
+
+  test('P2P bank narration parses correctly', () {
+    final p = parseUpiNotification('Your A/c debited for Rs 850. Info: UPI/P2P/123456789012/Rahul Sharma/HDFC');
+    expect(p, isNotNull);
+    expect(p!.amount, 850);
+    expect(p.upiRef, '123456789012');
+    expect(p.merchant, 'Rahul Sharma');
+    expect(p.isIncome, isFalse);
+  });
 }

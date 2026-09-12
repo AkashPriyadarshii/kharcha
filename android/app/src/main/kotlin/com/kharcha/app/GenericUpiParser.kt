@@ -28,7 +28,7 @@ object GenericUpiParser {
     
     // Credit markers: strictly money received by or credited to the user
     private val CREDIT_RE = Regex(
-        """(?i)\b(?:credited\s+(?:to|with|in)|deposited\s+in|received\s+from|paid\s+you|sent\s+you|(?:sent|paid|transferred|given|credited).{0,20}to\s+you|money\s+received|refund\s+credited|cashback\s+credited)\b"""
+        """(?i)\b(?:credited\s+(?:to\s+(?:your|a\/c|acct|account)|with|in)|deposited\s+(?:in|to\s+(?:your|a\/c|acct|account))|received\s+from|paid\s+you|sent\s+you|(?:sent|paid|transferred|given|credited).{0,20}to\s+you|money\s+received|refund\s+credited|cashback\s+credited)\b"""
     )
     // Debit markers: paid, debited, sent to (if not 'sent to you')
     private val DEBIT_RE = Regex(
@@ -47,7 +47,29 @@ object GenericUpiParser {
         // 0. Explicit rejection of non-transaction messages
         if (NON_TRANSACTION_RE.containsMatchIn(text)) return null
 
-        val amountMatch = AMOUNT_RE.find(text) ?: return null
+        val allMatches = AMOUNT_RE.findAll(text).toList()
+        if (allMatches.isEmpty()) return null
+
+        var amountMatch: MatchResult? = null
+        var foundBal: BigDecimal? = null
+
+        for (m in allMatches) {
+            val prefix = text.substring(0, m.range.first)
+            val isBalance = Regex("""(?i)\b(?:bal|balance|avl\s*bal|available\s*(?:bal|balance)|limit|credit\s*limit)[\s:=-]*$""").containsMatchIn(prefix)
+            if (isBalance) {
+                if (foundBal == null) {
+                    try {
+                        foundBal = BigDecimal(m.groupValues[1].replace(",", ""))
+                    } catch (_: Exception) {}
+                }
+            } else if (amountMatch == null) {
+                amountMatch = m
+            }
+        }
+        if (amountMatch == null) {
+            amountMatch = allMatches.first()
+        }
+
         val amountStr = amountMatch.groupValues[1].replace(",", "")
         val amount = try {
             BigDecimal(amountStr)
@@ -64,7 +86,8 @@ object GenericUpiParser {
             return null
         }
 
-        var type = if (isCredit && (!isDebit || text.contains("refund", ignoreCase = true) || text.contains("credited", ignoreCase = true))) {
+        val isRefund = Regex("""(?i)\b(?:refund|cashback|reversed|reversal)\b""").containsMatchIn(text)
+        var type = if (isCredit && (!isDebit || isRefund)) {
             TransactionType.INCOME
         } else {
             TransactionType.EXPENSE
@@ -122,7 +145,7 @@ object GenericUpiParser {
             merchant = merchant,
             reference = reference,
             accountLast4 = null,
-            balance = null,
+            balance = foundBal,
             smsBody = text,
             sender = sender,
             timestamp = timestamp,

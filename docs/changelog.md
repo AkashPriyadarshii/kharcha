@@ -2,6 +2,16 @@
 
 All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
 
+## [v0.2.910] — 2026-09-12
+
+- **Capture Pipeline Regex & Data Integrity** — Corrected rule pattern regex matching in Kotlin helper (`\b${escape(pattern)}\b`), removed non-existent `updated_at` column from wallet insertion, and stored epoch timestamps as `Long` INTEGERs to prevent Drift SQLite schema exceptions.
+- **Credit vs Debit & Balance Precedence** — Restricted credit matchers to strictly target the user's account (`credited to your account`, `deposited in`), preventing merchant credits ("debited ... credited to VPA [merchant]") from misclassifying expenses as income. Prioritized transaction amounts over available balance prefixes across Dart and Kotlin parsers.
+- **Sync Engine Multi-Tenant & Constraint Hardening** — Enforced `user_id` tenant filters on transaction and feature pulls; constrained Postgres unique violation recovery (error code 23505) strictly to budgets with valid `category_id` references.
+- **Metadata Preservation Across Sync** — Persisted `accountMask`, `emoji`, and `needsReview` fields across remote transaction merge and insert operations.
+- **Foreign Key Cascade on Category Deletion** — Cleaned up referencing budgets, rules, recurring transactions, and merchants prior to category deletion, preventing foreign key constraint crashes.
+- **Autopay & Trend Query Optimizations** — Replaced naive month advance in `processAutopay` with clamped `nextDueAfter` to avoid day drift; added cutoff filter to `monthlyTrend` to avoid full-table scans.
+- **UI & Export Fixes** — Enabled income category creation from the Income tab; resolved public Android `Downloads` directory path for CSV/JSON exports; preserved time component in date picker; preserved wallet selection on transaction updates.
+
 ## [v0.2.99999] — 2026-09-12
 
 - **Non-Transaction Spam & Recharge Protection** — Reject telecom operator recharge confirmations/promos (`recharge of`, `recharge successful`, `credited to prepaid`, `validity`, `data pack`, `benefits`), payment requests / collect requests (`requested`, `collect request`), pending/initiated alerts (`pending`, `initiated`, `in progress`), marketing loans, rewards/scratch cards, and statements across Dart (`_nonTransactionRe`) and Kotlin (`GenericUpiParser`).
