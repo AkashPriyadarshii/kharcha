@@ -181,6 +181,7 @@ class MainActivity : FlutterFragmentActivity() {
                                     // OTPs, spam, and marketing to the Dart parser.
                                     if (!amountRe.containsMatchIn(body)) continue
                                     val address = cursor.getString(addressIdx) ?: ""
+                                    if (SmsReceiver.isBlockedSender(address)) continue
                                     val date = cursor.getLong(dateIdx)
                                     
                                     val df = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US)
@@ -191,6 +192,8 @@ class MainActivity : FlutterFragmentActivity() {
                                     json.put("package", "sms.$address")
                                     json.put("text", body)
                                     json.put("seenAt", dateStr)
+                                    json.put("catchUp", true)
+                                    json.put("notified", true)
                                     sb.append(json.toString()).append("\n")
                                 }
                             }

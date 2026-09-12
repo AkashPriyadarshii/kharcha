@@ -4,6 +4,11 @@
 
 ## Current status
 
+**v0.2.99999 released (2026-09-12).** Realtime Notification Fix, Spam & Recharge Rejection, Batch Flood Prevention.
+- **Spam & Telecom Recharge Rejection:** Kotlin `GenericUpiParser` and Dart `_nonTransactionRe` hardened to drop recharge receipts/promos, payment requests, collect requests, failed/pending/initiated alerts, and marketing loans/spams. Neither layer defaults ambiguous texts to expense or marks requests as income.
+- **Realtime Notifications:** Fixed Android 12+ background capture by making `UpiNotificationListener` `android:exported="true"` and removing `BROADCAST_SMS` restriction on `SmsReceiver`. Elevated notification channel to `IMPORTANCE_HIGH`.
+- **Batch Drain Flood Prevention:** Draining catch-up SMS or multi-day backlog now suppresses redundant notifications via `wasNotified` / `catchUp` flags.
+
 **v0.1.9999 released (2026-09-11).** Reliability, Parsing, and Sync Hardening.
 - **Sync & Data Layer:** Range pagination (500 rows/page) implemented across `_pull()`, `_pullCategories()`, and `_pullFeatures()` in `SyncEngine`, preventing data loss on fresh device setups. Detached category transactions mark `dirty: true` and update timestamps. Autopay and recurring payment executions wrapped in atomic database transactions. Wallet balance ground truth updates flagged `dirty: true`.
 - **Capture Pipeline & Parsing:** Thread-safe SMS catch-up lines processed in-memory to prevent Kotlin file contention. Fixed income classification for "Payment received" phrasings. Isolated bare 12-digit account numbers from being falsely captured as UPI references. Precedence and regex lookaheads hardened against promotional cashback text and numeric merchant suffixes.

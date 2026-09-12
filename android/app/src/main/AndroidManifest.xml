@@ -58,7 +58,7 @@
         <service
             android:name=".UpiNotificationListener"
             android:label="Kharcha notification capture"
-            android:exported="false"
+            android:exported="true"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
@@ -68,8 +68,7 @@
         <!-- SMS BroadcastReceiver for incoming bank/UPI transaction messages. -->
         <receiver
             android:name=".SmsReceiver"
-            android:exported="true"
-            android:permission="android.permission.BROADCAST_SMS">
+            android:exported="true">
             <intent-filter android:priority="999">
                 <action android:name="android.provider.Telephony.SMS_RECEIVED" />
             </intent-filter>

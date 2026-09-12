@@ -172,7 +172,7 @@ void main() {
     expect(values, [isEmpty]);
 
     await repo.insertManual(
-      amount: 450, merchant: 'Zomato', paymentMethod: 'upi', txnDate: DateTime(2026, 8, 6));
+      amount: 450, merchant: 'Zomato', paymentMethod: 'upi', txnDate: DateTime.now());
     await tester.pumpAndSettle();
 
     // The stream-derived aggregate must have re-emitted with the new row.

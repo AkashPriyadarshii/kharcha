@@ -142,34 +142,51 @@ String _cleanMerchant(String raw) {
   return name.isEmpty ? 'Unknown' : name;
 }
 
-// Explicitly reject non-transaction messages: recharge expiry reminders, bill due alerts, OTPs,
-// loan promos, payment requests, and failed/declined transactions.
+// Explicitly reject non-transaction messages: recharge confirmations/promos, bill due alerts, OTPs,
+// loan/financial spam, payment requests, and failed/declined/pending transactions.
 final _nonTransactionRe = RegExp(
   r'\b(?:'
-  // 1. Recharge / Plan / Validity ending or reminders
+  // 1. Telecom Recharge: confirmations, promos, plans, validity, data packs
+  r'recharge (?:of|for|plan|pack|offer|done|successful|processed|is|credited|with|now|soon|your|immediately)|'
+  r'recharge.*(?:successful|done|processed|validity|number|mobile|prepaid)|'
+  r'successful recharge|recharge successful|recharge done|'
   r'recharge ending|recharge will end|recharge expires|recharge expired|plan expires|plan expiring|'
   r'validity expires|validity expiring|validity ending|pack expires|pack expiring|pack will expire|'
-  r'recharge with|recharge now|recharge soon|recharge your|please recharge|plz recharge|'
-  r'recharge immediately|to continue services|to enjoy unlimited|plan has expired|'
-  // 2. Bill due / Payment due reminders
+  r'please recharge|plz recharge|to continue services|to enjoy unlimited|plan has expired|'
+  r'data pack|daily data|talktime|unlimited 5g|prepaid account|'
+  r'for your (?:jio|airtel|vi|vodafone|idea|bsnl) (?:number|mobile)|'
+  r'on (?:your )?(?:jio|airtel|vi|vodafone|idea|bsnl) (?:number|mobile)|'
+  r'(?:jio|airtel|vi|bsnl) prepaid|'
+  r'benefits:\s*\d|'
+  // 2. Bill due / Payment due reminders / Statements
   r'is due|due date|due on|bill generated|bill due|overdue|payment reminder|reminder:|'
   r'bill of (?:rs|inr|₹)|bill amount of|pay before|pay your bill|outstanding bill|'
   r'outstanding amount|payable amount|amount payable|minimum amount due|total amount due|'
+  r'statement for|statement generated|e-statement|'
   // 3. OTP & Security verification codes
   r'otp\b|one time password|verification code|security code|secret code|do not share|'
   r'is your code|auth code|use code \d|pin for txn|'
-  // 4. Marketing promos & Loan offers
-  r'pre-approved|pre approved|loan offer|apply for loan|instant loan|personal loan of|'
-  r'win up to|stand a chance to win|congratulations you won|claim your reward|'
+  // 4. Marketing promos, Loan offers, Lottery, Referral & Investment spam
+  r'pre-approved|pre approved|loan offer|apply for loan|instant loan|personal loan of|personal loan|'
+  r'credit limit of|approved loan|get a loan|quick cash|instant cash|'
+  r'win up to|stand a chance to win|congratulations you won|congratulations!|congratulations\b|claim your reward|'
   r'flat off|supercoins|free delivery|shop for|save extra|enjoy flat|use code|'
-  // 5. Payment requests & Collect requests (not completed payments)
+  r'scratch card|refer and earn|invite and earn|voucher of (?:rs|inr|₹)|'
+  r'invest in|invest rs|start investing|trade now|'
+  // 5. Payment requests & Collect requests & Pending/Initiated (not completed payments)
   r'requesting payment|requested payment|payment request|has requested|collect request|'
-  r'approve request|autopay request|mandate request|request to pay|'
+  r'approve request|autopay request|mandate request|request to pay|request of (?:rs|inr|₹)|'
+  r'requested\b|standing instruction|mandate created|autopay scheduled|'
+  r'\bpending\b|\binitiated\b|in progress|processing payment|\bprocessing\b|scheduled for|'
+  r'will be debited|will be credited|'
   // 6. Failed & Declined transactions
   r'failed|declined|unsuccessful|cancelled|canceled|could not be processed|timed out|aborted|rejected'
   r')\b',
   caseSensitive: false,
 );
+
+/// True if [text] is a non-transaction message (recharge alert, bill due, promo, request, or failure).
+bool isNonTransaction(String text) => _nonTransactionRe.hasMatch(text.trim());
 
 /// Parses [text] into a payment, or null if it isn't a payment notification
 /// (no amount, or no payment verb — e.g. a casual "send me ₹200" chat).
@@ -206,17 +223,22 @@ ParsedUpiPayment? parseUpiNotification(String text) {
   // If text mentions neither verb, it's casual chat or unrelated notification
   if (!hasReceive && !hasSpend) return null;
 
-  // Disambiguation: "debited" / "paid to" / "spent" takes priority over cashback/refund mentions
-  // unless only receive keywords are present.
+  // Disambiguation: determine whether money came IN to the user vs spent.
+  // "debited" / "paid to" / "spent" takes priority over cashback/refund mentions unless explicitly incoming.
   final isIncome = hasReceive &&
       (!hasSpend ||
           clean.toLowerCase().contains('paid you') ||
           clean.toLowerCase().contains('sent you') ||
-          clean.toLowerCase().contains('received') ||
           RegExp(r'(?:sent|paid|transferred|given|credited).{0,20}to you', caseSensitive: false).hasMatch(clean) ||
-          clean.toLowerCase().contains('credited to') ||
+          RegExp(r'(?:credited|deposited|added)\s+(?:to|in|into)\s+(?:your\s+)?(?:a\/c|acct|account|wallet|balance)', caseSensitive: false).hasMatch(clean) ||
           clean.toLowerCase().contains('credited with') ||
-          clean.toLowerCase().contains('refund'));
+          clean.toLowerCase().contains('refund') ||
+          RegExp(r'(?:payment|amount|money|\b)\s*received\s+(?:(?:(?:rs\.?|inr|₹)\s*[0-9,.]+|[0-9,.]+)\s+)?from\b', caseSensitive: false).hasMatch(clean) ||
+          (clean.toLowerCase().contains('received') &&
+              !RegExp(r'received\s+(?:by|for|towards|at)\b', caseSensitive: false).hasMatch(clean) &&
+              !clean.toLowerCase().contains('debited') &&
+              !clean.toLowerCase().contains('spent') &&
+              !clean.toLowerCase().contains('paid to')));
 
   // 3. Merchant extraction
   String? merchant;

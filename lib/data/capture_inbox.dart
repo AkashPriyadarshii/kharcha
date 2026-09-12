@@ -93,9 +93,11 @@ Future<int> drainCaptureInbox({
 
     final ParsedUpiPayment? parsed;
     DateTime txnDate = DateTime.now();
+    var wasNotified = false;
     try {
       final map = jsonDecode(lineTrim) as Map<String, dynamic>;
       final rawText = (map['text'] ?? '') as String;
+      wasNotified = map['notified'] == true || map['catchUp'] == true;
       
       if (map['seenAt'] != null) {
         try {
@@ -104,7 +106,7 @@ Future<int> drainCaptureInbox({
     AppLogger().e('App', 'Exception caught', e, st);}
       }
       
-      if (map['parsed'] is Map<String, dynamic>) {
+      if (map['parsed'] is Map<String, dynamic> && !isNonTransaction(rawText)) {
         final p = map['parsed'] as Map<String, dynamic>;
         parsed = ParsedUpiPayment(
           amount: (p['amount'] as num?)?.toDouble() ?? 0.0,
@@ -144,7 +146,7 @@ Future<int> drainCaptureInbox({
       );
       if (inserted != null) {
         added++;
-        if (notifications != null) {
+        if (notifications != null && !wasNotified) {
           final catName = await repo.categoryNameById(inserted.categoryId);
           await notifications.showTransactionCaptured(
             amount: parsed.amount,
