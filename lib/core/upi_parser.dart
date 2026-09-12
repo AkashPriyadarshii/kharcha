@@ -62,7 +62,7 @@ final _receiveRe = RegExp(
 
 // UPI/DR or UPI/CR bank narration format: e.g. "Info: UPI/DR/123456789012/SWIGGY/HDFC"
 final _bankNarrationRe = RegExp(
-  r'UPI\/(?:DR|CR|P2A|P2M)\/(\d+)\/([A-Za-z0-9 &.\-_]+)',
+  r'UPI\/(?:DR|CR|P2A|P2M|P2P|REV)\/(\d+)\/([A-Za-z0-9 &.\-_]+)',
   caseSensitive: false,
 );
 
@@ -199,10 +199,33 @@ ParsedUpiPayment? parseUpiNotification(String text) {
 
   // 1. Amount extraction
   bool usedContextualAmount = false;
-  var amountMatch = _amountRe.firstMatch(clean);
+  final balancePrefixRe = RegExp(
+    r'\b(?:bal|balance|avl\s*bal|available\s*(?:bal|balance)|limit|credit\s*limit)[\s:=-]*$',
+    caseSensitive: false,
+  );
+
+  final allAmountMatches = _amountRe.allMatches(clean);
+  Match? amountMatch;
+  for (final m in allAmountMatches) {
+    final prefix = clean.substring(0, m.start);
+    if (!balancePrefixRe.hasMatch(prefix)) {
+      amountMatch = m;
+      break;
+    }
+  }
+  amountMatch ??= allAmountMatches.firstOrNull;
+
   String? rawAmount = amountMatch?.group(1);
   if (rawAmount == null || rawAmount.isEmpty) {
-    rawAmount = _amountTrailingRe.firstMatch(clean)?.group(1);
+    final allTrailing = _amountTrailingRe.allMatches(clean);
+    for (final m in allTrailing) {
+      final prefix = clean.substring(0, m.start);
+      if (!balancePrefixRe.hasMatch(prefix)) {
+        rawAmount = m.group(1);
+        break;
+      }
+    }
+    rawAmount ??= allTrailing.firstOrNull?.group(1);
   }
   if (rawAmount == null || rawAmount.isEmpty) {
     final ctxMatch = _contextualAmountRe.firstMatch(clean);

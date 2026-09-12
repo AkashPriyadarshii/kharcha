@@ -87,6 +87,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               amount: parseAmount(_amount.text)!,
               merchant: _merchant.text,
               categoryId: _categoryId,
+              walletId: _walletId,
               note: _note.text,
               paymentMethod: _paymentMethod,
               txnDate: _date,
@@ -212,7 +213,16 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                   firstDate: DateTime(2020),
                   lastDate: DateTime.now().add(const Duration(days: 365)),
                 );
-                if (picked != null) setState(() => _date = picked);
+                if (picked != null) {
+                  setState(() => _date = DateTime(
+                        picked.year,
+                        picked.month,
+                        picked.day,
+                        _date.hour,
+                        _date.minute,
+                        _date.second,
+                      ));
+                }
               },
             ),
             const SizedBox(height: 24),

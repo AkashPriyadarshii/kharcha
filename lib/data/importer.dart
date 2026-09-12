@@ -284,7 +284,15 @@ Future<ImportResult> importJson(File file, TransactionRepository repo) async {
           final currency = w['currency']?.toString() ?? 'INR';
           final initial = (w['initial_balance'] as num?)?.toDouble() ?? 0.0;
           if (name.isNotEmpty) {
-            await repo.insertWallet(name: name, currency: currency, initialBalance: initial);
+            final mask = w['account_mask']?.toString();
+            final bank = w['bank_name']?.toString();
+            await repo.insertWallet(
+              name: name,
+              currency: currency,
+              initialBalance: initial,
+              accountMask: mask != null && mask.isNotEmpty ? mask : null,
+              bankName: bank != null && bank.isNotEmpty ? bank : null,
+            );
           }
         }
       }

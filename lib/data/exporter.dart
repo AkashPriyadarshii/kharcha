@@ -89,6 +89,7 @@ class Exporter {
     final objectives = await _repo.watchObjectives().first;
     final wallets = await _repo.watchWallets().first;
     final categories = await _repo.watchCategories().first;
+    final catMap = {for (final c in categories) c.id: c.name};
 
     final backup = {
       'app': 'Kharcha',
@@ -131,6 +132,7 @@ class Exporter {
           {
             'merchant': r.merchant,
             'amount': r.amount,
+            'category': r.categoryId != null ? (catMap[r.categoryId] ?? '') : '',
             'period': r.period,
             'next_due': r.nextDue.toIso8601String(),
             'active': r.active,
@@ -151,6 +153,8 @@ class Exporter {
             'name': w.name,
             'currency': w.currency,
             'initial_balance': w.initialBalance,
+            'account_mask': w.accountMask ?? '',
+            'bank_name': w.bankName ?? '',
           }
       ],
       'custom_categories': [

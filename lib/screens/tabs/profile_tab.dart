@@ -387,9 +387,14 @@ class ProfileTab extends ConsumerWidget {
 
   Future<void> _export(BuildContext context, WidgetRef ref, {required bool csv, bool anonymize = false}) async {
     try {
-      // Always land in the user's Downloads folder (Android scoped storage
-      // gives it without any permission on API 29+).
-      final dir = await getDownloadsDirectory() ??
+      Directory? dir;
+      if (Platform.isAndroid) {
+        final publicDownload = Directory('/storage/emulated/0/Download');
+        if (publicDownload.existsSync()) {
+          dir = publicDownload;
+        }
+      }
+      dir ??= await getDownloadsDirectory() ??
           await getApplicationDocumentsDirectory();
       final stamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
       final File file;

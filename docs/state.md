@@ -4,6 +4,13 @@
 
 ## Current status
 
+**v0.2.910 released (2026-09-12).** Code Audit Hardening across Capture, Sync, Drift SQLite, and Storage Layers.
+- **Native Pipeline & Drift Schema Integrity:** Fixed rule regex matching in `KharchaDatabaseHelper.kt`, removed non-existent `updated_at` column in `wallets` table insert, and stored epoch timestamps as `Long` integers.
+- **Disambiguation & Precedence:** Refined `CREDIT_RE` and `DEBIT_RE` logic in Kotlin/Dart so merchant credits in debited SMS are not marked income. Implemented balance keyword exclusion so available balance does not override transaction amount. Added P2P and REV narration formats to bank SMS parser.
+- **Multi-Tenant Sync & FK Constraints:** Added `user_id` tenant filter to `_pull` and `_pullFeatures` in `SyncEngine`, and restricted 23505 retry recovery to budgets. Foreign key cascades detached prior to category deletion.
+- **Sync Field Preservation & Performance:** Persisted `accountMask`, `emoji`, and `needsReview` in `_merge` and `_insertFromRemote`. Clamped month-end advances in `processAutopay` via `nextDueAfter` and capped `monthlyTrend` table scans with cutoff date filter.
+- **UI & Export Fixes:** Allowed income category creation from Income tab; resolved public Android `Downloads` directory for CSV/JSON exports; preserved time component in date picker; preserved wallet selection on transaction updates.
+
 **v0.2.99999 released (2026-09-12).** Realtime Notification Fix, Spam & Recharge Rejection, Batch Flood Prevention.
 - **Spam & Telecom Recharge Rejection:** Kotlin `GenericUpiParser` and Dart `_nonTransactionRe` hardened to drop recharge receipts/promos, payment requests, collect requests, failed/pending/initiated alerts, and marketing loans/spams. Neither layer defaults ambiguous texts to expense or marks requests as income.
 - **Realtime Notifications:** Fixed Android 12+ background capture by making `UpiNotificationListener` `android:exported="true"` and removing `BROADCAST_SMS` restriction on `SmsReceiver`. Elevated notification channel to `IMPORTANCE_HIGH`.

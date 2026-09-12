@@ -77,11 +77,7 @@ object TransactionNotifier {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
-            val smallIcon = if (context.applicationInfo.icon != 0) {
-                context.applicationInfo.icon
-            } else {
-                R.drawable.ic_launcher_foreground
-            }
+            val smallIcon = R.drawable.ic_launcher_foreground
 
             val notification = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(smallIcon)
