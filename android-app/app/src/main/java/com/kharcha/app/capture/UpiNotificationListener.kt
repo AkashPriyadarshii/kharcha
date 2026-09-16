@@ -9,30 +9,47 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 /**
- * Push-capture path (GPay/PhonePe/any UPI app notification).
- * Only inspects the title + text extras, never full content.
+ * Push-capture path. Only inspects the title + text extras, never full content.
+ *
+ * Audit #4: (1) previously ingested EVERY app's notifications — a WhatsApp
+ * message with an amount would be parsed as a payment. Now allowlisted to UPI
+ * apps + common banks (sender package feeds dedupe's cross-channel window, so
+ * extras don't matter). (2) `!isOngoing` gate dropped: GPay posts its payment
+ * confirmation as a sticky/ongoing notification; skipping it lost captures.
+ * Dedupe in Rust handles any repeats.
  */
 class UpiNotificationListener : NotificationListenerService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    // ponytail: static allowlist, one line per package. Configurable later if
+    // real-world captures show a missing app (add when observed, not before).
+    private val allowlist = setOf(
+        "com.google.android.apps.nbu.paisa.user", // GPay
+        "com.phonepe.app",                        // PhonePe
+        "in.org.npci.upiapp",                     // BHIM
+        "com.cred.app",                           // CRED
+        "com.paytm.app",                          // Paytm
+        "com.netone.start",                       // Paytm (legacy pkg)
+        "com.amazon.mPay.android",                // Amazon Pay
+    )
+
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         super.onNotificationPosted(sbn)
+        if (sbn.packageName !in allowlist) return
         val extras = sbn.notification?.extras ?: return
-        if (!sbn.isOngoing) {
-            val title = extras.getCharSequence("android.title")?.toString() ?: return
-            val text = extras.getCharSequence("android.text")?.toString() ?: ""
-            val body = "$title $text"
-            if (body.isBlank()) return
-            val app = applicationContext as KharchaApp
-            scope.launch {
-                CaptureEngine.ingest(
-                    body = body,
-                    sender = sbn.packageName,
-                    timestampMs = System.currentTimeMillis(),
-                    dao = app.database.captureDao(),
-                    txnDao = app.database.dao(),
-                )
-            }
+        val title = extras.getCharSequence("android.title")?.toString() ?: return
+        val text = extras.getCharSequence("android.text")?.toString() ?: ""
+        val body = "$title $text"
+        if (body.isBlank()) return
+        val app = applicationContext as KharchaApp
+        scope.launch {
+            CaptureEngine.ingest(
+                body = body,
+                sender = sbn.packageName,
+                timestampMs = System.currentTimeMillis(),
+                dao = app.database.captureDao(),
+                txnDao = app.database.dao(),
+            )
         }
     }
 }

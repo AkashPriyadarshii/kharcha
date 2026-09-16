@@ -12,7 +12,8 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        // app2 while both apps coexist — same ID would silently replace the legacy Flutter app.
+        // Same ID as the legacy Flutter app ON PURPOSE: sideloading replaces it.
+        // There is no DB migration path — the Flutter Drift DB is abandoned, v0.1 starts fresh.
         applicationId = "com.kharcha.app"
         minSdk = 32
         targetSdk = 36
