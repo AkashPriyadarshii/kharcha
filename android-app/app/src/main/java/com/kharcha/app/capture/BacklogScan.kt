@@ -8,7 +8,8 @@ import kotlinx.coroutines.withContext
 data class BacklogResult(val inserted: Int, val duplicates: Int, val skipped: Int)
 
 /**
- * Inbox import through CaptureEngine.ingest — same funnel as live SMS.
+ * Pre-install bank SMS import through CaptureEngine.ingest — the same funnel as
+ * live SMS — so spam/parse/dedupe/wallet logic lives in exactly one place.
  * Onboarding calls scan() once (flagged); Settings rescan calls scan() directly.
  */
 // ponytail: per-message ingest reloads the txn list each call; switch to the
