@@ -1,20 +1,23 @@
 package com.kharcha.app.ui
 
+import android.content.ContentValues
 import android.content.Context
+import android.os.Build
 import android.os.Environment
+import android.provider.MediaStore
 import android.widget.Toast
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import com.kharcha.app.KharchaApp
+import com.kharcha.app.db.Category
 import com.kharcha.app.db.TransactionRow
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -22,40 +25,74 @@ import java.util.Locale
 
 private val exportDateFmt = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.ENGLISH)
 
-/** CSV export to public Downloads — MediaStore-free (minSdk 32, API 29+ scoped storage). */
+/** RFC-4180 field: wrap in quotes, double internal quotes. */
+private fun csvField(raw: String): String = "\"${raw.replace("\"", "\"\"")}\""
+
+/** Prefix with ' so spreadsheet apps never execute merchant/note text as formulas. */
+private fun csvSafeText(raw: String): String {
+    val guarded = if (raw.firstOrNull() in listOf('=', '+', '-', '@', '\t')) "'$raw" else raw
+    return csvField(guarded)
+}
+
+/** CSV export to Downloads via MediaStore (scoped storage, API 29+). Falls back to legacy file pre-Q. */
 @Composable
-fun ExportButton(vm: AppViewModel, modifier: Modifier = Modifier) {
+fun ExportButton(
+    vm: AppViewModel,
+    categories: List<Category>,
+    modifier: Modifier = Modifier,
+) {
     val context = LocalContext.current
-    val collect = vm.transactions.collectAsState().value
+    val txns = vm.transactions.collectAsState().value
+    val scope = rememberCoroutineScope()
     Button(modifier = modifier, onClick = {
-        CoroutineScope(Dispatchers.IO).launch {
-            val ok = exportCsv(context, collect)
-            kotlinx.coroutines.withContext(Dispatchers.Main) {
-                Toast.makeText(context, if (ok) "Exported to Downloads/Kharcha" else "Export failed", Toast.LENGTH_SHORT).show()
+        scope.launch(Dispatchers.IO) {
+            val result = exportCsv(context, txns, categories)
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, result.message, Toast.LENGTH_SHORT).show()
             }
         }
     }) { Text("Export CSV") }
 }
 
-private fun exportCsv(context: Context, txns: List<TransactionRow>): Boolean {
+data class ExportResult(val ok: Boolean, val message: String)
+
+private fun exportCsv(context: Context, txns: List<TransactionRow>, categories: List<Category>): ExportResult {
+    val catName = categories.associate { it.id to it.name }
     return try {
-        val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-        val file = File(dir, "kharcha-${System.currentTimeMillis()}.csv")
         val sb = StringBuilder()
-        sb.append("date,amount,merchant,category,note,upiRef,income,needsReview\n")
+        sb.append("date,amount_rupees,merchant,category,note,upi_ref,income,payment_method,needs_review\n")
         for (t in txns) {
+            val rupees = "%d.%02d".format(t.amountPaise / 100, kotlin.math.abs(t.amountPaise % 100))
             sb.append(exportDateFmt.format(Date(t.timestampMs))).append(',')
-                .append(t.amountPaise / 100.0).append(',')
-                .append("\"${t.merchant.replace("\"", "\\\"")}\"").append(',')
-                .append(t.categoryId ?: "").append(',')
-                .append("\"${(t.note ?: "").replace("\"", "\\\"")}\"").append(',')
-                .append(t.upiRef ?: "").append(',')
-                .append(t.isIncome).append(',')
+                .append(rupees).append(',')
+                .append(csvSafeText(t.merchant)).append(',')
+                .append(csvField(t.categoryId?.let { catName[it] } ?: "")).append(',')
+                .append(csvSafeText(t.note ?: "")).append(',')
+                .append(csvField(t.upiRef ?: "")).append(',')
+                .append(if (t.isIncome) "income" else "expense").append(',')
+                .append(csvField(t.paymentMethod ?: "")).append(',')
                 .append(t.needsReview).append('\n')
         }
-        file.writeText(sb.toString())
-        true
+        val name = "kharcha-${System.currentTimeMillis()}.csv"
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val values = ContentValues().apply {
+                put(MediaStore.Downloads.DISPLAY_NAME, name)
+                put(MediaStore.Downloads.MIME_TYPE, "text/csv")
+                put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+            }
+            val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                ?: return ExportResult(false, "Export failed: storage unavailable")
+            context.contentResolver.openOutputStream(uri)?.use { it.write(sb.toString().toByteArray()) }
+                ?: return ExportResult(false, "Export failed: could not write file")
+        } else {
+            @Suppress("DEPRECATION")
+            val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            File(dir, name).writeText(sb.toString())
+        }
+        ExportResult(true, "Exported ${txns.size} rows to Downloads/$name")
+    } catch (e: SecurityException) {
+        ExportResult(false, "Export failed: storage permission denied")
     } catch (e: Exception) {
-        false
+        ExportResult(false, "Export failed: ${e.message ?: "unknown error"}")
     }
 }

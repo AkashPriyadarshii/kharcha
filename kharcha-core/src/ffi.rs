@@ -25,7 +25,14 @@ pub fn parse_capture(sms_body: String, sender: String, timestamp_ms: i64) -> Opt
 
 #[uniffi::export]
 pub fn parse_captures(items: Vec<CaptureInput>) -> Vec<Option<ParsedTransaction>> {
-    items.iter().map(|i| engine::parse(&i.body, &i.sender, i.timestamp_ms)).collect()
+    // Route through engine::parse_batch, not a bare map (audit): the batch
+    // clamps at MAX_BATCH_ITEMS so a hostile 1M-item drain can't map unbounded
+    // Vec × 16KB bodies into an OOM; tail items come back None, order kept.
+    let batch: Vec<(&str, &str, i64)> = items
+        .iter()
+        .map(|i| (i.body.as_str(), i.sender.as_str(), i.timestamp_ms))
+        .collect();
+    engine::parse_batch(&batch)
 }
 
 #[uniffi::export]

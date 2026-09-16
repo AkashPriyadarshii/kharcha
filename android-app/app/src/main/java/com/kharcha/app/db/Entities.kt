@@ -41,6 +41,8 @@ data class TransactionRow(
     val sender: String? = null,
     /** Set when a bank/card wallet is identified from the message. */
     val walletId: Long? = null,
+    /** Manual-entry payment method: UPI | Cash | Card | Wallet. Null = unknown/captured. */
+    @ColumnInfo(defaultValue = "NULL") val paymentMethod: String? = null,
 )
 
 @Entity(tableName = "wallets")

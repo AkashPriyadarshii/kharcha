@@ -51,8 +51,11 @@ fn compiled() -> &'static Regex {
             r#"flat off|supercoins|free delivery|shop for|save extra|enjoy flat|use code|"#,
             r#"scratch card|refer and earn|invite and earn|voucher of (?:rs|inr|₹)|"#,
             // Premortem: "received Rs 100 cashback voucher" promos carry receive
-            // verbs but move no money. Any voucher mention voids the message.
-            r#"voucher|"#,
+            // verbs but move no money. Plain "voucher" is NOT enough to void a
+            // message (audit #6): "Paid ₹200 to Swiggy using voucher" and "INR
+            // 500 debited for Amazon voucher purchase" are real spends. Only
+            // voucher tied to promo context gets rejected.
+            r#"received[ \t\n\x0B\f\r]*(?:a |the )?(?:rs\.?|inr|₹)?[ \t\n\x0B\f\r]*[0-9,.]*[ \t\n\x0B\f\r]*cashback[ \t\n\x0B\f\r]*voucher|(?:win|won|claim|earn|grab|get)[ \t\n\x0B\f\r]*.*voucher|voucher[ \t\n\x0B\f\r]*(?:of|worth|credited|added|received)|(?:credited|received|added)[ \t\n\x0B\f\r]*.*?voucher|"#,
             r#"invest in|invest rs|start investing|trade now|"#,
             // 5. Payment requests & Collect requests & Pending/Initiated (not completed payments)
             r#"requesting payment|requested payment|payment request|has requested|collect request|"#,
@@ -120,7 +123,10 @@ mod tests {
             "Transaction of Rs 500 initiated.",
             "Payment of Rs 800 in progress.",
             "Pre-approved personal loan of ₹5,00,000 at 10.5% interest. Apply now.",
+            // Promos that mention voucher WITHOUT payment context.
             "Congratulations! You have won Rs 500 cashback voucher on PhonePe. Claim now.",
+            "Received Rs 100 cashback voucher from Paytm. Use code VOUCH10.",
+            "You have won Rs 500 cashback voucher. Claim now.",
             "Win up to Rs 10,000 on Cred. Spin now.",
             "Your credit limit of Rs 75,000 is approved. Click to activate.",
             // "Earn Rs 500 by referring..." carries no spam keyword — Dart nulls
@@ -138,6 +144,9 @@ mod tests {
             "₹450 paid to Swiggy using UPI UPI Ref 123456789012",
             "₹5000 received from Akash. UPI Ref 123456789012",
             "Paid Rs 150 on Swiggy. Earn up to Rs 20 cashback on next order.",
+            // Audit #6: a voucher mention in a REAL payment is not spam.
+            "Paid Rs 200 to Swiggy using voucher. UPI Ref 123456789012",
+            "INR 500.00 debited for Amazon voucher purchase. UPI Ref 987654321012",
             "INR 899.00 refunded to your A/c XX1234 from Amazon. UPI Ref: 102938475610",
         ] {
             assert!(!is_non_transaction(s), "{s}");

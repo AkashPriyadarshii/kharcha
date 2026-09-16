@@ -21,9 +21,13 @@ Repository = `android-app/` (Kotlin Compose) + `kharcha-core/` (Rust) only.
   Compose BOM 2025.10, Material3 ink-green on warm paper. Room DB (categories
   1–12 + income, ~55 builtin rules, transactions, wallets, budgets).
   Capture: `SmsReceiver` + `UpiNotificationListener` → `CaptureEngine.ingest`
-  (spam/parse/dedupe in Rust, app only stores). Screens: Home (month totals,
-  wallets, budgets, recent), All transactions, Add sheet, Edit sheet
-  (teach-category writes a learned rule), CSV export, app lock (biometric).
+  (spam/parse/dedupe in Rust, app only stores). Listener allowlisted to UPI
+  apps + banks (GPay/PhonePe/BHIM/CRED/Paytm/Amazon Pay) — no arbitrary-app
+  parsing; `isOngoing` gate removed (GPay posts confirmations as sticky).
+  Screens: Home (month totals, wallets, budgets, recent), All transactions,
+  Add sheet, Edit sheet (teach-category writes a learned rule), CSV export,
+  app lock (biometric OR device PIN — `BIOMETRIC_STRONG |
+  DEVICE_CREDENTIAL` so fingerprint-less phones can't be locked out).
   `applicationId com.kharcha.app` — the live app, overwrites the old Kotlin Compose
   install in place (same signing identity, debug-signed).
 - Bindings committed; `.so` (arm64) built from Desktop `kharcha-core` dist.
@@ -34,6 +38,17 @@ Repository = `android-app/` (Kotlin Compose) + `kharcha-core/` (Rust) only.
 Phase 0–1 (kharcha-core crate + UniFFI) merged in PR #4. Phase 2 (Compose
 rewrite) began on `feat/compose-rewrite`; parity features (wallets, budgets,
 export, lock, edit/learn) landed; swap-over deletion folded into v0.1.0.
+
+**Dedupe semantics (since audit-hardening, PR #6):** content-hash gate is
+window-bound (±5 min, same as the amount window) — same content hours apart
+is a genuine repeat order, captured; ref gate compares case-insensitively
+(`t2408…` SMS vs `T2408…` push = one payment); a skip that would backfill a
+ref now needs hash equality or both-sides-ref-less legacy evidence, so
+back-to-back same-amount taps insert. Voucher spam kill narrowed to promo
+context — "Paid Rs 200 using voucher" and "debited for voucher purchase"
+parse as spends. Input cap 16 KB enforced in the parser itself; batch
+calls clamp at `MAX_BATCH_ITEMS`. `uniffiEnsureInitialized` failure degrades
+to a logged error (no boot loop on a corrupt .so).
 
 Compose app history below is retained for the changelog / release record only —
 no longer part of the product. Next: device smoke test (sideload APK, SMS +
