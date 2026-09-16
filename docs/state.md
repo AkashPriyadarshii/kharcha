@@ -41,6 +41,11 @@ Repository = `android-app/` (Kotlin Compose) + `kharcha-core/` (Rust) only.
   NotificationListenerService (gated on user opt-in via `UserPrefs.listenerWanted`).
 - Bindings committed; `.so` (arm64) built from Desktop `kharcha-core` dist.
   `buildKharchaCore` gradle task disabled — dist/ is the source of truth.
+- **Backlog import (`feat/backlog-scan`, unmerged).** `BacklogScan` runs once
+  after onboarding (flag `backlog_scanned`): last-90-days inbox, Rs/INR/₹ SQL
+  prefilter, 500 cap, every message through `CaptureEngine.ingest(quiet=true)`
+  so per-insert buzz stays silent; Toast reports the count. Skips without SMS
+  permission, never repeats on intro re-run.
 
 **Prior state (historical):**
 
