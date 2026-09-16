@@ -102,6 +102,7 @@ object CaptureEngine {
                     payment.balancePaise?.let { txnDao.updateWalletBalance(walletId, it) }
                 }
                 UserPrefs.stampCapture(appContext)
+                CaptureNotify.inserted(appContext, payment.merchant, payment.amountPaise, null)
                 IngestResult.Inserted(txnId)
             }
             is CaptureDecision.Skip -> {
