@@ -44,7 +44,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         viewModelScope.launch {
-            dao.allTransactions().collect { dataLoaded.value = true }
+            dao.allTransactions().collect {
+                dataLoaded.value = true
+                refreshTotals()
+                refreshBudgetSpends()
+            }
         }
     }
 
