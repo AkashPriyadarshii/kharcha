@@ -4,6 +4,16 @@
 
 ## Current status
 
+**⚠ Conversion in progress — Rust + Kotlin, fully offline, no Supabase.** Branch `feat/kharcha-core`.
+
+**Phase 1 — `kharcha-core` pure-Rust crate done (2026-09-12, unmerged):**
+- `src/money.rs` — `parse_amount` (Dart-faithful, 2dp boundary rounding). 3 tests.
+- `src/categorizer.rs` — `Classifier` struct: rules pre-compiled once (regex), sorted learned-first then longest-pattern, `NON_ALNUM_RE` static. Replacement for free `categorize()`. 4 tests.
+- `src/upi_parser.rs` — single unified parser (replaces Dart `upi_parser.dart` + Kotlin `GenericUpiParser.kt` — kills the divergence bugs). `fancy-regex 0.14` for Dart lookahead port (patterns without lookaround still use the `regex` linear path). 2026 gaps closed: EMI-promo rejection, numeric-VPA masking (`UPI User (last4)`), UPI Lite (top-ups rejected, Lite debits captured). 10 test groups.
+- **17/17 tests green, zero warnings.** Not yet used by any app (no FFI yet).
+
+Deferred (audit-flagged, rejected on YAGNI): paise-i64 storage (f64 parity locked by goldens, DB layer decides later), TRAI DLT sender-ID whitelist (no sender in notification path), Aho-Corasick/RegexSet (precompile already fixed hot path, µs figures overstated), UniFFI batch API (add at FFI phase).
+
 **v0.2.910 released (2026-09-12).** Code Audit Hardening across Capture, Sync, Drift SQLite, and Storage Layers.
 - **Native Pipeline & Drift Schema Integrity:** Fixed rule regex matching in `KharchaDatabaseHelper.kt`, removed non-existent `updated_at` column in `wallets` table insert, and stored epoch timestamps as `Long` integers.
 - **Disambiguation & Precedence:** Refined `CREDIT_RE` and `DEBIT_RE` logic in Kotlin/Dart so merchant credits in debited SMS are not marked income. Implemented balance keyword exclusion so available balance does not override transaction amount. Added P2P and REV narration formats to bank SMS parser.
@@ -101,6 +111,14 @@
 - [x] **Pennywise Automations**: Ported Bank/Brand Logo fetching via Clearbit+offline Hex (added `BrandLogo`), auto-creation of missing Wallets & balance tracking in `insertCaptured()`, and extensive categorization rules to `_seedRules()`. All tests passing.
 
 ## Next up
+
+**Conversion track (branch `feat/kharcha-core`, reordered by owner 2026-09-12):**
+1. **UniFFI** kharcha-core as-is (UPI parser + money + categorizer) — Compose dev starts parsing day 1.
+2. **Compose rewrite** — capture layer + screens; at parity it replaces Flutter, deletion folds in (repo = Kotlin + Rust).
+3. **Release 1** — app live, kt+rs only.
+4. **Banks data-driven** — HDFC/SBI/ICICI + engine now, remaining 12 only when live captures demand.
+
+Legacy app remains on `main` while conversion proceeds.
 
 1. On-device verify v0.2.7 — sideload `kharcha-armv8a-release.apk` (28.3 MB) from v0.2.7 release. Key checks: send a "recharge ending plz recharge with 196rs" SMS → confirm it does NOT appear as an expense; send a real UPI debit SMS → confirm it DOES capture; onboarding Step 1 shows both notification listener and SMS optional paths.
 2. Apply migration 0005 in Supabase SQL Editor if not yet done (needed for `bug_reports` table — in-app bug reporting).
