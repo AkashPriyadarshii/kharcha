@@ -41,6 +41,11 @@ Repository = `android-app/` (Kotlin Compose) + `kharcha-core/` (Rust) only.
   NotificationListenerService (gated on user opt-in via `UserPrefs.listenerWanted`).
 - Bindings committed; `.so` (arm64) built from Desktop `kharcha-core` dist.
   `buildKharchaCore` gradle task disabled — dist/ is the source of truth.
+- **Settings pack (`feat/settings-pack`, unmerged).** Rules/Categories/Accounts
+  manager screens; theme mode + Monet toggle; lock grace + FLAG_SECURE;
+  daily summary worker (inexact alarm, boot re-arm, time picker); wipe +
+  direct log export. Category hide + wallet archive leave pickers (DB v4).
+  NOTE: third claimant on 3→4 — merge order decides the rebase chain.
 
 **Prior state (historical):**
 

@@ -40,7 +40,7 @@ fun BudgetSheet(
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 32.dp)) {
             Text("Set monthly budget", style = MaterialTheme.typography.titleLarge)
             LazyRow(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp)) {
-                items(categories.filter { !it.isIncome }, key = { it.id }) { cat ->
+                items(categories.filter { !it.isIncome && !it.isHidden }, key = { it.id }) { cat ->
                     FilterChip(selected = selectedId == cat.id, onClick = { selectedId = cat.id }, label = { Text("${cat.emoji} ${cat.name}") })
                 }
             }
