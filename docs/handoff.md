@@ -17,6 +17,7 @@
 ## Known gotchas
 
 - **rustc 1.96.0 removed adjacent string-literal concatenation** even in edition 2021 (`"a" "b"` is an error). Always `concat!` with commas between literals.
+- **UniFFI 0.32 is proc-macro only, no UDL:** `#[uniffi::export]` + `uniffi::setup_scaffolding!()`; records/enums/objects need `#[derive(uniffi::Record / Enum / Object)]`; object impl must be unqualified (`impl Classifier`, not `impl crate::Classifier`); `cargo install uniffi --features=cli` fails (feature is a dependency flag only) — the bindgen CLI ships as the `uniffi` crate's `[[bin]]`; repo-local regen path = `cargo build --bin uniffi-bindgen`, then `target/debug/uniffi-bindgen.exe generate --library target/debug/kharcha_core.dll --language kotlin --out-dir bindings/kotlin --no-format`. `bindings/` is gitignored (uniffi Gradle plugin regenerates from source in Phase 2). ktlint missing on Windows → always `--no-format`.
 - **fancy-regex 0.14 API differs from `regex`:** `captures()` → `Result<Option<Captures>>`, `is_match()` → `Result<bool>`, `find_iter`/`captures_iter` items are `Result` — `.ok().flatten()` everywhere. Captures type is `fancy_regex::Captures`.
 - **Money stays f64** in `kharcha-core` for Dart parity (goldens lock it). Paise-i64 is a DB-layer decision, deferred.
 - **Rate caps (in-app): 1 auto-check/day + 3 manual checks/hour** per device.
