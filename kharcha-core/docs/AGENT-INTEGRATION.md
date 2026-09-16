@@ -32,7 +32,7 @@ unrequested abstractions. Mark real shortcuts with `// ponytail:`.
 ## Adding a v1.x bank backend
 
 Shape is reserved in `engine::parse`: specific-sender backends go AHEAD of
-the generic parser, first non-None wins (pennywise factory order is the
+the generic parser, first non-None wins (the legacy app factory order is the
 reference: `../pennywiseai-tracker/parser-core/.../BankParserFactory.kt`).
 One backend = one module + its sender gate + corpus rows from the upstream
 bank tests. Never reorder existing backends without stating why.

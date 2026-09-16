@@ -13,11 +13,11 @@ android {
 
     defaultConfig {
         // app2 while both apps coexist — same ID would silently replace the legacy Flutter app.
-        applicationId = "com.kharcha.app2"
+        applicationId = "com.kharcha.app"
         minSdk = 32
         targetSdk = 36
-        versionCode = 300
-        versionName = "3.0.0"
+        versionCode = 1
+        versionName = "0.1.0"
         ndk { abiFilters += listOf("arm64-v8a") }
     }
 

@@ -4,12 +4,12 @@
 //!
 //! v0.1: sender-aware dispatch SHAPE with the generic parser as the only
 //! backend. v1.x plugs bank backends ahead of it without changing this
-//! signature (pennywise `BankParserFactory` order: specific senders first,
+//! signature (legacy Kotlin parser `BankParserFactory` order: specific senders first,
 //! generic fallback last).
 
 use crate::parser::{parse_upi_notification, ParsedPayment};
 
-/// A parsed capture with provenance. Mirrors pennywise `ParsedTransaction`:
+/// A parsed capture with provenance. Mirrors the legacy Kotlin parser's `ParsedTransaction`:
 /// sender + timestamp travel WITH the payment, not in a sidecar inbox line.
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct ParsedTransaction {

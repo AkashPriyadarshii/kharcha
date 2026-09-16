@@ -49,11 +49,11 @@ Everyone (general audience; contains no objectionable content)
 | Permission | Justification |
 |---|---|
 | `BIND_NOTIFICATION_LISTENER_SERVICE` | Auto-capture UPI payment notifications (core feature; on-device) |
-| `POST_NOTIFICATIONS` | Daily 9PM + Sunday weekly spend summaries (from flutter_local_notifications) |
-| `USE_BIOMETRIC` / `USE_FINGERPRINT` | Optional app lock (from local_auth) |
+| `POST_NOTIFICATIONS` | Daily 9PM + Sunday weekly spend summaries (from local notifications (Android NotificationManager)) |
+| `USE_BIOMETRIC` / `USE_FINGERPRINT` | Optional app lock (from BiometricPrompt) |
 | `INTERNET` | Supabase sync (debug/profile variants; release also needs it for sync) |
 
-> Note: `INTERNET` appears in debug/profile manifests via Flutter; confirm the
+> Note: `INTERNET` appears in debug/profile manifests via Kotlin Compose; confirm the
 > release merged manifest includes it before final submission (sync needs it).
 
 ## Data safety form (Play)
