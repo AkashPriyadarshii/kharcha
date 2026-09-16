@@ -41,6 +41,8 @@ data class TransactionRow(
     val sender: String? = null,
     /** Set when a bank/card wallet is identified from the message. */
     val walletId: Long? = null,
+    /** Soft delete flag. Deleted rows hide everywhere; Trash restores or purges. */
+    @ColumnInfo(defaultValue = "0") val isDeleted: Boolean = false,
     /** Manual-entry payment method: UPI | Cash | Card | Wallet. Null = unknown/captured. */
     @ColumnInfo(defaultValue = "NULL") val paymentMethod: String? = null,
 )
