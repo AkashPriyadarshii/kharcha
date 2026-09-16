@@ -4,7 +4,11 @@ import android.Manifest
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.Context
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.Settings
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -58,6 +62,7 @@ import androidx.navigation.compose.rememberNavController
 import com.kharcha.app.ui.AddSheet
 import com.kharcha.app.ui.AllTransactionsScreen
 import com.kharcha.app.ui.AppLock
+import com.kharcha.app.ui.ConsoleLogScreen
 import com.kharcha.app.ui.OnboardingScreen
 import com.kharcha.app.ui.ReportsScreen
 import com.kharcha.app.ui.SettingsScreen
@@ -81,13 +86,17 @@ class MainActivity : FragmentActivity() {
     private val enrolled = mutableStateOf(true)
     private val smsGranted = mutableStateOf(false)
     private val listenerEnabled = mutableStateOf(false)
+    private val notifGranted = mutableStateOf(true)
 
     private val smsLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { refreshCaptureState() }
+    private val notifLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { refreshCaptureState() }
 
     /** Compose-readable capture state for the onboarding card. */
     val smsState get() = smsGranted
     val listenerState get() = listenerEnabled
+    val notifState get() = notifGranted
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -150,20 +159,53 @@ class MainActivity : FragmentActivity() {
         refreshCaptureState()
     }
 
+    private val batteryIgnored = mutableStateOf(true)
+
+    val batteryState get() = batteryIgnored
+
     fun refreshCaptureState() {
         smsGranted.value =
             checkSelfPermission(Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED &&
                 checkSelfPermission(Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
         listenerEnabled.value = isNotificationListenerOn()
+        notifGranted.value = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        } else true
+        val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager
+        batteryIgnored.value = pm?.isIgnoringBatteryOptimizations(packageName) ?: true
     }
 
     fun requestSms() {
         smsLauncher.launch(arrayOf(Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS))
     }
 
+    fun requestNotifications() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
     fun openListenerSettings() {
         UserPrefs.setListenerWanted(this, true)
         startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+    }
+
+    fun openAppSettings() {
+        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = Uri.fromParts("package", packageName, null)
+        }
+        startActivity(intent)
+    }
+
+    fun requestIgnoreBatteryOptimization() {
+        try {
+            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                data = Uri.parse("package:$packageName")
+            }
+            startActivity(intent)
+        } catch (_: Exception) {
+            startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+        }
     }
 
     private fun isNotificationListenerOn(): Boolean {
@@ -221,15 +263,23 @@ private fun App() {
 
     LaunchedEffect(Unit) { vm.refreshAll() }
 
+    val captureSetup = CaptureSetup(
+        smsGranted = activity?.smsState?.value ?: false,
+        listenerEnabled = activity?.listenerState?.value ?: false,
+        notificationsAllowed = activity?.notifState?.value ?: true,
+    )
+    val lockEnrollable = activity?.let { AppLock.canAuthenticate(it) } ?: true
+
     if (showOnboarding) {
         OnboardingScreen(
-            captureSetup = CaptureSetup(
-                smsGranted = activity?.smsState?.value ?: false,
-                listenerEnabled = activity?.listenerState?.value ?: false,
-            ),
-            lockEnrollable = activity?.let { AppLock.canAuthenticate(it) } ?: true,
+            captureSetup = captureSetup,
+            batteryIgnored = activity?.batteryState?.value ?: true,
+            lockEnrollable = lockEnrollable,
             onRequestSms = { activity?.requestSms() },
+            onRequestNotifications = { activity?.requestNotifications() },
             onOpenListenerSettings = { activity?.openListenerSettings() },
+            onOpenAppSettings = { activity?.openAppSettings() },
+            onRequestIgnoreBattery = { activity?.requestIgnoreBatteryOptimization() },
             onDone = { showOnboarding = false },
         )
         return
@@ -242,12 +292,6 @@ private fun App() {
             else vm.clearUndo()
         }
     }
-
-    val captureSetup = CaptureSetup(
-        smsGranted = activity?.smsState?.value ?: false,
-        listenerEnabled = activity?.listenerState?.value ?: false,
-    )
-    val lockEnrollable = activity?.let { AppLock.canAuthenticate(it) } ?: true
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
@@ -301,11 +345,21 @@ private fun App() {
                     vm,
                     categories,
                     captureSetup = captureSetup,
+                    batteryIgnored = activity?.batteryState?.value ?: true,
                     lockEnrollable = lockEnrollable,
                     onRequestSms = { activity?.requestSms() },
+                    onRequestNotifications = { activity?.requestNotifications() },
                     onOpenListenerSettings = { activity?.openListenerSettings() },
+                    onOpenAppSettings = { activity?.openAppSettings() },
+                    onRequestIgnoreBattery = { activity?.requestIgnoreBatteryOptimization() },
                     onRunIntro = { showOnboarding = true },
                     onShareLog = { activity?.let { CrashLog.export(it) } },
+                    onOpenConsoleLog = { nav.navigate(Tab.ROUTE_CONSOLE_LOG) { launchSingleTop = true } },
+                )
+            }
+            composable(Tab.ROUTE_CONSOLE_LOG) {
+                ConsoleLogScreen(
+                    onBack = { nav.popBackStack() },
                 )
             }
         }
@@ -342,6 +396,7 @@ private object Tab {
     const val ROUTE_TXN = "transactions"
     const val ROUTE_REPORTS = "reports"
     const val ROUTE_SETTINGS = "settings"
+    const val ROUTE_CONSOLE_LOG = "console_log"
 }
 
 @Composable

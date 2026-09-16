@@ -61,7 +61,11 @@ private val dateFmt = SimpleDateFormat("d MMM", Locale.ENGLISH)
 private val dayKeyFmt = SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH)
 
 /** Capture permission state for the onboarding card. Null = fully set up (card hidden). */
-data class CaptureSetup(val smsGranted: Boolean, val listenerEnabled: Boolean)
+data class CaptureSetup(
+    val smsGranted: Boolean,
+    val listenerEnabled: Boolean,
+    val notificationsAllowed: Boolean = true,
+)
 
 /** Today / Yesterday / 12 Sep — relative, glanceable. */
 fun relativeDay(ts: Long): String {
@@ -196,7 +200,7 @@ fun HomeScreen(
             if (budgets.isEmpty()) {
                 item { Text("No budgets yet — set caps per category.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary) }
             } else {
-                items(budgets, key = { it.categoryId }) { b ->
+                items(budgets, key = { "b_${it.categoryId}" }) { b ->
                     BudgetLine(b, spendMap[b.categoryId] ?: 0L, "${catEmoji(b.categoryId)} ${catName(b.categoryId)}")
                 }
             }
@@ -231,7 +235,7 @@ fun HomeScreen(
                 }
             }
             when {
-                !loaded -> items(6) { SkeletonRow() }
+                !loaded -> items(6, key = { "skel_$it" }) { SkeletonRow() }
                 txns.isEmpty() -> item {
                     EmptyState(
                         title = "No spends yet",
@@ -240,7 +244,7 @@ fun HomeScreen(
                         onAction = onAdd,
                     )
                 }
-                else -> items(txns.take(8), key = { it.id }) { txn ->
+                else -> items(txns.take(8), key = { "t_${it.id}" }) { txn ->
                     TransactionLine(txn, catEmoji(txn.categoryId), catName(txn.categoryId))
                 }
             }

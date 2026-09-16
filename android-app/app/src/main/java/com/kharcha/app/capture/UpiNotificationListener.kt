@@ -37,6 +37,15 @@ class UpiNotificationListener : NotificationListenerService() {
         "com.paytm.app",                          // Paytm
         "com.netone.start",                       // Paytm (legacy pkg)
         "com.amazon.mPay.android",                // Amazon Pay
+        "money.super.app",                        // super.money (Flipkart)
+        "com.supermoney.app",                     // super.money alias
+        "com.navi.navi",                          // Navi UPI
+        "indwin.c3.shareapp",                     // slice UPI
+        "com.whatsapp",                           // WhatsApp Pay
+        "com.tatadigital.tcp",                    // Tata Neu
+        "org.altruist.BajajFinserv",              // Bajaj Pay
+        "com.mobikwik_new",                       // MobiKwik
+        "com.freecharge.android",                 // Freecharge
     )
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {

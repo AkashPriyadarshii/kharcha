@@ -2,7 +2,6 @@ package com.kharcha.app.ui
 
 import android.content.Context
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,10 +16,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -47,21 +48,29 @@ import com.kharcha.app.BuildConfig
 import com.kharcha.app.db.Category
 
 /**
- * Settings: profile (name), capture status, app lock, export, version.
- * Also the offline "update" UX — this app has no INTERNET permission by
- * design (fully offline), so updates are manual sideloads of the APK from
- * the GitHub release. That is stated plainly instead of a dead check button.
+ * Clean, organized Settings Screen:
+ * - Profile (Name + Avatar + Offline status)
+ * - Auto-Capture & Permissions (Bank SMS, UPI Push Listener, Battery Exemption, Restricted Settings)
+ * - Developer & Diagnostics (Console Log, Share Debug Log)
+ * - Security (Biometric App Lock)
+ * - Data & Backup (CSV Export)
+ * - About & Offline Philosophy
  */
 @Composable
 fun SettingsScreen(
     vm: AppViewModel,
     categories: List<Category>,
     captureSetup: CaptureSetup,
+    batteryIgnored: Boolean = true,
     lockEnrollable: Boolean,
     onRequestSms: () -> Unit,
+    onRequestNotifications: () -> Unit,
     onOpenListenerSettings: () -> Unit,
+    onOpenAppSettings: () -> Unit,
+    onRequestIgnoreBattery: () -> Unit,
     onRunIntro: () -> Unit,
     onShareLog: () -> Unit,
+    onOpenConsoleLog: () -> Unit,
 ) {
     val context = LocalContext.current
     var name by remember { mutableStateOf(UserPrefs.name(context)) }
@@ -69,206 +78,293 @@ fun SettingsScreen(
     var lockEnabled by remember { mutableStateOf(AppLock.isEnabled(context)) }
     val version = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+    ) {
         Text(
             "Settings",
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
         )
+        Spacer(Modifier.height(16.dp))
 
-        Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            // Profile
-            Card(
-                Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-            ) {
-                Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            Modifier.size(48.dp).clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primaryContainer),
-                            contentAlignment = Alignment.Center,
-                        ) {
+        // 1. Profile Section
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        ) {
+            Column(Modifier.padding(16.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Surface(
+                        modifier = Modifier.size(48.dp),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
                             Text(
                                 if (name.isNotBlank()) name.trim().first().uppercase() else "K",
-                                fontSize = 22.sp, fontWeight = FontWeight.Bold,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
                             )
                         }
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(if (name.isNotBlank()) name else "Kharcha user", style = MaterialTheme.typography.titleMedium)
-                            Text("v$version", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
-                        }
-                        TextButton(onClick = { editingName = !editingName }) {
-                            Text(if (editingName) "Done" else "Edit")
-                        }
                     }
-                    if (editingName) {
-                        Spacer(Modifier.height(12.dp))
-                        OutlinedTextField(
-                            value = name,
-                            onValueChange = { name = it },
-                            label = { Text("Your name") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Your name" },
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        TextButton(onClick = {
-                            UserPrefs.setName(context, name.trim())
-                            editingName = false
-                        }) { Text("Save name") }
-                    }
-                }
-            }
-
-            // Capture
-            SectionTitle("Capture")
-            Card(
-                Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-            ) {
-                Column(Modifier.padding(16.dp)) {
-                    SettingRow(
-                        title = "SMS messages",
-                        subtitle = if (captureSetup.smsGranted) "On — payment SMS are parsed" else "Off — spend SMS are ignored",
-                        trailing = {
-                            if (!captureSetup.smsGranted) {
-                                OutlinedButton(onClick = onRequestSms, modifier = Modifier.heightIn(min = 44.dp)) {
-                                    Text("Enable")
-                                }
-                            } else Text("✓", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        },
-                    )
-                    HorizontalRule()
-                    SettingRow(
-                        title = "Notifications",
-                        subtitle = if (captureSetup.listenerEnabled) "On — UPI app notifications are watched"
-                        else "Off — push payment alerts are ignored",
-                        trailing = {
-                            if (!captureSetup.listenerEnabled) {
-                                OutlinedButton(onClick = onOpenListenerSettings, modifier = Modifier.heightIn(min = 44.dp)) {
-                                    Text("Enable")
-                                }
-                            } else Text("✓", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        },
-                    )
-                }
-            }
-
-            // Debug log
-            Card(
-                Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-            ) {
-                SettingRow(
-                    title = "Share debug log",
-                    subtitle = "Errors + crashes are saved here",
-                    trailing = {
-                        OutlinedButton(onClick = onShareLog, modifier = Modifier.heightIn(min = 44.dp)) { Text("Share") }
-                    },
-                )
-            }
-
-            // Security
-            SectionTitle("Security")
-            Card(
-                Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-            ) {
-                Row(
-                    Modifier.fillMaxWidth().padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
+                    Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("App lock", style = MaterialTheme.typography.bodyLarge)
                         Text(
-                            if (lockEnrollable) "Fingerprint or PIN before the app opens"
-                            else "Needs a fingerprint/PIN in system settings first",
+                            if (name.isNotBlank()) name else "Kharcha user",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            "Version $version · Offline Mode",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.secondary,
                         )
                     }
-                    Switch(
-                        checked = lockEnabled && lockEnrollable,
-                        enabled = lockEnrollable,
-                        onCheckedChange = { on ->
-                            lockEnabled = on
-                            AppLock.setEnabled(context, on)
+                    TextButton(onClick = { editingName = !editingName }) {
+                        Text(if (editingName) "Done" else "Edit")
+                    }
+                }
+
+                if (editingName) {
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("Display Name") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = {
+                            UserPrefs.setName(context, name.trim())
+                            editingName = false
                         },
-                        modifier = Modifier.semantics { contentDescription = "Toggle app lock" },
-                    )
+                        modifier = Modifier.align(Alignment.End),
+                    ) {
+                        Text("Save Name")
+                    }
                 }
             }
-
-            // Data
-            SectionTitle("Data")
-            ExportButton(vm, categories, Modifier.fillMaxWidth())
-
-            // Setup
-            SectionTitle("Setup")
-            OutlinedButton(onClick = onRunIntro, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                Text("Run setup tour again (name, capture, lock)")
-            }
-
-            // About / updates
-            SectionTitle("About")
-            Card(
-                Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-            ) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("Updates", style = MaterialTheme.typography.titleSmall)
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "Kharcha is fully offline — no internet permission, so it cannot check for updates itself. " +
-                            "New versions are installed as an APK from the GitHub release page; your data stays on this phone.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    )
-                }
-            }
-            Text(
-                "Made in India · Money data never leaves this device · No ads, no cloud, no AI",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.secondary,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-            )
-            Spacer(Modifier.height(24.dp))
         }
+
+        Spacer(Modifier.height(20.dp))
+
+        // 2. Auto-Capture & Reliability Section
+        SectionHeader("Auto-Capture & Permissions")
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        ) {
+            Column(Modifier.padding(16.dp)) {
+                SettingActionRow(
+                    title = "Bank SMS Capture",
+                    subtitle = if (captureSetup.smsGranted) "Active · Parsing bank spend SMS" else "Disabled · Spend SMS will not be recorded",
+                    isDone = captureSetup.smsGranted,
+                    actionText = "Enable",
+                    onAction = onRequestSms,
+                )
+                HorizontalDivider(Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                SettingActionRow(
+                    title = "UPI Notification Access",
+                    subtitle = if (captureSetup.listenerEnabled) "Active · Ingesting GPay, PhonePe, Paytm, etc." else "Disabled · Push alerts ignored",
+                    isDone = captureSetup.listenerEnabled,
+                    actionText = "Enable",
+                    onAction = onOpenListenerSettings,
+                )
+                HorizontalDivider(Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                SettingActionRow(
+                    title = "Battery Optimization Exemption",
+                    subtitle = if (batteryIgnored) "Unrestricted · Reliable background capture" else "Restricted · System may kill capture service",
+                    isDone = batteryIgnored,
+                    actionText = "Exempt",
+                    onAction = onRequestIgnoreBattery,
+                )
+                HorizontalDivider(Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                SettingActionRow(
+                    title = "Allow Restricted Settings",
+                    subtitle = "For sideloaded APKs on Android 13+ if permissions are greyed out",
+                    isDone = false,
+                    alwaysAction = true,
+                    actionText = "App Info",
+                    onAction = onOpenAppSettings,
+                )
+            }
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        // 3. Diagnostics & Console Log Section
+        SectionHeader("Diagnostics & Logs")
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        ) {
+            Column(Modifier.padding(16.dp)) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                        Text("Live Console Log", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(
+                            "Interactive terminal, custom export/import, live test probe",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.secondary,
+                        )
+                    }
+                    Button(onClick = onOpenConsoleLog, modifier = Modifier.heightIn(min = 40.dp)) {
+                        Text("Open Console")
+                    }
+                }
+                HorizontalDivider(Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                        Text("Share Error Log", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(
+                            "Send internal crash & capture log via Android share sheet",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.secondary,
+                        )
+                    }
+                    OutlinedButton(onClick = onShareLog, modifier = Modifier.heightIn(min = 40.dp)) {
+                        Text("Share")
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        // 4. Security & Privacy Section
+        SectionHeader("Security & Privacy")
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        ) {
+            Row(
+                Modifier.padding(16.dp).fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                    Text("App Lock", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(
+                        if (lockEnrollable) "Require fingerprint, face, or PIN on launch"
+                        else "Requires a device screen lock or fingerprint in Android settings",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                }
+                Switch(
+                    checked = lockEnabled && lockEnrollable,
+                    enabled = lockEnrollable,
+                    onCheckedChange = { on ->
+                        lockEnabled = on
+                        AppLock.setEnabled(context, on)
+                    },
+                )
+            }
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        // 5. Data & Backup Section
+        SectionHeader("Data & Storage")
+        ExportButton(vm, categories, Modifier.fillMaxWidth())
+
+        Spacer(Modifier.height(20.dp))
+
+        // 6. Reset & Tour
+        SectionHeader("App Setup")
+        OutlinedButton(
+            onClick = onRunIntro,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
+            shape = RoundedCornerShape(12.dp),
+        ) {
+            Text("Re-run Onboarding Setup Tour")
+        }
+
+        Spacer(Modifier.height(24.dp))
+
+        // Footer Note
+        Text(
+            "Kharcha · 100% Offline · No Cloud · Zero AI Analytics",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.secondary,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(32.dp))
     }
 }
 
 @Composable
-private fun SectionTitle(text: String) {
+private fun SectionHeader(title: String) {
     Text(
-        text,
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.secondary,
-        modifier = Modifier.padding(top = 8.dp),
+        text = title,
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(bottom = 8.dp, start = 4.dp),
     )
 }
 
 @Composable
-private fun SettingRow(title: String, subtitle: String, trailing: @Composable () -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+private fun SettingActionRow(
+    title: String,
+    subtitle: String,
+    isDone: Boolean,
+    actionText: String,
+    onAction: () -> Unit,
+    alwaysAction: Boolean = false,
+) {
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Column(Modifier.weight(1f).padding(end = 12.dp)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(2.dp))
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
         }
-        trailing()
+        if (isDone && !alwaysAction) {
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer,
+                modifier = Modifier.size(32.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text("✓", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                }
+            }
+        } else {
+            OutlinedButton(onClick = onAction, modifier = Modifier.heightIn(min = 36.dp)) {
+                Text(actionText, fontSize = 13.sp)
+            }
+        }
     }
-}
-
-@Composable
-private fun HorizontalRule() {
-    Box(
-        Modifier.fillMaxWidth().height(1.dp).padding(vertical = 8.dp)
-            .background(MaterialTheme.colorScheme.surfaceVariant),
-    )
 }

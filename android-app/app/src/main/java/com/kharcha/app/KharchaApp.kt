@@ -16,6 +16,7 @@ class KharchaApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        CrashLog.init(this)
 
         // Uncaught exception handler — writes to app-private kharcha.log,
         // then rethrows to Android's default handler (show-force-close).

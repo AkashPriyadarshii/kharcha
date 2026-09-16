@@ -101,6 +101,6 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
-    implementation(libs.jna)
+    implementation("net.java.dev.jna:jna:5.15.0@aar")
     implementation(libs.androidx.biometric)
 }
