@@ -22,6 +22,9 @@ interface KharchaDao {
     @Query("DELETE FROM transactions WHERE id = :id")
     suspend fun deleteById(id: Long)
 
+    @Query("SELECT * FROM transactions WHERE id = :id LIMIT 1")
+    suspend fun transactionById(id: Long): TransactionRow?
+
     @Query("SELECT * FROM transactions ORDER BY timestampMs DESC")
     fun allTransactions(): Flow<List<TransactionRow>>
 
@@ -42,8 +45,11 @@ interface KharchaDao {
     @Query("SELECT id FROM categories WHERE name = :name LIMIT 1")
     suspend fun categoryIdByName(name: String): Long?
 
-    /** Recency-ordered rows for the dedupe gate (mirrors Dart limit(1) contract). */
-    @Query("SELECT * FROM transactions ORDER BY timestampMs DESC")
+    /** Recency-ordered rows for the dedupe gate. Bounded: full-table read per SMS was an ANR. */
+    /** Recency-ordered rows for the dedupe gate (mirrors Dart limit(1) contract).
+     * LIMIT 200 (audit): a full-table scan × JNA serialize per SMS = ANR inside
+     * goAsync; 200 recency-ordered rows covers the ±5 min window with margin. */
+    @Query("SELECT * FROM transactions ORDER BY timestampMs DESC LIMIT 200")
     suspend fun recentTransactions(): List<TransactionRow>
 
     @Query("SELECT COALESCE(SUM(amountPaise), 0) FROM transactions WHERE isIncome = 0 AND timestampMs >= :fromMs AND timestampMs < :toMs")
@@ -82,7 +88,7 @@ interface KharchaDao {
 
 @Database(
     entities = [TransactionRow::class, Category::class, RuleRow::class, Wallet::class, Budget::class],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -98,9 +104,15 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE transactions ADD COLUMN paymentMethod TEXT")
+            }
+        }
+
         fun create(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "kharcha.db")
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .addCallback(SeedCallback())
                 .build()
     }

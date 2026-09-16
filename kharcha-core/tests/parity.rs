@@ -359,6 +359,10 @@ fn premortem_real_life_rows() {
     let big = "₹100 paid to Swiggy. ".repeat(2000);
     assert!(big.len() > 16 * 1024);
     assert!(kharcha_core::engine::parse(&big, "s", 0).is_none());
+    // Audit #4: the cap guards DIRECT parser callers too, not just engine.
+    assert!(kharcha_core::parser::parse_upi_notification(&big).is_none());
+    // Under the cap still parses.
+    assert!(kharcha_core::parser::parse_upi_notification("₹450 paid to Swiggy using UPI Ref 123456789012").is_some());
 }
 
 #[test]

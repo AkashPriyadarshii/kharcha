@@ -14,6 +14,13 @@ use fancy_regex::{Captures, Regex};
 use crate::money::parse_amount_paise;
 use crate::non_transaction::{is_non_transaction, ASCII_CI};
 
+/// Hard input cap — the parser's own guard, so DIRECT callers (not just
+/// `engine::parse`) can't regex-paste megabytes. Real SMS/notifications are
+/// <2 KB; anything past 16 KB is a paste-attack or a corrupt read. (Audit #4:
+/// the cap previously lived only in engine.rs; `parse_upi_notification` is
+/// `pub` and callable on its own.)
+pub const MAX_INPUT_BYTES: usize = 16 * 1024;
+
 /// A UPI/bank payment parsed from a notification's text.
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct ParsedPayment {
@@ -227,6 +234,9 @@ fn clean_merchant(raw: &str) -> String {
 /// Parses `text` into a payment, or None if it isn't a payment notification
 /// (spam, no amount, or no payment verb — e.g. a casual "send me ₹200" chat).
 pub fn parse_upi_notification(text: &str) -> Option<ParsedPayment> {
+    if text.len() > MAX_INPUT_BYTES {
+        return None;
+    }
     let clean = text.trim();
     if clean.is_empty() {
         return None;

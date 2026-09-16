@@ -9,6 +9,7 @@ import uniffi.kharcha_core.Rule
 import uniffi.kharcha_core.checkCapture
 import uniffi.kharcha_core.categorizeMerchant
 import uniffi.kharcha_core.isSpam
+import uniffi.kharcha_core.maxBodyBytes
 import uniffi.kharcha_core.parseCapture
 
 sealed class IngestResult {
@@ -26,7 +27,26 @@ sealed class IngestResult {
 object CaptureEngine {
     private const val DEDUPE_WINDOW_MS = 5 * 60 * 1000L
 
+    // Audit #3: caps exist in Rust but nothing enforced them here. $title $text
+    // joins and SMS joinToString("") were passed unbounded into the FFI. The
+    // Rust parser also re-guards, but fail EARLY — a 1 MB paste-attack string
+    // shouldn't even cross JNA. Char length ≈ byte length for ASCII-heavy
+    // SMS; multibyte text only over-counts (safer direction).
+    private val maxBody = maxBodyBytes().toInt()
+
     suspend fun ingest(body: String, sender: String, timestampMs: Long, dao: CaptureDao, txnDao: com.kharcha.app.db.KharchaDao): IngestResult {
+        if (body.length > maxBody) return IngestResult.Unparsed
+        return try {
+            ingestInner(body, sender, timestampMs, dao, txnDao)
+        } catch (e: Exception) {
+            // Never let a capture channel crash goAsync/receiver with a JNA
+            // or DB error — drop the message, log, keep the funnel alive.
+            android.util.Log.w("CaptureEngine", "ingest failed: ${e.message}")
+            IngestResult.Unparsed
+        }
+    }
+
+    private suspend fun ingestInner(body: String, sender: String, timestampMs: Long, dao: CaptureDao, txnDao: com.kharcha.app.db.KharchaDao): IngestResult {
         if (isSpam(body)) return IngestResult.Spam
 
         val parsed = parseCapture(body, sender, timestampMs) ?: return IngestResult.Unparsed
