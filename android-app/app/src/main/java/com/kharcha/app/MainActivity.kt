@@ -1,6 +1,7 @@
 package com.kharcha.app
 
 import android.Manifest
+import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -68,6 +69,9 @@ import com.kharcha.app.ui.EditSheet
 import com.kharcha.app.ui.ExportButton
 import com.kharcha.app.ui.HomeScreen
 import com.kharcha.app.ui.KharchaTheme
+import com.kharcha.app.ui.QuickAddSheet
+import com.kharcha.app.capture.CrashLog
+import com.kharcha.app.capture.UpiNotificationListener
 import com.kharcha.app.ui.formatPaiseCompact
 import kotlinx.coroutines.launch
 
@@ -121,12 +125,29 @@ class MainActivity : FragmentActivity() {
     override fun onResume() {
         super.onResume()
         refreshCaptureState()
+        reviveListenerIfKilled()
         if (AppLock.isEnabled(this) && !unlocked.value) {
             AppLock.promptIfNeeded(this) { ok, okEnrolled ->
                 enrolled.value = okEnrolled
                 unlocked.value = ok
             }
         }
+    }
+
+    /**
+     * Watchdog: Chinese OEMs kill the NotificationListenerService and it
+     * sometimes fails to auto-rebind. Toggling the component forces the system
+     * to re-subscribe. Gated on user intent (they tapped "Enable capture" at
+     * least once) so we never re-enable a listener the user disabled in
+     * system settings.
+     */
+    private fun reviveListenerIfKilled() {
+        if (!UserPrefs.listenerWanted(this)) return
+        if (isNotificationListenerOn()) return
+        val cn = ComponentName(this, UpiNotificationListener::class.java)
+        packageManager.setComponentEnabledSetting(cn, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
+        packageManager.setComponentEnabledSetting(cn, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP)
+        refreshCaptureState()
     }
 
     fun refreshCaptureState() {
@@ -141,6 +162,7 @@ class MainActivity : FragmentActivity() {
     }
 
     fun openListenerSettings() {
+        UserPrefs.setListenerWanted(this, true)
         startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
     }
 
@@ -185,6 +207,7 @@ private fun App() {
     val context = LocalContext.current
     val activity = context as? MainActivity
     var showAdd by remember { mutableStateOf(false) }
+    var showQuickAdd by remember { mutableStateOf(false) }
     var showBudget by remember { mutableStateOf(false) }
     var editTxn by remember { mutableStateOf<com.kharcha.app.db.TransactionRow?>(null) }
     // Onboarding gate: first launch (or Settings → "Run intro again")
@@ -230,8 +253,8 @@ private fun App() {
         snackbarHost = { SnackbarHost(snackbar) },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { showAdd = true },
-                modifier = Modifier.semantics { contentDescription = "Add transaction" },
+                onClick = { showQuickAdd = true },
+                modifier = Modifier.semantics { contentDescription = "Quick add transaction" },
             ) { Text("+", fontSize = 28.sp, fontWeight = FontWeight.Bold) }
         },
         bottomBar = {
@@ -282,11 +305,20 @@ private fun App() {
                     onRequestSms = { activity?.requestSms() },
                     onOpenListenerSettings = { activity?.openListenerSettings() },
                     onRunIntro = { showOnboarding = true },
+                    onShareLog = { activity?.let { CrashLog.export(it) } },
                 )
             }
         }
     }
 
+    if (showQuickAdd) QuickAddSheet(
+        vm,
+        onDismiss = { showQuickAdd = false },
+        onExpand = {
+            showQuickAdd = false
+            showAdd = true
+        },
+    )
     if (showAdd) AddSheet(vm, categories, onDismiss = { showAdd = false })
     if (showBudget) BudgetSheet(vm, categories, onDismiss = { showBudget = false })
     editTxn?.let { txn ->

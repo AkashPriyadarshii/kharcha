@@ -4,11 +4,14 @@ All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
 
 ## [v0.1.0] — 2026-09-16 — Rust + Kotlin rewrite ships
 
+- **Quick-add split.** FAB = QuickAddSheet (amount only, IME Done saves, auto-focus via `onGloballyPositioned` — kills the `FocusRequester is not initialized` crash that killed sheet launch; "More options" expands to full sheet). Empty-state / Transactions = full AddSheet (merchant, category, date, method, note). Field focus chain Amount → Merchant → Note with IME Next.
+- **On-device CrashLog.** Uncaught-exception handler + all capture-channel failures append to `filesDir/kharcha.log` (no INTERNET permission, so no network reporting). Settings → "Share debug log" exports it via FileProvider share sheet. SmsReceiver/Listener coroutine scopes got `CoroutineExceptionHandler`.
+- **OEM survival.** `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` permission; listener watchdog in `MainActivity.onResume` force-rebinds NotificationListenerService via ComponentName toggle when killed, gated on user opt-in. Multi-part SMS already handled (receiver joins all PDUs per broadcast).
 - **Stack swap complete.** Kotlin/Rust/Supabase deleted: `lib/`, `test/`, `android/` (incl. KMP `parser-core`), `supabase/`, `pubspec.*`. Repo = `android-app/` (Kotlin Compose) + `kharcha-core/` (Rust) only. Fully offline, zero Supabase, zero AI.
 - **Deterministic capture in Rust.** `kharcha-core` v0.1: single parser engine (generic UPI + HDFC/SBI/ICICI-style bank formats), `parse_capture(s)`, paise-i64 amounts, triple-signal dedupe (ref + 5-min window + content hash), batch API, spam/recharge/OTP non-transaction filter, bill split, filter/all-in-one ops. 56/56 tests.
 - **Kotlin Compose app.** Home (month totals, auto wallets from bank SMS, monthly budgets, recent), All transactions, Add + Edit sheets (manual entry, teach-category → learned rule), CSV export to Downloads, biometric app lock. Room SQLite v1/v2, minSdk 32, arm64.
 - **Full offline.** No network permission in the product. Rules are a local map; categorization is deterministic.
-o              
+
 ## [v0.2.910] — 2026-09-12
 
 - **Capture Pipeline Regex & Data Integrity** — Corrected rule pattern regex matching in Kotlin helper (`\b${escape(pattern)}\b`), removed non-existent `updated_at` column from wallet insertion, and stored epoch timestamps as `Long` INTEGERs to prevent Room SQLite schema exceptions.

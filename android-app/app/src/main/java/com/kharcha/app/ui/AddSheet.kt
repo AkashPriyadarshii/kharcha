@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
@@ -27,15 +28,18 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -72,14 +76,15 @@ fun AddSheet(
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val amountFocus = remember { FocusRequester() }
+    val merchantFocus = remember { FocusRequester() }
+    val noteFocus = remember { FocusRequester() }
+    var amountFocused by remember { mutableStateOf(false) }
 
     val shown = categories.filter { it.isIncome == isIncome }
     val normalizedPreview = merchant.takeIf { it.isNotBlank() }?.let {
         runCatching { normalizeMerchantText(it) }.getOrNull()
     }
     val paisePreview = runCatching { parseAmount(amount.ifBlank { null }) }.getOrNull()
-
-    LaunchedEffect(Unit) { amountFocus.requestFocus() }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
@@ -117,9 +122,24 @@ fun AddSheet(
                 label = { Text("Amount (₹)") },
                 placeholder = { Text("₹0") },
                 singleLine = true,
+                isError = paisePreview == null && amount.isNotBlank(),
+                supportingText = if (paisePreview == null && amount.isNotBlank()) {
+                    { Text("Enter a valid amount like 240 or 240.50") }
+                } else null,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(onNext = { merchantFocus.requestFocus() }),
                 textStyle = TextStyle(fontFamily = TabularNumerals, fontSize = 28.sp),
-                modifier = Modifier.fillMaxWidth().padding(top = 12.dp).focusRequester(amountFocus),
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
+                    .focusRequester(amountFocus)
+                    .onGloballyPositioned {
+                        // Request focus only once the node is attached — a bare
+                        // LaunchedEffect requestFocus crashes ModalBottomSheet content
+                        // with "FocusRequester is not initialized".
+                        if (!amountFocused) {
+                            amountFocused = true
+                            amountFocus.requestFocus()
+                        }
+                    },
             )
             OutlinedTextField(
                 value = merchant,
@@ -127,10 +147,11 @@ fun AddSheet(
                 label = { Text(if (isIncome) "From / Source" else "Merchant") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(onNext = { noteFocus.requestFocus() }),
                 supportingText = normalizedPreview
                     ?.takeIf { it != merchant }
                     ?.let { { Text("Saved as “$it”") } },
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp).focusRequester(merchantFocus),
             )
             OutlinedTextField(
                 value = note,
@@ -140,16 +161,33 @@ fun AddSheet(
                 keyboardActions = KeyboardActions(onDone = { /* keep sheet open; Save is explicit */ }),
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             )
-            Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                TextButton(onClick = { showDate = true }) { Text(dayFmt.format(Date(dateMs))) }
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    items(PaymentMethods) { m ->
-                        FilterChip(
-                            selected = method == m,
-                            onClick = { method = m },
-                            label = { Text(m) },
-                        )
-                    }
+            OutlinedTextField(
+                value = note,
+                onValueChange = { note = it },
+                label = { Text("Note (optional)") },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { }),
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp).focusRequester(noteFocus),
+            )
+            Row(
+                Modifier.fillMaxWidth().padding(top = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(
+                    onClick = { showDate = true },
+                    modifier = Modifier.semantics { contentDescription = "Pick date" },
+                ) { Text(dayFmt.format(Date(dateMs))) }
+            }
+            // Payment method chips get their own row — a single "date +
+            // 4 chips" row overflows phones narrower than ~360dp.
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
+                items(PaymentMethods) { m ->
+                    FilterChip(
+                        selected = method == m,
+                        onClick = { method = m },
+                        label = { Text(m) },
+                    )
                 }
             }
             Text("Category", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
@@ -206,5 +244,79 @@ fun AddSheet(
             },
             dismissButton = { TextButton(onClick = { showDate = false }) { Text("Cancel") } },
         ) { DatePicker(state) }
+    }
+}
+
+/**
+ * Quick add (FAB): amount only, IME Done saves. Zero friction — the full
+ * AddSheet handles merchant/category/date/method.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun QuickAddSheet(
+    vm: AppViewModel,
+    onDismiss: () -> Unit,
+    onExpand: () -> Unit = {},
+) {
+    var amount by remember { mutableStateOf("") }
+    val amountFocus = remember { FocusRequester() }
+    var focused by remember { mutableStateOf(false) }
+
+    val paise = runCatching { parseAmount(amount.ifBlank { null }) }.getOrNull()
+    val scope = rememberCoroutineScope()
+    val save: () -> Unit = {
+        val p = paise
+        if (p != null) {
+            scope.launch {
+                vm.saveTransaction(
+                    TransactionRow(
+                        amountPaise = p,
+                        merchant = "Manual",
+                        isIncome = false,
+                        timestampMs = System.currentTimeMillis(),
+                        paymentMethod = "UPI",
+                    ),
+                )
+            }
+            onDismiss()
+        }
+    }
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            OutlinedTextField(
+                value = amount,
+                onValueChange = { amount = it },
+                label = { Text("Amount (₹)") },
+                placeholder = { Text("₹0") },
+                singleLine = true,
+                isError = paise == null && amount.isNotBlank(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { save() }),
+                textStyle = TextStyle(fontFamily = TabularNumerals, fontSize = 32.sp),
+                modifier = Modifier.fillMaxWidth()
+                    .focusRequester(amountFocus)
+                    .onGloballyPositioned {
+                        if (!focused) {
+                            focused = true
+                            amountFocus.requestFocus()
+                        }
+                    },
+            )
+            Text("Expense", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
+            Button(
+                enabled = paise != null,
+                onClick = { save() },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+            ) {
+                Text(if (paise != null) "Save ${formatPaiseCompact(paise)}" else "Save")
+            }
+            TextButton(onClick = onExpand, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                Text("More options (merchant, category, date…)")
+            }
+        }
     }
 }

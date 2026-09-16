@@ -3,6 +3,7 @@ package com.kharcha.app.capture
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import com.kharcha.app.KharchaApp
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -19,7 +20,12 @@ import kotlinx.coroutines.launch
  * Dedupe in Rust handles any repeats.
  */
 class UpiNotificationListener : NotificationListenerService() {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(
+        SupervisorJob() + Dispatchers.IO +
+            CoroutineExceptionHandler { _, e ->
+                CrashLog.log(applicationContext, "UpiListener", "ingest failed: ${e.message}")
+            }
+    )
 
     // ponytail: static allowlist, one line per package. Configurable later if
     // real-world captures show a missing app (add when observed, not before).
@@ -44,6 +50,7 @@ class UpiNotificationListener : NotificationListenerService() {
         val app = applicationContext as KharchaApp
         scope.launch {
             CaptureEngine.ingest(
+                appContext = applicationContext,
                 body = body,
                 sender = sbn.packageName,
                 timestampMs = System.currentTimeMillis(),

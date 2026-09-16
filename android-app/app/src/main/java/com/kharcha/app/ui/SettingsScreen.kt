@@ -61,6 +61,7 @@ fun SettingsScreen(
     onRequestSms: () -> Unit,
     onOpenListenerSettings: () -> Unit,
     onRunIntro: () -> Unit,
+    onShareLog: () -> Unit,
 ) {
     val context = LocalContext.current
     var name by remember { mutableStateOf(UserPrefs.name(context)) }
@@ -154,6 +155,21 @@ fun SettingsScreen(
                         },
                     )
                 }
+            }
+
+            // Debug log
+            Card(
+                Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+            ) {
+                SettingRow(
+                    title = "Share debug log",
+                    subtitle = "Errors + crashes are saved here",
+                    trailing = {
+                        OutlinedButton(onClick = onShareLog, modifier = Modifier.heightIn(min = 44.dp)) { Text("Share") }
+                    },
+                )
             }
 
             // Security

@@ -34,16 +34,18 @@ object CaptureEngine {
     // SMS; multibyte text only over-counts (safer direction).
     private val maxBody = maxBodyBytes().toInt()
 
-    suspend fun ingest(body: String, sender: String, timestampMs: Long, dao: CaptureDao, txnDao: com.kharcha.app.db.KharchaDao): IngestResult {
+    suspend fun ingest(appContext: android.content.Context, body: String, sender: String, timestampMs: Long, dao: CaptureDao, txnDao: com.kharcha.app.db.KharchaDao): IngestResult {
         if (body.length > maxBody) return IngestResult.Unparsed
         return try {
             ingestInner(body, sender, timestampMs, dao, txnDao)
         } catch (e: Exception) {
-            // Never let a capture channel crash goAsync/receiver with a JNA
-            // or DB error — drop the message, log, keep the funnel alive.
-            android.util.Log.w("CaptureEngine", "ingest failed: ${e.message}")
+            CaptureEngine.logCrash(appContext, e)
             IngestResult.Unparsed
         }
+    }
+
+    private fun logCrash(appContext: android.content.Context, e: Exception) {
+        CrashLog.log(appContext, "CaptureEngine", "ingest failed: ${e.message}")
     }
 
     private suspend fun ingestInner(body: String, sender: String, timestampMs: Long, dao: CaptureDao, txnDao: com.kharcha.app.db.KharchaDao): IngestResult {
