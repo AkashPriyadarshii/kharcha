@@ -259,6 +259,8 @@ fun QuickAddSheet(
     onExpand: () -> Unit = {},
 ) {
     var amount by remember { mutableStateOf("") }
+    var merchant by remember { mutableStateOf("") }
+    var isIncome by remember { mutableStateOf(false) }
     val amountFocus = remember { FocusRequester() }
     var focused by remember { mutableStateOf(false) }
 
@@ -271,8 +273,8 @@ fun QuickAddSheet(
                 vm.saveTransaction(
                     TransactionRow(
                         amountPaise = p,
-                        merchant = "Manual",
-                        isIncome = false,
+                        merchant = merchant.ifBlank { "Manual" },
+                        isIncome = isIncome,
                         timestampMs = System.currentTimeMillis(),
                         paymentMethod = "UPI",
                     ),
@@ -307,6 +309,25 @@ fun QuickAddSheet(
                     },
             )
             Text("Expense", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
+            OutlinedTextField(
+                value = merchant,
+                onValueChange = { merchant = it },
+                label = { Text("Merchant (optional)") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = !isIncome,
+                    onClick = { isIncome = false },
+                    label = { Text("Expense") },
+                )
+                FilterChip(
+                    selected = isIncome,
+                    onClick = { isIncome = true },
+                    label = { Text("Income") },
+                )
+            }
             Button(
                 enabled = paise != null,
                 onClick = { save() },

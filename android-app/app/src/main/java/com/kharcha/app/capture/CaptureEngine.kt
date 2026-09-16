@@ -38,10 +38,10 @@ object CaptureEngine {
     // SMS; multibyte text only over-counts (safer direction).
     private val maxBody = maxBodyBytes().toInt()
 
-    suspend fun ingest(appContext: android.content.Context, body: String, sender: String, timestampMs: Long, dao: CaptureDao, txnDao: com.kharcha.app.db.KharchaDao): IngestResult {
+    suspend fun ingest(appContext: android.content.Context, body: String, sender: String, timestampMs: Long, dao: CaptureDao, txnDao: com.kharcha.app.db.KharchaDao, quiet: Boolean = false): IngestResult {
         if (body.length > maxBody) return IngestResult.Unparsed
         return try {
-            ingestInner(appContext, body, sender, timestampMs, dao, txnDao)
+            ingestInner(appContext, body, sender, timestampMs, dao, txnDao, quiet)
         } catch (e: Exception) {
             CaptureEngine.logCrash(appContext, e)
             IngestResult.Unparsed
@@ -52,7 +52,7 @@ object CaptureEngine {
         CrashLog.log(appContext, "CaptureEngine", "ingest failed: ${e.message}")
     }
 
-    private suspend fun ingestInner(appContext: android.content.Context, body: String, sender: String, timestampMs: Long, dao: CaptureDao, txnDao: com.kharcha.app.db.KharchaDao): IngestResult {
+    private suspend fun ingestInner(appContext: android.content.Context, body: String, sender: String, timestampMs: Long, dao: CaptureDao, txnDao: com.kharcha.app.db.KharchaDao, quiet: Boolean): IngestResult {
         if (isSpam(body)) return IngestResult.Spam
 
         val parsed = parseCapture(body, sender, timestampMs) ?: return IngestResult.Unparsed
@@ -105,7 +105,9 @@ object CaptureEngine {
                     payment.balancePaise?.let { txnDao.updateWalletBalance(walletId, it) }
                 }
                 UserPrefs.stampCapture(appContext)
-                CaptureNotify.inserted(appContext, payment.merchant, payment.amountPaise, null)
+                if (!quiet) CaptureNotify.inserted(appContext, payment.merchant, payment.amountPaise, null)
+                checkBudgetAlerts(appContext, txnDao, categoryId)
+                Pairing.maybePair(txnDao, txnId, payment.amountPaise, payment.isIncome, parsed.timestampMs)
                 CoroutineScope(Dispatchers.IO).launch {
                     try { com.kharcha.app.widget.KharchaWidget.refresh(appContext) } catch (_: Exception) {}
                 }
@@ -132,5 +134,42 @@ object CaptureEngine {
             merchant,
             rules.map { Rule(pattern = it.pattern, ruleType = it.ruleType, categoryId = it.categoryId) }
         )?.categoryId
+    }
+
+    /**
+     * Ingest-time threshold alerts: 50/80/100, upward crossings only.
+     * Fired level persists in prefs so each insert doesn't re-buzz.
+     */
+    private suspend fun checkBudgetAlerts(
+        appContext: android.content.Context,
+        txnDao: com.kharcha.app.db.KharchaDao,
+        categoryId: Long?,
+    ) {
+        if (categoryId == null) return
+        val limit = txnDao.allBudgetsOnce().firstOrNull { it.categoryId == categoryId }?.monthlyLimitPaise ?: return
+        if (limit <= 0) return
+        val start = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.DAY_OF_MONTH, 1)
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val spend = txnDao.categorySpend(categoryId, start, System.currentTimeMillis())
+        val level = listOf(100, 80, 50).firstOrNull { spend * 100 >= limit * it } ?: return
+        if (level <= UserPrefs.budgetAlertLevel(appContext, categoryId)) return
+        UserPrefs.setBudgetAlertLevel(appContext, categoryId, level)
+        val name = txnDao.allCategoriesOnce().firstOrNull { it.id == categoryId }?.name ?: "Budget"
+        val left = limit - spend
+        CaptureNotify.alert(
+            appContext,
+            "$name budget $level%",
+            if (left >= 0) "${formatCompact(left)} left this month" else "${formatCompact(-left)} over",
+        )
+    }
+
+    private fun formatCompact(paise: Long): String {
+        val abs = kotlin.math.abs(paise)
+        return if (abs % 100 == 0L && abs >= 10_000L) "₹%,d".format(abs / 100) else "₹${abs / 100}.${"%02d".format(abs % 100)}"
     }
 }

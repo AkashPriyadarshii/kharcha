@@ -2,6 +2,7 @@ package com.kharcha.app.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +21,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -37,7 +40,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -117,6 +123,7 @@ fun HomeScreen(
     val txns by vm.transactions.collectAsState()
     val budgets by vm.budgets.collectAsState()
     val spendMap by vm.budgetSpends.collectAsState()
+    val subs by vm.subscriptions.collectAsState()
     val loaded by vm.dataLoaded.collectAsState()
 
     val catEmoji: (Long?) -> String = { id -> categories.firstOrNull { it.id == id }?.emoji ?: "🧾" }
@@ -220,6 +227,25 @@ fun HomeScreen(
             } else {
                 items(budgets, key = { "b_${it.categoryId}" }) { b ->
                     BudgetLine(b, spendMap[b.categoryId] ?: 0L, "${catEmoji(b.categoryId)} ${catName(b.categoryId)}")
+                }
+            }
+            if (subs.isNotEmpty()) {
+                item {
+                    Column {
+                        Text("Subscriptions", style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.height(4.dp))
+                        // ponytail: suspects only (2+ months, same merchant + amount). Confirm by tapping through.
+                        subs.take(5).forEach { s ->
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(s.merchant, style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    "${formatPaiseCompact(s.amountPaise)} · monthly",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                )
+                            }
+                        }
+                    }
                 }
             }
             item {
@@ -410,6 +436,11 @@ fun AllTransactionsScreen(
     val loaded by vm.dataLoaded.collectAsState()
     var query by remember { mutableStateOf("") }
     var filter by remember { mutableStateOf(AllFilter.ALL) }
+    var selectMode by remember { mutableStateOf(false) }
+    var selected by remember { mutableStateOf<Set<Long>>(emptySet()) }
+    var showBulkCat by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val bulkScope = rememberCoroutineScope()
 
     val catEmoji: (Long?) -> String = { id -> categories.firstOrNull { it.id == id }?.emoji ?: "🧾" }
     val catName: (Long?) -> String = { id -> categories.firstOrNull { it.id == id }?.name ?: "Uncategorised" }
@@ -430,7 +461,58 @@ fun AllTransactionsScreen(
     val grouped = visible.groupBy { dayKeyFmt.format(Date(it.timestampMs)) }
 
     Column(modifier.fillMaxSize().padding(16.dp)) {
-        Text("All transactions", style = MaterialTheme.typography.titleLarge)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text("All transactions", style = MaterialTheme.typography.titleLarge)
+            TextButton(onClick = { selectMode = !selectMode; selected = emptySet() }) {
+                Text(if (selectMode) "Done" else "Select")
+            }
+        }
+        if (selectMode && selected.isNotEmpty()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("${selected.size} picked", style = MaterialTheme.typography.bodyMedium)
+                TextButton(onClick = {
+                    bulkScope.launch { vm.bulkDelete(selected); selected = emptySet() }
+                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+                TextButton(onClick = { showBulkCat = true }) { Text("Category") }
+                TextButton(
+                    enabled = selected.size == 2,
+                    onClick = {
+                        val ids = selected.toList()
+                        bulkScope.launch {
+                            val ok = vm.linkTransactions(ids[0], ids[1])
+                            selected = emptySet()
+                            Toast.makeText(context, if (ok) "Linked as pair" else "Link failed", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                ) { Text("Link") }
+            }
+        }
+        if (showBulkCat) {
+            var bulkCat by remember { mutableStateOf<Long?>(null) }
+            AlertDialog(
+                onDismissRequest = { showBulkCat = false },
+                title = { Text("Set category") },
+                text = {
+                    androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        items(categories, key = { it.id }) { c ->
+                            FilterChip(
+                                selected = bulkCat == c.id,
+                                onClick = { bulkCat = c.id },
+                                label = { Text("${c.emoji} ${c.name}") },
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        val c = bulkCat
+                        showBulkCat = false
+                        if (c != null) bulkScope.launch { vm.bulkCategorize(selected, c); selected = emptySet() }
+                    }) { Text("Apply") }
+                },
+                dismissButton = { TextButton(onClick = { showBulkCat = false }) { Text("Cancel") } },
+            )
+        }
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(
             value = query,
@@ -479,10 +561,16 @@ fun AllTransactionsScreen(
                         Row(
                             Modifier.fillMaxWidth()
                                 .heightIn(min = 56.dp)
-                                .clickable { onTap(txn) }
+                                .clickable {
+                                    if (selectMode) selected = if (txn.id in selected) selected - txn.id else selected + txn.id
+                                    else onTap(txn)
+                                }
                                 .semantics { contentDescription = "Edit ${txn.merchant}" },
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
+                            if (selectMode) {
+                                Checkbox(checked = txn.id in selected, onCheckedChange = null)
+                            }
                             TransactionLine(txn, catEmoji(txn.categoryId), catName(txn.categoryId))
                         }
                     }

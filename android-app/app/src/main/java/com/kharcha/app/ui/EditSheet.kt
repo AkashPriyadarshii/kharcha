@@ -4,7 +4,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
@@ -41,6 +43,7 @@ import com.kharcha.app.db.TransactionRow
 import kotlinx.coroutines.launch
 import uniffi.kharcha_core.normalizeMerchantText
 import uniffi.kharcha_core.parseAmount
+import uniffi.kharcha_core.splitBill
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -70,6 +73,7 @@ fun EditSheet(
     var method by remember { mutableStateOf(txn.paymentMethod ?: "UPI") }
     var teachRule by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var showSplit by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
@@ -164,6 +168,10 @@ fun EditSheet(
                 onClick = { confirmDelete = true },
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            TextButton(
+                onClick = { showSplit = true },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Split across categories") }
         }
     }
 
@@ -179,6 +187,66 @@ fun EditSheet(
             },
             dismissButton = { TextButton(onClick = { showDate = false }) { Text("Cancel") } },
         ) { DatePicker(state) }
+    }
+
+    if (showSplit) {
+        var picks by remember { mutableStateOf<Set<Long>>(emptySet()) }
+        // ponytail: equal parts only (splitBill is exact). Unequal shares later if asked.
+        val parts = if (picks.size >= 2) {
+            runCatching { splitBill(txn.amountPaise, picks.size.toULong()) }.getOrNull()
+        } else null
+        AlertDialog(
+            onDismissRequest = { showSplit = false },
+            title = { Text("Split equally") },
+            text = {
+                Column {
+                    Text(
+                        "Pick 2+ categories — Rust splits paise-exact, original is removed.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        items(categories.filter { !it.isIncome }, key = { it.id }) { c ->
+                            FilterChip(
+                                selected = c.id in picks,
+                                onClick = { picks = if (c.id in picks) picks - c.id else picks + c.id },
+                                label = { Text("${c.emoji} ${c.name}") },
+                            )
+                        }
+                    }
+                    parts?.let { p ->
+                        Spacer(Modifier.height(8.dp))
+                        picks.toList().forEachIndexed { i, id ->
+                            val c = categories.firstOrNull { it.id == id }
+                            Text(
+                                "${c?.emoji ?: ""} ${c?.name ?: "?"} — ${formatPaiseCompact(p[i])}",
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = parts != null,
+                    onClick = {
+                        val p = parts ?: return@TextButton
+                        showSplit = false
+                        scope.launch {
+                            vm.deleteTransaction(txn.id)
+                            picks.toList().forEachIndexed { i, c ->
+                                vm.saveTransaction(
+                                    txn.copy(id = 0, categoryId = c, amountPaise = p[i], note = "Split ${i + 1}/${picks.size} of #${txn.id}"),
+                                )
+                            }
+                        }
+                        onDismiss()
+                    },
+                ) { Text("Split") }
+            },
+            dismissButton = { TextButton(onClick = { showSplit = false }) { Text("Cancel") } },
+        )
     }
 
     if (confirmDelete) {
