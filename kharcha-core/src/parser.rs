@@ -110,7 +110,7 @@ static_re!(
 static_re!(
     BAL_RE,
     // Audit: single-space `avl bal` is verbatim from Dart (both miss double-space) — parity, not a fix.
-    r"(?:bal|balance|avl bal|available balance)[^0-9]*?(?:₹|Rs\.?|INR)?\s*([0-9,]+(?:\.[0-9]{1,2})?)"
+    r"(?:bal|balance|avl bal|available balance)[^0-9]*?(?:₹|Rs\.?|INR)?[ \t\n\x0B\f\r]*([0-9,]+(?:\.[0-9]{1,2})?)"
 );
 static_re!(TRAILING_KEYWORD_RE, r"[ \t\n\x0B\f\r]+(?:via|using|on|through|in|UPI|Ref|UTR|Bank|A/c|Account|Pv|Pvt|Ltd|Limited|is|was|successful|successfully)$");
 static_re!(TRAILING_PUNCT_RE, r"[ \t\n\x0B\f\r.,:;/\-]+$");
@@ -156,6 +156,16 @@ fn find_all<'a>(re: &Regex, text: &'a str) -> Vec<fancy_regex::Match<'a>> {
 }
 fn replace_all(re: &Regex, text: &str, rep: &str) -> String {
     re.replace_all(text, rep).into_owned()
+}
+
+/// Byte-slicing with a total guard. Match offsets into multibyte text can
+/// land on non-char-boundaries (Unicode `\b` handling) — `s[..i]` would
+/// panic across FFI. Fail-open to "" (prefix checks then simply don't match).
+fn prefix_of(s: &str, end: usize) -> &str {
+    s.get(..end).unwrap_or("")
+}
+fn span_of(s: &str, from: usize, to: usize) -> &str {
+    s.get(from..to).unwrap_or("")
 }
 
 fn capitalize_first(lower: &str) -> String {
@@ -235,11 +245,11 @@ pub fn parse_upi_notification(text: &str) -> Option<ParsedPayment> {
     let group1 = |re: &Regex, text: &str| captures(re, text).and_then(|c| group(&c, 1));
 
     let first_group_in_span = |re: &Regex, span: (usize, usize)| {
-        captures(re, &clean[span.0..span.1]).and_then(|c| group(&c, 1))
+        captures(re, span_of(clean, span.0, span.1)).and_then(|c| group(&c, 1))
     };
     let mut raw: Option<String> = None;
     for m in find_all(&AMOUNT_RE, clean) {
-        if !is_match(&BALANCE_PREFIX_RE, &clean[..m.start()]) {
+        if !is_match(&BALANCE_PREFIX_RE, prefix_of(clean, m.start())) {
             raw = first_group_in_span(&AMOUNT_RE, (m.start(), m.end()));
             break;
         }
@@ -249,7 +259,7 @@ pub fn parse_upi_notification(text: &str) -> Option<ParsedPayment> {
     }
     if raw.as_deref().is_none_or(|s: &str| s.is_empty()) {
         for m in find_all(&AMOUNT_TRAILING_RE, clean) {
-            if !is_match(&BALANCE_PREFIX_RE, &clean[..m.start()]) {
+            if !is_match(&BALANCE_PREFIX_RE, prefix_of(clean, m.start())) {
                 raw = first_group_in_span(&AMOUNT_TRAILING_RE, (m.start(), m.end()));
                 break;
             }
@@ -353,7 +363,7 @@ pub fn parse_upi_notification(text: &str) -> Option<ParsedPayment> {
     }
     if upi_ref.is_none() && (has_spend || has_receive) {
         for m in find_all(&UPI_REF_BARE_RE, clean) {
-            let prefix = &clean[..m.start()];
+            let prefix = prefix_of(clean, m.start());
             // Exclude 12-digit numbers preceded by account/card identifiers.
             if is_match(&ACCOUNT_PREFIX_RE, prefix) {
                 continue;

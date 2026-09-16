@@ -7,8 +7,9 @@
 //!    are excluded, so a re-sent notification after deletion re-captures).
 //! 2. Same `content_hash` on a live row → exact redelivery (other channel,
 //!    other clock, no ref) → duplicate. Beats pennywise's md5(body): the hash
-//!    covers sender|amount|direction|merchant|ref, so carrier-added footers
-//!    ("Bal: ...") don't break it the way raw-body hashing does.
+//!    covers amount|direction|merchant|ref (sender excluded so SMS-vs-push
+//!    match), so carrier-added footers ("Bal: ...") don't break it the way
+//!    raw-body hashing does.
 //! 3. Cross-channel window: same amount + direction within ±5 min on a live
 //!    row. Two rows with valid but DISTINCT refs are genuine back-to-back
 //!    payments → insert. Otherwise, if the clocks drift ≤ 300 s → skip; if we
@@ -85,16 +86,17 @@ pub fn decide_capture(
     }
 
     // 3. Cross-channel window: same amount + direction, ±5 min.
+    // Audit: `abs_diff` — plain `-`/`.abs()` panics on i64::MIN from FFI.
     if let Some(dup) = existing.iter().filter(|r| live(r)).find(|r| {
         r.amount_paise == amount_paise
             && r.is_income == is_income
-            && (r.txn_ms - txn_ms).abs() <= WINDOW_MS
+            && r.txn_ms.abs_diff(txn_ms) <= WINDOW_MS as u64
     }) {
         let distinct_refs = match (cand, valid_ref(dup.upi_ref.as_deref())) {
             (Some(a), Some(b)) => a != b,
             _ => false,
         };
-        if !distinct_refs && (dup.txn_ms - txn_ms).abs() / 1000 <= DRIFT_SECS {
+        if !distinct_refs && dup.txn_ms.abs_diff(txn_ms) / 1000 <= DRIFT_SECS as u64 {
             let backfill_ref = cand.is_some() && valid_ref(dup.upi_ref.as_deref()).is_none();
             return CaptureDecision::Skip { backfill_ref };
         }
@@ -148,6 +150,20 @@ mod tests {
         assert_eq!(decide_capture(None, 45000, false, 100_000 + WINDOW_MS + 1, None, &ex), CaptureDecision::Insert);
         assert_eq!(decide_capture(None, 46000, false, 160_000, None, &ex), CaptureDecision::Insert);
         assert_eq!(decide_capture(None, 45000, true, 160_000, None, &ex), CaptureDecision::Insert);
+    }
+
+    #[test]
+    fn hostile_timestamps_cant_panic() {
+        // Audit: (txn_ms - i64::MIN).abs() panics. abs_diff never does.
+        let ex = vec![row(None, 45000, false, 0)];
+        assert_eq!(
+            decide_capture(None, 45000, false, i64::MIN, None, &ex),
+            CaptureDecision::Insert
+        );
+        assert_eq!(
+            decide_capture(None, 45000, false, i64::MAX, None, &ex),
+            CaptureDecision::Insert
+        );
     }
 
     #[test]

@@ -157,13 +157,25 @@ private fun TransactionLine(txn: TransactionRow, categoryName: (Long?) -> String
     }
 }
 @Composable
-fun AllTransactionsScreen(vm: AppViewModel, categoryName: (Long?) -> String, modifier: Modifier = Modifier) {
+fun AllTransactionsScreen(
+    vm: AppViewModel,
+    categoryName: (Long?) -> String,
+    modifier: Modifier = Modifier,
+    onTap: (TransactionRow) -> Unit = {},
+) {
     val txns = vm.transactions.collectAsState().value
     Column(modifier.fillMaxSize().padding(16.dp)) {
         Text("All transactions", style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(8.dp))
         LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            items(txns) { txn -> TransactionLine(txn, categoryName) }
+            items(txns, key = { it.id }) { txn ->
+                Row(
+                    Modifier.fillMaxWidth().clickable { onTap(txn) },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TransactionLine(txn, categoryName)
+                }
+            }
         }
     }
 }

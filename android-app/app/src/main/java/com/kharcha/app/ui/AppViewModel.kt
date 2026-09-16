@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.kharcha.app.KharchaApp
 import com.kharcha.app.db.Budget
+import com.kharcha.app.db.RuleRow
 import com.kharcha.app.db.TransactionRow
 import com.kharcha.app.db.Wallet
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -73,4 +74,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     suspend fun removeBudget(categoryId: Long) = dao.deleteBudget(categoryId)
+
+    suspend fun updateTransaction(txn: TransactionRow, teachRule: Boolean) {
+        dao.update(txn)
+        if (teachRule && txn.categoryId != null && txn.merchant.isNotBlank()) {
+            dao.insertRule(RuleRow(pattern = txn.merchant, ruleType = "learned", categoryId = txn.categoryId))
+        }
+    }
+
+    suspend fun deleteTransaction(id: Long) = dao.deleteById(id)
 }
