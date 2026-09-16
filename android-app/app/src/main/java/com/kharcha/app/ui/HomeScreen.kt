@@ -182,9 +182,9 @@ fun HomeScreen(
                             style = MaterialTheme.typography.labelSmall,
                             color = if (lastCaptureMs > 0) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error,
                         )
-                        Text(
-                            formatPaiseCompact(totals.spend),
-                            style = TextStyle(
+                        AnimatedCurrencyText(
+                            totals.spend,
+                            TextStyle(
                                 fontFamily = TabularNumerals,
                                 fontSize = 44.sp,
                                 fontWeight = FontWeight.SemiBold,
@@ -358,11 +358,7 @@ fun TransactionLine(txn: TransactionRow, emoji: String, category: String) {
         Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            Modifier.size(40.dp).clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer),
-            contentAlignment = Alignment.Center,
-        ) { Text(emoji, fontSize = 20.sp) }
+        BrandAvatar(txn.merchant, emoji)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(txn.merchant, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
@@ -387,19 +383,6 @@ fun TransactionLine(txn: TransactionRow, emoji: String, category: String) {
                 contentDescription = if (txn.isIncome) "Income ${formatPaise(txn.amountPaise)}" else "Spent ${formatPaise(txn.amountPaise)}"
             },
         )
-    }
-}
-
-@Composable
-private fun SkeletonRow() {
-    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant))
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Box(Modifier.fillMaxWidth(0.5f).height(14.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant))
-            Spacer(Modifier.height(6.dp))
-            Box(Modifier.fillMaxWidth(0.3f).height(12.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant))
-        }
     }
 }
 
