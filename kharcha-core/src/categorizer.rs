@@ -14,7 +14,7 @@ use regex::Regex;
 static NON_ALNUM_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[^a-z0-9]+").unwrap());
 
 /// A categorization rule: keyword pattern → category.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct Rule {
     pub pattern: String,
     pub kind: RuleKind,
@@ -22,7 +22,7 @@ pub struct Rule {
 }
 
 /// `learned` rules (user corrections) beat `builtin` (seeded dictionary).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
 pub enum RuleKind {
     Builtin,
     Learned,
@@ -55,6 +55,7 @@ struct CompiledRule {
 ///
 /// Rules change on user corrections — rebuild via [`Classifier::new`] then,
 /// not on every transaction.
+#[derive(uniffi::Object)]
 pub struct Classifier {
     entries: Vec<CompiledRule>,
 }

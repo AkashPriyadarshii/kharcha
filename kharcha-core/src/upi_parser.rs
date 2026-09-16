@@ -14,7 +14,7 @@ use fancy_regex::Regex;
 use crate::money::parse_amount;
 
 /// A UPI/bank payment parsed from a notification's or SMS's text.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct ParsedPayment {
     pub amount: f64,
     pub merchant: String,
