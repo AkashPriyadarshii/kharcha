@@ -185,7 +185,7 @@ fun EditSheet(
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
             title = { Text("Delete \"${txn.merchant} ${formatPaiseCompact(txn.amountPaise)}\"?") },
-            text = { Text("This removes the record permanently. You can undo right after.") },
+            text = { Text("Moves to Trash — restore anytime from Settings → Trash.") },
             confirmButton = {
                 TextButton(onClick = {
                     confirmDelete = false

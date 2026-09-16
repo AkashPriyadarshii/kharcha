@@ -1,6 +1,9 @@
 package com.kharcha.app.ui
 
 import android.content.Context
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -45,7 +48,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -58,6 +60,7 @@ import com.kharcha.app.MainActivity
 import com.kharcha.app.capture.CrashLog
 import com.kharcha.app.capture.SummaryAlarm
 import com.kharcha.app.db.Category
+import com.kharcha.app.db.DbBackup
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -86,6 +89,7 @@ fun SettingsScreen(
     onRequestIgnoreBattery: () -> Unit,
     onRunIntro: () -> Unit,
     onOpenConsoleLog: () -> Unit,
+    onOpenTrash: () -> Unit,
     onOpenRules: () -> Unit,
     onOpenCats: () -> Unit,
     onOpenWallets: () -> Unit,
@@ -496,6 +500,38 @@ fun SettingsScreen(
         SectionHeader("Data & Storage")
         ExportButton(vm, categories, Modifier.fillMaxWidth())
         Spacer(Modifier.height(8.dp))
+        val trashCount = vm.trashed.collectAsState().value.size
+        val backupLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
+            if (uri == null) return@rememberLauncherForActivityResult
+            scope.launch(Dispatchers.IO) {
+                val ok = DbBackup.exportTo(context, uri)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, if (ok) "Backup saved" else "Backup failed", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+        val restoreLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri == null) return@rememberLauncherForActivityResult
+            scope.launch(Dispatchers.IO) {
+                // Success restarts the app inside importFrom; only failure returns.
+                if (!DbBackup.importFrom(context, uri)) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "Restore failed — not a valid backup", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = { backupLauncher.launch(DbBackup.fileName()) },
+                modifier = Modifier.weight(1f).heightIn(min = 46.dp),
+            ) { Text("Backup") }
+            OutlinedButton(
+                onClick = { restoreLauncher.launch(arrayOf("application/octet-stream")) },
+                modifier = Modifier.weight(1f).heightIn(min = 46.dp),
+            ) { Text("Restore") }
+        }
+        Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(
                 onClick = { CrashLog.export(context) },
@@ -524,6 +560,25 @@ fun SettingsScreen(
                     }) { Text("Wipe", color = MaterialTheme.colorScheme.error) }
                 },
                 dismissButton = { TextButton(onClick = { confirmWipe = false }) { Text("Cancel") } },
+            )
+        }
+
+        Spacer(Modifier.height(8.dp))
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("Trash", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text(
+                if (trashCount == 0) "Empty" else "$trashCount deleted →",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .heightIn(min = 48.dp)
+                    .padding(horizontal = 8.dp)
+                    .clickable { onOpenTrash() }
+                    .semantics { contentDescription = "Open trash" },
             )
         }
 

@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.kharcha.app.db.Category
+import com.kharcha.app.db.OVERALL_BUDGET_ID
 import kotlinx.coroutines.launch
 import uniffi.kharcha_core.parseAmount
 
@@ -40,6 +41,7 @@ fun BudgetSheet(
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 32.dp)) {
             Text("Set monthly budget", style = MaterialTheme.typography.titleLarge)
             LazyRow(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp)) {
+                item { FilterChip(selected = selectedId == OVERALL_BUDGET_ID, onClick = { selectedId = OVERALL_BUDGET_ID }, label = { Text("Overall") }) }
                 items(categories.filter { !it.isIncome && !it.isHidden }, key = { it.id }) { cat ->
                     FilterChip(selected = selectedId == cat.id, onClick = { selectedId = cat.id }, label = { Text("${cat.emoji} ${cat.name}") })
                 }
