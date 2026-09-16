@@ -9,6 +9,7 @@ object UserPrefs {
     private const val KEY_NAME = "name"
     private const val KEY_LISTENER_WANTED = "listener_wanted"
     private const val KEY_LAST_CAPTURE_MS = "last_capture_ms"
+    private const val KEY_BACKLOG_SCANNED = "backlog_scanned"
 
     fun isOnboarded(context: Context): Boolean =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_ONBOARDED, false)
@@ -38,5 +39,13 @@ object UserPrefs {
 
     fun stampCapture(context: Context, ms: Long = System.currentTimeMillis()) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putLong(KEY_LAST_CAPTURE_MS, ms).apply()
+    }
+
+    /** True once the one-shot pre-install SMS import has run — onboarding only, never repeats. */
+    fun backlogScanned(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_BACKLOG_SCANNED, false)
+
+    fun markBacklogScanned(context: Context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_BACKLOG_SCANNED, true).apply()
     }
 }
