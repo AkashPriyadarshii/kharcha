@@ -48,6 +48,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kharcha.app.db.Budget
+import com.kharcha.app.db.Goal
+import com.kharcha.app.db.OVERALL_BUDGET_ID
 import com.kharcha.app.db.Category
 import com.kharcha.app.db.TransactionRow
 import java.text.SimpleDateFormat
@@ -108,6 +110,7 @@ fun HomeScreen(
     onReports: () -> Unit,
     onAdd: () -> Unit,
     onSetBudget: () -> Unit,
+    onAddGoal: () -> Unit,
     captureSetup: CaptureSetup?,
     onRequestSms: () -> Unit,
     onOpenListenerSettings: () -> Unit,
@@ -117,6 +120,8 @@ fun HomeScreen(
     val txns by vm.transactions.collectAsState()
     val budgets by vm.budgets.collectAsState()
     val spendMap by vm.budgetSpends.collectAsState()
+    val carryMap by vm.budgetCarry.collectAsState()
+    val goals by vm.goals.collectAsState()
     val loaded by vm.dataLoaded.collectAsState()
 
     val catEmoji: (Long?) -> String = { id -> categories.firstOrNull { it.id == id }?.emoji ?: "🧾" }
@@ -197,6 +202,18 @@ fun HomeScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.secondary,
                         )
+                        // Daily burn rate: only meaningful with an overall cap on the live month.
+                        val overallCap = budgets.firstOrNull { it.categoryId == OVERALL_BUDGET_ID }
+                        if (overallCap != null && month == YearMonth.now()) {
+                            val remaining = overallCap.monthlyLimitPaise - totals.spend
+                            val daysLeft = month.lengthOfMonth() - java.time.LocalDate.now().dayOfMonth + 1
+                            Text(
+                                if (remaining >= 0) "${formatPaiseCompact(remaining / daysLeft.coerceAtLeast(1))}/day · $daysLeft days left"
+                                else "${formatPaiseCompact(-remaining)} over pace",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (remaining >= 0) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error,
+                            )
+                        }
                     }
                 }
             }
@@ -219,8 +236,35 @@ fun HomeScreen(
                 item { Text("No budgets yet — set caps per category.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary) }
             } else {
                 items(budgets, key = { "b_${it.categoryId}" }) { b ->
-                    BudgetLine(b, spendMap[b.categoryId] ?: 0L, "${catEmoji(b.categoryId)} ${catName(b.categoryId)}")
+                    val carry = carryMap[b.categoryId] ?: 0L
+                    BudgetLine(
+                        b.copy(monthlyLimitPaise = b.monthlyLimitPaise + carry),
+                        spendMap[b.categoryId] ?: 0L,
+                        if (b.categoryId == OVERALL_BUDGET_ID) "Overall"
+                        else "${catEmoji(b.categoryId)} ${catName(b.categoryId)}",
+                        note = if (carry > 0) "+${formatPaiseCompact(carry)} rollover" else null,
+                    )
                 }
+            }
+            item {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Goals", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "New",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .heightIn(min = 48.dp)
+                            .padding(horizontal = 8.dp)
+                            .clickable { onAddGoal() }
+                            .semantics { contentDescription = "Add a savings goal" },
+                    )
+                }
+            }
+            if (goals.isEmpty()) {
+                item { Text("No goals yet — name a target and log savings.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary) }
+            } else {
+                items(goals, key = { "g_${it.id}" }) { g -> GoalLine(g) }
             }
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -307,7 +351,7 @@ private fun CaptureSetupCard(
 }
 
 @Composable
-private fun BudgetLine(budget: Budget, spent: Long, categoryLabel: String) {
+private fun BudgetLine(budget: Budget, spent: Long, categoryLabel: String, note: String? = null) {
     val limit = budget.monthlyLimitPaise
     // Never cap at 100%: overflow must be visible, not clipped.
     val ratio = if (limit <= 0) 0f else spent.toFloat() / limit
@@ -341,10 +385,51 @@ private fun BudgetLine(budget: Budget, spent: Long, categoryLabel: String) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.secondary,
         )
+        note?.let {
+            Text(
+                it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.secondary,
+            )
+        }
         LinearProgressIndicator(
             progress = { ratio.coerceIn(0f, 1f) },
             modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
             color = barColor,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun GoalLine(goal: Goal) {
+    val target = goal.targetPaise
+    val ratio = if (target <= 0) 0f else goal.savedPaise.toFloat() / target
+    val done = target > 0 && goal.savedPaise >= target
+    val status = if (done) "Saved ✓" else "${formatPaiseCompact(target - goal.savedPaise)} left"
+    Column(
+        Modifier.fillMaxWidth().semantics {
+            contentDescription = "${goal.name} goal: saved ${formatPaise(goal.savedPaise)} of ${formatPaise(target)}, $status"
+        },
+    ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(goal.name, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                status,
+                style = MaterialTheme.typography.bodyMedium,
+                fontFamily = TabularNumerals,
+                color = if (done) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+            )
+        }
+        Text(
+            "${formatPaiseCompact(goal.savedPaise)} of ${formatPaiseCompact(target)}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.secondary,
+        )
+        LinearProgressIndicator(
+            progress = { ratio.coerceIn(0f, 1f) },
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            color = MaterialTheme.colorScheme.primary,
             trackColor = MaterialTheme.colorScheme.surfaceVariant,
         )
     }
@@ -408,8 +493,18 @@ fun AllTransactionsScreen(
 ) {
     val txns by vm.transactions.collectAsState()
     val loaded by vm.dataLoaded.collectAsState()
+    val wallets by vm.wallets.collectAsState()
     var query by remember { mutableStateOf("") }
     var filter by remember { mutableStateOf(AllFilter.ALL) }
+    var catId by remember { mutableStateOf<Long?>(null) }
+    var method by remember { mutableStateOf<String?>(null) }
+    var minPaise by remember { mutableStateOf(0L) }
+    var walletId by remember { mutableStateOf<Long?>(null) }
+    var dateMode by remember { mutableStateOf("All") }
+    var dateFrom by remember { mutableStateOf<Long?>(null) }
+    var dateTo by remember { mutableStateOf<Long?>(null) }
+    var showFrom by remember { mutableStateOf(false) }
+    var showTo by remember { mutableStateOf(false) }
 
     val catEmoji: (Long?) -> String = { id -> categories.firstOrNull { it.id == id }?.emoji ?: "🧾" }
     val catName: (Long?) -> String = { id -> categories.firstOrNull { it.id == id }?.name ?: "Uncategorised" }
@@ -425,8 +520,18 @@ fun AllTransactionsScreen(
             AllFilter.INCOME -> t.isIncome
             AllFilter.UNCATEGORISED -> t.categoryId == null
         }
-        matchQuery && matchFilter
+        val matchCat = catId == null || t.categoryId == catId
+        val matchMethod = method == null || t.paymentMethod == method
+        val matchAmount = t.amountPaise >= minPaise
+        val matchWallet = walletId == null || t.walletId == walletId
+        val from = dateFrom
+        val to = dateTo
+        val matchDate = (from == null || t.timestampMs >= from) &&
+            (to == null || t.timestampMs < to)
+        matchQuery && matchFilter && matchCat && matchMethod && matchAmount && matchWallet && matchDate
     }
+    val filtering = query.isNotBlank() || filter != AllFilter.ALL || catId != null ||
+        method != null || minPaise > 0 || walletId != null || dateFrom != null
     val grouped = visible.groupBy { dayKeyFmt.format(Date(it.timestampMs)) }
 
     Column(modifier.fillMaxSize().padding(16.dp)) {
@@ -449,12 +554,138 @@ fun AllTransactionsScreen(
                 )
             }
         }
+        Spacer(Modifier.height(6.dp))
+        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            item {
+                FilterChip(selected = catId == null, onClick = { catId = null }, label = { Text("All cats") })
+            }
+            items(categories, key = { "fc_${it.id}" }) { c ->
+                FilterChip(
+                    selected = catId == c.id,
+                    onClick = { catId = if (catId == c.id) null else c.id },
+                    label = { Text("${c.emoji} ${c.name}") },
+                )
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            item {
+                FilterChip(selected = method == null, onClick = { method = null }, label = { Text("Any way") })
+            }
+            items(PaymentMethods) { m ->
+                FilterChip(
+                    selected = method == m,
+                    onClick = { method = if (method == m) null else m },
+                    label = { Text(m) },
+                )
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            // ponytail: fixed presets, no free-form inputs. Thresholds in paise.
+            val amounts = listOf(0L to "Any ₹", 50_000L to "₹500+", 200_000L to "₹2k+", 1_000_000L to "₹10k+")
+            items(amounts) { (v, label) ->
+                FilterChip(
+                    selected = minPaise == v,
+                    onClick = { minPaise = v },
+                    label = { Text(label) },
+                )
+            }
+        }
+        if (wallets.isNotEmpty()) {
+            Spacer(Modifier.height(6.dp))
+            androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                item {
+                    FilterChip(selected = walletId == null, onClick = { walletId = null }, label = { Text("All wallets") })
+                }
+                items(wallets, key = { "fw_${it.id}" }) { w ->
+                    FilterChip(
+                        selected = walletId == w.id,
+                        onClick = { walletId = if (walletId == w.id) null else w.id },
+                        label = { Text(w.name) },
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            val zone = java.time.ZoneId.systemDefault()
+            fun dayMs(y: Int, m: Int, d: Int) =
+                java.time.LocalDate.of(y, m, d).atStartOfDay(zone).toInstant().toEpochMilli()
+            val dates = listOf("All", "7D", "Month", "Cycle", "Custom")
+            items(dates) { label ->
+                FilterChip(
+                    selected = dateMode == label,
+                    onClick = {
+                        dateMode = label
+                        val now = System.currentTimeMillis()
+                        when (label) {
+                            "All" -> { dateFrom = null; dateTo = null }
+                            "7D" -> { dateFrom = now - 7L * 24 * 60 * 60 * 1000; dateTo = null }
+                            "Month" -> monthRange(java.time.YearMonth.now()).let { dateFrom = it.first; dateTo = it.second }
+                            "Cycle" -> {
+                                // Billing cycle 25th→24th: credit-card statement view.
+                                val t = java.time.LocalDate.now(zone)
+                                if (t.dayOfMonth >= 25) {
+                                    val n = t.plusMonths(1)
+                                    dateFrom = dayMs(t.year, t.monthValue, 25)
+                                    dateTo = dayMs(n.year, n.monthValue, 25)
+                                } else {
+                                    val p = t.minusMonths(1)
+                                    dateFrom = dayMs(p.year, p.monthValue, 25)
+                                    dateTo = dayMs(t.year, t.monthValue, 25)
+                                }
+                            }
+                            "Custom" -> showFrom = true
+                        }
+                    },
+                    label = { Text(if (label == "Cycle") "Cycle 25–24" else label) },
+                )
+            }
+        }
+        if (dateMode == "Custom") {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { showFrom = true }) {
+                    Text(dateFrom?.let { "From ${dateFmt.format(Date(it))}" } ?: "From…")
+                }
+                TextButton(onClick = { showTo = true }) {
+                    Text(dateTo?.let { "To ${dateFmt.format(Date(it))}" } ?: "To…")
+                }
+            }
+        }
+        if (showFrom) {
+            val st = androidx.compose.material3.rememberDatePickerState(initialSelectedDateMillis = dateFrom)
+            androidx.compose.material3.DatePickerDialog(
+                onDismissRequest = { showFrom = false },
+                confirmButton = {
+                    TextButton(onClick = {
+                        st.selectedDateMillis?.let { dateFrom = it }
+                        showFrom = false
+                    }) { Text("OK") }
+                },
+                dismissButton = { TextButton(onClick = { showFrom = false }) { Text("Cancel") } },
+            ) { androidx.compose.material3.DatePicker(st) }
+        }
+        if (showTo) {
+            val st = androidx.compose.material3.rememberDatePickerState(initialSelectedDateMillis = dateTo)
+            androidx.compose.material3.DatePickerDialog(
+                onDismissRequest = { showTo = false },
+                confirmButton = {
+                    TextButton(onClick = {
+                        // End of selected day, exclusive upper bound.
+                        st.selectedDateMillis?.let { dateTo = it + 24L * 60 * 60 * 1000 }
+                        showTo = false
+                    }) { Text("OK") }
+                },
+                dismissButton = { TextButton(onClick = { showTo = false }) { Text("Cancel") } },
+            ) { androidx.compose.material3.DatePicker(st) }
+        }
         Spacer(Modifier.height(8.dp))
         when {
             !loaded -> LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) { items(6) { SkeletonRow() } }
             visible.isEmpty() -> EmptyState(
-                title = if (query.isNotBlank() || filter != AllFilter.ALL) "Nothing matches" else "No spends yet",
-                body = if (query.isNotBlank() || filter != AllFilter.ALL) "Try a different search or filter."
+                title = if (filtering) "Nothing matches" else "No spends yet",
+                body = if (filtering) "Try a different search or filter."
                 else "Pay via UPI and it appears here, or add one by hand.",
                 actionLabel = "Add expense",
                 onAction = onAdd,

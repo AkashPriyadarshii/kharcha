@@ -13,7 +13,7 @@ interface CaptureDao {
 
     @Query(
         """SELECT * FROM transactions
-           WHERE amountPaise = :amountPaise AND isIncome = :isIncome
+           WHERE isDeleted = 0 AND amountPaise = :amountPaise AND isIncome = :isIncome
              AND timestampMs BETWEEN :fromMs AND :toMs
            ORDER BY timestampMs DESC LIMIT 1"""
     )

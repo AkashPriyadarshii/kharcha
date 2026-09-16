@@ -38,10 +38,10 @@ object CaptureEngine {
     // SMS; multibyte text only over-counts (safer direction).
     private val maxBody = maxBodyBytes().toInt()
 
-    suspend fun ingest(appContext: android.content.Context, body: String, sender: String, timestampMs: Long, dao: CaptureDao, txnDao: com.kharcha.app.db.KharchaDao): IngestResult {
+    suspend fun ingest(appContext: android.content.Context, body: String, sender: String, timestampMs: Long, dao: CaptureDao, txnDao: com.kharcha.app.db.KharchaDao, quiet: Boolean = false): IngestResult {
         if (body.length > maxBody) return IngestResult.Unparsed
         return try {
-            ingestInner(appContext, body, sender, timestampMs, dao, txnDao)
+            ingestInner(appContext, body, sender, timestampMs, dao, txnDao, quiet)
         } catch (e: Exception) {
             CaptureEngine.logCrash(appContext, e)
             IngestResult.Unparsed
@@ -52,7 +52,7 @@ object CaptureEngine {
         CrashLog.log(appContext, "CaptureEngine", "ingest failed: ${e.message}")
     }
 
-    private suspend fun ingestInner(appContext: android.content.Context, body: String, sender: String, timestampMs: Long, dao: CaptureDao, txnDao: com.kharcha.app.db.KharchaDao): IngestResult {
+    private suspend fun ingestInner(appContext: android.content.Context, body: String, sender: String, timestampMs: Long, dao: CaptureDao, txnDao: com.kharcha.app.db.KharchaDao, quiet: Boolean): IngestResult {
         if (isSpam(body)) return IngestResult.Spam
 
         val parsed = parseCapture(body, sender, timestampMs) ?: return IngestResult.Unparsed
@@ -105,7 +105,7 @@ object CaptureEngine {
                     payment.balancePaise?.let { txnDao.updateWalletBalance(walletId, it) }
                 }
                 UserPrefs.stampCapture(appContext)
-                CaptureNotify.inserted(appContext, payment.merchant, payment.amountPaise, null)
+                if (!quiet) CaptureNotify.inserted(appContext, payment.merchant, payment.amountPaise, null)
                 CoroutineScope(Dispatchers.IO).launch {
                     try { com.kharcha.app.widget.KharchaWidget.refresh(appContext) } catch (_: Exception) {}
                 }
