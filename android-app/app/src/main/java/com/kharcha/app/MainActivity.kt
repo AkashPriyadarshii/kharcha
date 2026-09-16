@@ -38,6 +38,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kharcha.app.ui.AddSheet
 import com.kharcha.app.ui.AllTransactionsScreen
 import com.kharcha.app.ui.AppLock
+import com.kharcha.app.ui.OnboardingScreen
+import com.kharcha.app.ui.ReportsScreen
+import com.kharcha.app.ui.SettingsScreen
+import com.kharcha.app.ui.UserPrefs
 import com.kharcha.app.ui.AppViewModel
 import com.kharcha.app.ui.BudgetSheet
 import com.kharcha.app.ui.CaptureSetup
@@ -164,15 +168,31 @@ private fun App() {
     var showAdd by remember { mutableStateOf(false) }
     var showBudget by remember { mutableStateOf(false) }
     var showAll by remember { mutableStateOf(false) }
+    var showReports by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
     var editTxn by remember { mutableStateOf<com.kharcha.app.db.TransactionRow?>(null) }
+    var skipOnboarding by remember { mutableStateOf(UserPrefs.isOnboarded(context)) }
     val app = context.applicationContext as KharchaApp
     // Flow collection — no runBlocking on the main thread, always fresh after reseeds.
     val categories by app.database.dao().allCategories().collectAsState(initial = emptyList())
-    var lockEnabled by remember { mutableStateOf(AppLock.isEnabled(context)) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) { vm.refreshAll() }
+
+    if (!skipOnboarding) {
+        OnboardingScreen(
+            captureSetup = CaptureSetup(
+                smsGranted = activity?.smsState?.value ?: false,
+                listenerEnabled = activity?.listenerState?.value ?: false,
+            ),
+            lockEnrollable = activity?.let { AppLock.canAuthenticate(it) } ?: true,
+            onRequestSms = { activity?.requestSms() },
+            onOpenListenerSettings = { activity?.openListenerSettings() },
+            onDone = { skipOnboarding = true },
+        )
+        return
+    }
 
     val showSnackbar: (String, String?, suspend () -> Unit) -> Unit = { message, action, onAction ->
         scope.launch {
@@ -182,31 +202,48 @@ private fun App() {
         }
     }
 
-    if (showAll) {
-        BackHandler { showAll = false }
-        Column {
-            AllTransactionsScreen(
+    when {
+        showSettings -> {
+            BackHandler { showSettings = false }
+            SettingsScreen(
                 vm,
                 categories,
-                Modifier.weight(1f),
-                onTap = { editTxn = it },
-                onAdd = { showAdd = true },
+                captureSetup = CaptureSetup(
+                    smsGranted = activity?.smsState?.value ?: false,
+                    listenerEnabled = activity?.listenerState?.value ?: false,
+                ),
+                lockEnrollable = activity?.let { AppLock.canAuthenticate(it) } ?: true,
+                onRequestSms = { activity?.requestSms() },
+                onOpenListenerSettings = { activity?.openListenerSettings() },
+                onBack = { showSettings = false },
             )
-            ExportButton(vm, categories, Modifier.padding(16.dp))
         }
-    } else {
-        HomeScreen(
+        showReports -> {
+            BackHandler { showReports = false }
+            ReportsScreen(vm, categories, onBack = { showReports = false })
+        }
+        showAll -> {
+            BackHandler { showAll = false }
+            Column {
+                AllTransactionsScreen(
+                    vm,
+                    categories,
+                    Modifier.weight(1f),
+                    onTap = { editTxn = it },
+                    onAdd = { showAdd = true },
+                )
+                ExportButton(vm, categories, Modifier.padding(16.dp))
+            }
+        }
+        else -> HomeScreen(
             vm,
             categories = categories,
+            userName = UserPrefs.name(context),
             onShowAll = { showAll = true },
+            onReports = { showReports = true },
+            onSettings = { showSettings = true },
             onAdd = { showAdd = true },
             onSetBudget = { showBudget = true },
-            lockEnabled = lockEnabled,
-            lockEnrollable = activity?.let { AppLock.canAuthenticate(it) } ?: true,
-            onToggleLock = {
-                lockEnabled = it
-                AppLock.setEnabled(context, it)
-            },
             captureSetup = run {
                 val sms = activity?.smsState?.value ?: false
                 val listener = activity?.listenerState?.value ?: false

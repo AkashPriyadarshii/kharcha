@@ -77,7 +77,7 @@ fun relativeDay(ts: Long): String {
     }
 }
 
-private fun monthLabel(month: YearMonth): String {
+internal fun monthLabel(month: YearMonth): String {
     val name = month.month.getDisplayName(MonthTextStyle.FULL, Locale.ENGLISH)
     return "$name ${month.year}".uppercase(Locale.ENGLISH)
 }
@@ -86,12 +86,12 @@ private fun monthLabel(month: YearMonth): String {
 fun HomeScreen(
     vm: AppViewModel,
     categories: List<Category>,
+    userName: String,
     onShowAll: () -> Unit,
+    onReports: () -> Unit,
+    onSettings: () -> Unit,
     onAdd: () -> Unit,
     onSetBudget: () -> Unit,
-    lockEnabled: Boolean,
-    lockEnrollable: Boolean,
-    onToggleLock: (Boolean) -> Unit,
     captureSetup: CaptureSetup?,
     onRequestSms: () -> Unit,
     onOpenListenerSettings: () -> Unit,
@@ -125,7 +125,25 @@ fun HomeScreen(
         ) {
             item {
                 Spacer(Modifier.height(4.dp))
-                Text("Kharcha", style = MaterialTheme.typography.headlineMedium)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Column {
+                        Text(
+                            if (userName.isBlank()) "Kharcha" else "Hi ${userName.trim()},",
+                            style = MaterialTheme.typography.headlineMedium,
+                        )
+                        if (userName.isNotBlank()) {
+                            Text("Here's your money.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
+                        }
+                    }
+                    Text(
+                        "⚙",
+                        fontSize = 22.sp,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clickable { onSettings() }
+                            .semantics { contentDescription = "Open settings" },
+                    )
+                }
             }
             if (captureSetup != null) {
                 item {
@@ -201,6 +219,21 @@ fun HomeScreen(
                 }
             }
             item {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Reports", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Insights →",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .heightIn(min = 48.dp)
+                            .padding(horizontal = 8.dp)
+                            .clickable { onReports() }
+                            .semantics { contentDescription = "Open reports" },
+                    )
+                }
+            }
+            item {
                 Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text("Recent", style = MaterialTheme.typography.titleMedium)
                     Text(
@@ -230,27 +263,8 @@ fun HomeScreen(
                 }
             }
             item {
-                // Settings live here until a Profile tab exists — grouped, not mid-scroll.
-                Text("Settings", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("App lock", style = MaterialTheme.typography.bodyLarge)
-                        Text(
-                            if (!lockEnrollable) "Biometrics not set up on this device"
-                            else "Ask for fingerprint on launch",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.secondary,
-                        )
-                    }
-                    Switch(
-                        checked = lockEnabled && lockEnrollable,
-                        enabled = lockEnrollable,
-                        onCheckedChange = onToggleLock,
-                        modifier = Modifier.semantics { contentDescription = "Toggle app lock" },
-                    )
-                }
+                Spacer(Modifier.height(88.dp)) // clear the FAB
             }
-            item { Spacer(Modifier.height(88.dp)) } // clear the FAB
         }
     }
 }
