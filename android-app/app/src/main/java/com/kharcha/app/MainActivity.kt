@@ -316,6 +316,7 @@ private fun App() {
                     vm,
                     categories = categories,
                     userName = UserPrefs.name(context),
+                    lastCaptureMs = UserPrefs.lastCaptureMs(context),
                     onShowAll = { nav.navigate(Tab.ROUTE_TXN) { launchSingleTop = true } },
                     onReports = { nav.navigate(Tab.ROUTE_REPORTS) { launchSingleTop = true } },
                     onAdd = { showAdd = true },

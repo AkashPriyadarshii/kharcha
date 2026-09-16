@@ -3,6 +3,7 @@ package com.kharcha.app.capture
 import com.kharcha.app.db.RuleRow
 import com.kharcha.app.db.TransactionRow
 import com.kharcha.app.db.Wallet
+import com.kharcha.app.ui.UserPrefs
 import uniffi.kharcha_core.CaptureDecision
 import uniffi.kharcha_core.ExistingRow
 import uniffi.kharcha_core.Rule
@@ -37,7 +38,7 @@ object CaptureEngine {
     suspend fun ingest(appContext: android.content.Context, body: String, sender: String, timestampMs: Long, dao: CaptureDao, txnDao: com.kharcha.app.db.KharchaDao): IngestResult {
         if (body.length > maxBody) return IngestResult.Unparsed
         return try {
-            ingestInner(body, sender, timestampMs, dao, txnDao)
+            ingestInner(appContext, body, sender, timestampMs, dao, txnDao)
         } catch (e: Exception) {
             CaptureEngine.logCrash(appContext, e)
             IngestResult.Unparsed
@@ -48,7 +49,7 @@ object CaptureEngine {
         CrashLog.log(appContext, "CaptureEngine", "ingest failed: ${e.message}")
     }
 
-    private suspend fun ingestInner(body: String, sender: String, timestampMs: Long, dao: CaptureDao, txnDao: com.kharcha.app.db.KharchaDao): IngestResult {
+    private suspend fun ingestInner(appContext: android.content.Context, body: String, sender: String, timestampMs: Long, dao: CaptureDao, txnDao: com.kharcha.app.db.KharchaDao): IngestResult {
         if (isSpam(body)) return IngestResult.Spam
 
         val parsed = parseCapture(body, sender, timestampMs) ?: return IngestResult.Unparsed
@@ -100,6 +101,7 @@ object CaptureEngine {
                     txnDao.assignWallet(txnId, walletId)
                     payment.balancePaise?.let { txnDao.updateWalletBalance(walletId, it) }
                 }
+                UserPrefs.stampCapture(appContext)
                 IngestResult.Inserted(txnId)
             }
             is CaptureDecision.Skip -> {
