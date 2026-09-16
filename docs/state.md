@@ -39,6 +39,13 @@ Repository = `android-app/` (Kotlin Compose) + `kharcha-core/` (Rust) only.
   `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` permission; listener watchdog in
   `MainActivity.onResume` toggles ComponentName to re-bind a killed
   NotificationListenerService (gated on user opt-in via `UserPrefs.listenerWanted`).
+- **Security & Interaction Hardening (Audited 2026-09-17).**
+  - Secured `SmsReceiver`: Added `android.permission.BROADCAST_SMS` to prevent 3rd-party intent injection attacks; removed debug action.
+  - Ingestion Concurrency: Added `Mutex` in `CaptureEngine.ingest` to eliminate race condition duplicate inserts between SMS and notification listeners.
+  - UI Bug Fix: Removed duplicate note field in `AddSheet`.
+  - Ergonomics: Added `imePadding()`, `verticalScroll()`, and numeric keypad options to `BudgetSheet` and `GoalSheet`.
+  - Theming: Completed `LightColors` surface and outline tokens (`surfaceVariant`, `outlineVariant`, `outline`) for full ink-green/warm paper compliance.
+  - Cleaned dead pre-Q storage branches in `ExportButton` (minSdk 32 guarantee).
 - Bindings committed; `.so` (arm64) built from Desktop `kharcha-core` dist.
   `buildKharchaCore` gradle task disabled — dist/ is the source of truth.
 - **DB safety (merged).** Throttled VACUUM on open (30d);

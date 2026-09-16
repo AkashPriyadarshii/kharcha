@@ -32,6 +32,10 @@ private val LightColors = lightColorScheme(
     onBackground = Ink,
     surface = Color(0xFFFFFDF7),
     onSurface = Ink,
+    surfaceVariant = Color(0xFFE8E4DA),
+    onSurfaceVariant = Color(0xFF5C6B63),
+    outline = Color(0xFF7A786F),
+    outlineVariant = Color(0xFFD6D1C6),
     error = Color(0xFFBA1A1A),
 )
 

@@ -20,6 +20,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.ImeAction
 import com.kharcha.app.db.Category
 import com.kharcha.app.db.OVERALL_BUDGET_ID
 import kotlinx.coroutines.launch
@@ -36,9 +42,17 @@ fun BudgetSheet(
     var selectedId by remember { mutableStateOf<Long?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val scrollState = rememberScrollState()
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 32.dp)) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .imePadding()
+                .verticalScroll(scrollState)
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 32.dp)
+        ) {
             Text("Set monthly budget", style = MaterialTheme.typography.titleLarge)
             LazyRow(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp)) {
                 item { FilterChip(selected = selectedId == OVERALL_BUDGET_ID, onClick = { selectedId = OVERALL_BUDGET_ID }, label = { Text("Overall") }) }
@@ -51,6 +65,7 @@ fun BudgetSheet(
                 onValueChange = { amount = it.filter { c -> c.isDigit() || c == '.' } },
                 label = { Text("Monthly limit (₹)") },
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             )
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }

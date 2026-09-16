@@ -10,6 +10,13 @@ All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
   - **DB Safety (#10):** Throttled VACUUM (30d), full database snapshot backup/restore (`.kharchabackup` via `VACUUM INTO` + SAF), and soft deletion with TrashScreen / undo support (Room DB v5).
   - **Settings Pack (#12):** Rules/Categories/Accounts management sheets, theme mode + Monet dynamic color toggles, lock grace period + `FLAG_SECURE`, daily summary alarm worker, and category hide / wallet archive (Room DB v6).
   - **Catchup Pack (#13):** Ingest-time budget threshold alerts (50/80/100%), automatic transfer/refund pairing + note links, recurring subscription detection, bulk select/delete/categorize/link, and split-bill UI.
+- **Audit Hardening:**
+  - `SmsReceiver`: Guarded with `android.permission.BROADCAST_SMS` to block unprivileged 3rd-party intent spoofing.
+  - `CaptureEngine`: Added `Mutex` on `ingest` to eliminate race-condition duplicates between SMS and notification listeners.
+  - `AddSheet`: Removed duplicate `note` input field in Compose tree.
+  - `BudgetSheet` & `GoalSheet`: Added `imePadding()`, `verticalScroll()`, and numeric keypad options so keyboard does not obscure Save buttons.
+  - `AppTheme`: Defined missing `surfaceVariant`, `outlineVariant`, and `outline` tokens for full ink-green / warm paper aesthetic fidelity.
+  - `ExportButton`: Removed dead legacy pre-Q storage branches.
 - **Verified Gates:** `kharcha-core` Rust test gate (59/59 green) and `./gradlew.bat :app:assembleRelease` passed cleanly.
 
 ## [v0.1.0] — 2026-09-16 — Rust + Kotlin rewrite ships

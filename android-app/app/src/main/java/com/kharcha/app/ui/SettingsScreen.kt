@@ -664,7 +664,7 @@ private fun SettingActionRow(
                 }
             }
         } else {
-            OutlinedButton(onClick = onAction, modifier = Modifier.heightIn(min = 36.dp)) {
+            OutlinedButton(onClick = onAction, modifier = Modifier.heightIn(min = 48.dp)) {
                 Text(actionText, fontSize = 13.sp)
             }
         }

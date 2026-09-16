@@ -158,14 +158,6 @@ fun AddSheet(
                 onValueChange = { note = it },
                 label = { Text("Note (optional)") },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { /* keep sheet open; Save is explicit */ }),
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            )
-            OutlinedTextField(
-                value = note,
-                onValueChange = { note = it },
-                label = { Text("Note (optional)") },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { }),
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp).focusRequester(noteFocus),
             )
@@ -308,7 +300,6 @@ fun QuickAddSheet(
                         }
                     },
             )
-            Text("Expense", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
             OutlinedTextField(
                 value = merchant,
                 onValueChange = { merchant = it },

@@ -19,8 +19,7 @@ class SmsReceiver : BroadcastReceiver() {
         // never crash the app. Offer/spam messages arrive here all day.
         try {
             val app = context.applicationContext as KharchaApp
-            val isTest = intent.action == "com.akash.kharcha.TEST_CAPTURE"
-            if (!isTest && intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
+            if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
 
             val pending = goAsync()
             val errors = CoroutineExceptionHandler { _, e ->
@@ -29,20 +28,12 @@ class SmsReceiver : BroadcastReceiver() {
 
             CoroutineScope(SupervisorJob() + Dispatchers.IO + errors).launch {
                 try {
-                    val body: String
-                    val sender: String
-                    val timestampMs: Long
-                    if (isTest) {
-                        body = intent.getStringExtra("text") ?: return@launch
-                        sender = intent.getStringExtra("sender") ?: "VM-HDFCBK"
-                        timestampMs = intent.getLongExtra("timestampMs", System.currentTimeMillis())
-                    } else {
-                        val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent) ?: return@launch
-                        val first = messages.firstOrNull() ?: return@launch
-                        body = messages.joinToString(separator = "") { it.messageBody }
-                        sender = first.originatingAddress ?: ""
-                        timestampMs = first.timestampMillis
-                    }
+                    val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent) ?: return@launch
+                    val first = messages.firstOrNull() ?: return@launch
+                    val body = messages.joinToString(separator = "") { it.messageBody }
+                    val sender = first.originatingAddress ?: ""
+                    val timestampMs = first.timestampMillis
+
                     CaptureEngine.ingest(
                         appContext = context,
                         body = body,

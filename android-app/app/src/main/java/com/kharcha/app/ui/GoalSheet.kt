@@ -18,7 +18,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.kharcha.app.db.Goal
 import kotlinx.coroutines.launch
@@ -38,9 +44,17 @@ fun GoalSheet(
     var selectedId by remember { mutableStateOf<Long?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val scrollState = rememberScrollState()
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 32.dp)) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .imePadding()
+                .verticalScroll(scrollState)
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 32.dp)
+        ) {
             Text("Savings goals", style = MaterialTheme.typography.titleLarge)
             LazyRow(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp)) {
                 item { FilterChip(selected = selectedId == null, onClick = { selectedId = null }, label = { Text("+ New") }) }
@@ -54,6 +68,7 @@ fun GoalSheet(
                     onValueChange = { name = it },
                     label = { Text("Goal name (e.g. Emergency fund)") },
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 )
                 OutlinedTextField(
@@ -61,6 +76,7 @@ fun GoalSheet(
                     onValueChange = { target = it.filter { c -> c.isDigit() || c == '.' } },
                     label = { Text("Target (₹)") },
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 )
             } else {
@@ -69,6 +85,7 @@ fun GoalSheet(
                     onValueChange = { amount = it.filter { c -> c.isDigit() || c == '.' } },
                     label = { Text("Add savings (₹)") },
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 )
             }
