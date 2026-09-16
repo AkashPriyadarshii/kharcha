@@ -1,7 +1,11 @@
 package com.kharcha.app.ui
 
 import android.content.Context
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,9 +34,11 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,6 +52,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kharcha.app.BuildConfig
 import com.kharcha.app.db.Category
+import com.kharcha.app.db.DbBackup
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Clean, organized Settings Screen:
@@ -70,8 +80,10 @@ fun SettingsScreen(
     onRequestIgnoreBattery: () -> Unit,
     onRunIntro: () -> Unit,
     onOpenConsoleLog: () -> Unit,
+    onOpenTrash: () -> Unit,
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var name by remember { mutableStateOf(UserPrefs.name(context)) }
     var editingName by remember { mutableStateOf(false) }
     var lockEnabled by remember { mutableStateOf(AppLock.isEnabled(context)) }
@@ -275,6 +287,56 @@ fun SettingsScreen(
         // 5. Data & Backup Section
         SectionHeader("Data & Storage")
         ExportButton(vm, categories, Modifier.fillMaxWidth())
+        Spacer(Modifier.height(8.dp))
+        val trashCount = vm.trashed.collectAsState().value.size
+        val backupLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
+            if (uri == null) return@rememberLauncherForActivityResult
+            scope.launch(Dispatchers.IO) {
+                val ok = DbBackup.exportTo(context, uri)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, if (ok) "Backup saved" else "Backup failed", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+        val restoreLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri == null) return@rememberLauncherForActivityResult
+            scope.launch(Dispatchers.IO) {
+                // Success restarts the app inside importFrom; only failure returns.
+                if (!DbBackup.importFrom(context, uri)) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "Restore failed — not a valid backup", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = { backupLauncher.launch(DbBackup.fileName()) },
+                modifier = Modifier.weight(1f).heightIn(min = 46.dp),
+            ) { Text("Backup") }
+            OutlinedButton(
+                onClick = { restoreLauncher.launch(arrayOf("application/octet-stream")) },
+                modifier = Modifier.weight(1f).heightIn(min = 46.dp),
+            ) { Text("Restore") }
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("Trash", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text(
+                if (trashCount == 0) "Empty" else "$trashCount deleted →",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .heightIn(min = 48.dp)
+                    .padding(horizontal = 8.dp)
+                    .clickable { onOpenTrash() }
+                    .semantics { contentDescription = "Open trash" },
+            )
+        }
 
         Spacer(Modifier.height(20.dp))
 

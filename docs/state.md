@@ -41,7 +41,12 @@ Repository = `android-app/` (Kotlin Compose) + `kharcha-core/` (Rust) only.
   NotificationListenerService (gated on user opt-in via `UserPrefs.listenerWanted`).
 - Bindings committed; `.so` (arm64) built from Desktop `kharcha-core` dist.
   `buildKharchaCore` gradle task disabled — dist/ is the source of truth.
-- **Budget pack (`feat/budget-pack`, unmerged).** Overall monthly ceiling via
+- **DB safety (`feat/db-safety`, unmerged).** Throttled VACUUM on open (30d);
+  full-file backup/restore (`.kharchabackup` via `VACUUM INTO` + SAF, validated
+  before swap, restart on import); soft deletes (`isDeleted`, DB v5 via 4→5
+  rebase) with Trash screen (restore per row, purge with confirm). SQLCipher
+  deferred: new dep + key-management design need owner approval.
+- **Budget pack (merged).** Overall monthly ceiling via
   budgets sentinel id 0 (seed ids start at 1); daily burn rate under the hero
   when the cap is set on the live month; one-month unspent rollover computed
   at read time (overspend never carries); savings goals = new `goals` table
@@ -57,6 +62,7 @@ Repository = `android-app/` (Kotlin Compose) + `kharcha-core/` (Rust) only.
   prefilter, 500 cap, every message through `CaptureEngine.ingest(quiet=true)`
   so per-insert buzz stays silent; Toast reports the count. Skips without SMS
   permission, never repeats on intro re-run.
+>>>>>>> origin/main
 
 **Prior state (historical):**
 
