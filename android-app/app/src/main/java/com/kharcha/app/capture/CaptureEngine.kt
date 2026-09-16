@@ -10,6 +10,9 @@ import uniffi.kharcha_core.Rule
 import uniffi.kharcha_core.checkCapture
 import uniffi.kharcha_core.categorizeMerchant
 import uniffi.kharcha_core.isSpam
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import uniffi.kharcha_core.maxBodyBytes
 import uniffi.kharcha_core.parseCapture
 
@@ -103,6 +106,9 @@ object CaptureEngine {
                 }
                 UserPrefs.stampCapture(appContext)
                 if (!quiet) CaptureNotify.inserted(appContext, payment.merchant, payment.amountPaise, null)
+                CoroutineScope(Dispatchers.IO).launch {
+                    try { com.kharcha.app.widget.KharchaWidget.refresh(appContext) } catch (_: Exception) {}
+                }
                 IngestResult.Inserted(txnId)
             }
             is CaptureDecision.Skip -> {
