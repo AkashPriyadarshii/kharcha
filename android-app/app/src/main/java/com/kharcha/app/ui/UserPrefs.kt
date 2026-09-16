@@ -8,6 +8,7 @@ object UserPrefs {
     private const val KEY_ONBOARDED = "onboarded"
     private const val KEY_NAME = "name"
     private const val KEY_LISTENER_WANTED = "listener_wanted"
+    private const val KEY_LAST_CAPTURE_MS = "last_capture_ms"
 
     fun isOnboarded(context: Context): Boolean =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_ONBOARDED, false)
@@ -29,5 +30,13 @@ object UserPrefs {
 
     fun setListenerWanted(context: Context, wanted: Boolean) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_LISTENER_WANTED, wanted).apply()
+    }
+
+    /** Last successful auto-capture, 0 = never. Dead-man signal for silent listener death. */
+    fun lastCaptureMs(context: Context): Long =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getLong(KEY_LAST_CAPTURE_MS, 0)
+
+    fun stampCapture(context: Context, ms: Long = System.currentTimeMillis()) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putLong(KEY_LAST_CAPTURE_MS, ms).apply()
     }
 }

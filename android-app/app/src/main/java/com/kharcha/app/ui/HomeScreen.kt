@@ -86,11 +86,24 @@ internal fun monthLabel(month: YearMonth): String {
     return "$name ${month.year}".uppercase(Locale.ENGLISH)
 }
 
+/** "2h ago" / "3d ago" — dead-man signal for silent listener death. */
+internal fun captureAge(lastMs: Long, now: Long = System.currentTimeMillis()): String {
+    if (lastMs <= 0) return "never"
+    val m = (now - lastMs) / 60_000
+    return when {
+        m < 1 -> "just now"
+        m < 60 -> "${m}m ago"
+        m < 1440 -> "${m / 60}h ago"
+        else -> "${m / 1440}d ago"
+    }
+}
+
 @Composable
 fun HomeScreen(
     vm: AppViewModel,
     categories: List<Category>,
     userName: String,
+    lastCaptureMs: Long = 0,
     onShowAll: () -> Unit,
     onReports: () -> Unit,
     onAdd: () -> Unit,
@@ -163,6 +176,11 @@ fun HomeScreen(
                             "SPENT · ${monthLabel(month)}",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.secondary,
+                        )
+                        Text(
+                            "Auto-capture \u00b7 ${captureAge(lastCaptureMs)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (lastCaptureMs > 0) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error,
                         )
                         Text(
                             formatPaiseCompact(totals.spend),
