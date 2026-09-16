@@ -5,6 +5,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.kharcha.app.KharchaApp
 import com.kharcha.app.db.Budget
+import com.kharcha.app.db.Goal
+import com.kharcha.app.db.OVERALL_BUDGET_ID
 import com.kharcha.app.db.RuleRow
 import com.kharcha.app.db.TransactionRow
 import com.kharcha.app.db.Wallet
@@ -64,15 +66,30 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Category spend this month, for budget progress. */
     val budgetSpends: MutableStateFlow<Map<Long, Long>> = MutableStateFlow(emptyMap())
 
+    /**
+     * Unspent carried from last month, per budget. One-month carry only,
+     * overspend never carries.
+     * ponytail: read-time calc, no migration; compounding later if asked.
+     */
+    val budgetCarry: MutableStateFlow<Map<Long, Long>> = MutableStateFlow(emptyMap())
+
     fun refreshBudgetSpends() {
         val month = selectedMonth.value
         viewModelScope.launch {
             val (start, end) = monthRange(month)
+            val (pStart, pEnd) = monthRange(month.minusMonths(1))
             val map = mutableMapOf<Long, Long>()
+            val carry = mutableMapOf<Long, Long>()
             for (b in budgets.value) {
-                map[b.categoryId] = dao.categorySpend(b.categoryId, start, end)
+                val spend = if (b.categoryId == OVERALL_BUDGET_ID) dao.spendBetween(start, end)
+                else dao.categorySpend(b.categoryId, start, end)
+                map[b.categoryId] = spend
+                val prev = if (b.categoryId == OVERALL_BUDGET_ID) dao.spendBetween(pStart, pEnd)
+                else dao.categorySpend(b.categoryId, pStart, pEnd)
+                carry[b.categoryId] = maxOf(0L, b.monthlyLimitPaise - prev)
             }
             budgetSpends.value = map
+            budgetCarry.value = carry
         }
     }
 
@@ -107,6 +124,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     suspend fun removeBudget(categoryId: Long) = dao.deleteBudget(categoryId)
+
+    val goals: StateFlow<List<Goal>> =
+        dao.allGoals().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    suspend fun setGoal(name: String, targetPaise: Long) {
+        dao.upsertGoal(Goal(name = name, targetPaise = targetPaise))
+    }
+
+    suspend fun addSaving(goalId: Long, amountPaise: Long) {
+        dao.addSaving(goalId, amountPaise)
+    }
 
     suspend fun updateTransaction(txn: TransactionRow, teachRule: Boolean) {
         dao.update(txn)

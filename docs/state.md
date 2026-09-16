@@ -41,12 +41,31 @@ Repository = `android-app/` (Kotlin Compose) + `kharcha-core/` (Rust) only.
   NotificationListenerService (gated on user opt-in via `UserPrefs.listenerWanted`).
 - Bindings committed; `.so` (arm64) built from Desktop `kharcha-core` dist.
   `buildKharchaCore` gradle task disabled — dist/ is the source of truth.
+<<<<<<< HEAD
 - **DB safety (`feat/db-safety`, unmerged).** Throttled VACUUM on open (30d);
   full-file backup/restore (`.kharchabackup` via `VACUUM INTO` + SAF, validated
   before swap, restart on import); soft deletes (`isDeleted`, DB v4) with Trash
   screen (restore per row, purge with confirm). NOTE: v4 collides with
   `feat/budget-pack` (also 3→4) — second merge rebases to 4→5. SQLCipher
   deferred: new dep + key-management design need owner approval.
+=======
+- **Budget pack (`feat/budget-pack`, unmerged).** Overall monthly ceiling via
+  budgets sentinel id 0 (seed ids start at 1); daily burn rate under the hero
+  when the cap is set on the live month; one-month unspent rollover computed
+  at read time (overspend never carries); savings goals = new `goals` table
+  (DB v4) with manual log-savings sheet. No auto-detect, no compounding.
+- **Feed filters (merged).** AllTransactions gains five
+  in-memory rows, no migration: category chips, method chips (UPI/Cash/Card/
+  Wallet), amount presets (500/2k/10k), wallet chips (doubles as the wallet
+  browser — wallets have no other UI), date presets (7D, Month, Cycle 25–24
+  for statements, Custom via date pickers). Method filter only matches manual
+  entries until capture tags paymentMethod.
+- **Backlog import (merged).** `BacklogScan` runs once
+  after onboarding (flag `backlog_scanned`): last-90-days inbox, Rs/INR/₹ SQL
+  prefilter, 500 cap, every message through `CaptureEngine.ingest(quiet=true)`
+  so per-insert buzz stays silent; Toast reports the count. Skips without SMS
+  permission, never repeats on intro re-run.
+>>>>>>> origin/main
 
 **Prior state (historical):**
 

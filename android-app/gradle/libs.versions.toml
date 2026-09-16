@@ -28,6 +28,7 @@ androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = 
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 jna = { group = "net.java.dev.jna", name = "jna", version = "5.15.0" }
 androidx-biometric = { group = "androidx.biometric", name = "biometric", version = "1.1.0" }
+glance-appwidget = { group = "androidx.glance", name = "glance-appwidget", version = "1.1.1" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

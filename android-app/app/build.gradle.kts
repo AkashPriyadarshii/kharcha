@@ -103,4 +103,5 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     implementation("net.java.dev.jna:jna:5.15.0@aar")
     implementation(libs.androidx.biometric)
+    implementation(libs.glance.appwidget)
 }
