@@ -3,4 +3,5 @@
     <files-path
         name="kharcha_log"
         path="kharcha.log" />
+    <cache-path name="kharcha_share" path="share/" />
 </paths>
