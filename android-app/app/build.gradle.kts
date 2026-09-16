@@ -13,11 +13,11 @@ android {
 
     defaultConfig {
         // app2 while both apps coexist — same ID would silently replace the legacy Flutter app.
-        applicationId = "com.kharcha.app2"
+        applicationId = "com.kharcha.app"
         minSdk = 32
         targetSdk = 36
-        versionCode = 300
-        versionName = "3.0.0"
+        versionCode = 1
+        versionName = "0.1.0"
         ndk { abiFilters += listOf("arm64-v8a") }
     }
 
@@ -52,7 +52,7 @@ tasks.register<Exec>("buildKharchaCore") {
         "build", "--release"
     )
 }
-tasks.named("preBuild").configure { dependsOn("buildKharchaCore") }
+// tasks.named("preBuild").configure { dependsOn("buildKharchaCore") } // disabled: .so + bindings from Desktop/kharcha-core dist/
 
 dependencies {
     implementation(libs.androidx.core.ktx)
@@ -69,4 +69,5 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
     implementation(libs.jna)
+    implementation(libs.androidx.biometric)
 }

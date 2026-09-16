@@ -59,7 +59,19 @@ pub fn normalize_merchant_text(raw: String) -> String {
 
 #[uniffi::export]
 pub fn split_bill(total_paise: i64, count: u64) -> Vec<i64> {
-    split_bill_paisa(total_paise, count.min(usize::MAX as u64) as usize)
+    // Audit: try_from can't truncate — absurd counts funnel into the 10k
+    // clamp in split_bill_paisa and come back empty (see INTEGRATION.md).
+    split_bill_paisa(total_paise, usize::try_from(count).unwrap_or(usize::MAX))
+}
+
+#[uniffi::export]
+pub fn max_body_bytes() -> u64 {
+    engine::MAX_BODY_BYTES as u64
+}
+
+#[uniffi::export]
+pub fn max_batch_items() -> u64 {
+    engine::MAX_BATCH_ITEMS as u64
 }
 
 #[uniffi::export]
@@ -100,6 +112,8 @@ mod tests {
         assert_eq!(mixed.len(), 2);
         assert!(mixed[0].is_some() && mixed[1].is_none()); // Vec<Option<Record>>
         assert_eq!(split_bill(100, 3), vec![34, 33, 33]);
+        assert_eq!(max_body_bytes(), 16384);
+        assert_eq!(max_batch_items(), 10000);
         assert_eq!(parse_amount(Some("2.345".into())), Some(235));
         assert!(is_spam("OTP is 123456. Do not share with anyone.".into()));
         assert!(!is_spam("₹450 paid to Swiggy".into()));

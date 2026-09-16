@@ -31,9 +31,9 @@ docs/           — INTEGRATION.md (humans: consume this core), AGENT-INTEGRATIO
 
 - **One engine, not three.** Kharcha parses the same SMS up to 3 ways (Dart
   generic, Kotlin generic, bank fleet) and reconciles with an if/else.
-  Pennywise has one engine but no generic fallback ordering. Here:
+  the legacy app has one engine but no generic fallback ordering. Here:
   `engine::parse()` is the only door in.
-- **Triple-signal dedupe.** kharcha: ref + window. pennywise: md5(body) —
+- **Triple-signal dedupe.** kharcha: ref + window. the legacy app: md5(body) —
   breaks when carriers append footers. Here: ref → content hash
   (sender|amount|direction|merchant|ref, footer-proof) → window.
 - **Exact money.** Both parents float at the edge (`double` 2dp / BigDecimal).
@@ -55,7 +55,7 @@ cargo run --bin demo -- "Spent Rs 540 on Swiggy via UPI ref 123456789012"
 - i64 paise internally. Parse/format at the edge. No float money math, ever.
 - `fancy-regex` only where Dart uses lookahead — patterns stay near-verbatim to the Dart source for parity diffing. Replace only if a benchmark proves a hot path.
 - Regex ports are ASCII-classed mechanically (`\d`→`[0-9]`, `\s`→`[ \t\n\x0B\f\r]`; `fancy-regex 0.14` rejects `(?-u)`). Dart `\b` without `unicode:true` is ASCII but our `\b` stays Unicode — the one documented divergence, pinned by non-ASCII rows. Do not "improve" further — parity first.
-- `ParsedPayment` field order and names follow `ParsedUpiPayment` / pennywise `ParsedTransaction`.
+- `ParsedPayment` field order and names follow `ParsedUpiPayment` / the legacy app `ParsedTransaction`.
 - Behavior corpus lives in tests/parity.rs (parser/dedupe pins); unit tests co-locate per module (money/split/categorize/filter/ffi). A behavior change without a test row is not done.
 - ponytail: fewest files, one line if possible, deletion over addition. Mark known ceilings with `// ponytail:`.
 - No repo init per owner. Local crate only — no publish, no git.

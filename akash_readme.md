@@ -4,7 +4,7 @@
 
 **🌐 Website:** [**kharcha.github.io**](https://AkashPriyadarshii.github.io/kharcha/) — features, screenshots, FAQ, direct download.
 
-India-first UPI expense tracker for Android. Every UPI payment from GPay, PhonePe, or Paytm auto-appears as an expense — no manual entry. Offline-first, rule-based automation (no AI), Supabase sync. Built with Flutter/Dart, Drift/SQLite.
+India-first UPI expense tracker for Android. Every UPI payment from GPay, PhonePe, or Paytm auto-appears as an expense — no manual entry. Offline-first, rule-based automation (no AI), Supabase sync. Built with Kotlin/Rust, Room/SQLite.
 
 ## 📲 Download
 
@@ -29,7 +29,7 @@ India-first UPI expense tracker for Android. Every UPI payment from GPay, PhoneP
 - **Auto-categorization** — rule map: Swiggy→Food, Uber→Travel, Amazon→Shopping, Reliance→Grocery. Self-learns from user corrections.
 - **Duplicate-safe** — `upi_ref` unique; notification + manual can never double-add.
 - **9PM Hinglish daily summary** — "Aaj ₹540 kharcha hue." Weekly Sunday recap.
-- **Offline-first** — Drift SQLite source of truth, works with zero network, syncs to Supabase when online.
+- **Offline-first** — Room SQLite source of truth, works with zero network, syncs to Supabase when online.
 - **Budget alerts** — 50/80/100% per-category.
 - **App lock** — biometric/PIN.
 - **Max tracking, never sold** — collects granular spend data (that's the product); data is never sold, never ad-targeted.
@@ -48,13 +48,13 @@ India-first UPI expense tracker for Android. Every UPI payment from GPay, PhoneP
 
 | Concern | Choice |
 |---|---|
-| Framework | Flutter, Android 12+ (minSdk 32) |
-| UI | Material 3, Riverpod, go_router |
-| Local DB | Drift (SQLite) |
+| Framework | Kotlin Compose, Android 12+ (minSdk 32) |
+| UI | Material 3, Compose, Compose |
+| Local DB | Room (SQLite) |
 | Backend | Supabase (Google Auth, Postgres, sync) |
-| Charts | fl_chart |
-| Notifications | flutter_local_notifications |
-| App lock | local_auth |
+| Charts | Compose |
+| Notifications | local notifications (Android NotificationManager) |
+| App lock | BiometricPrompt |
 
 ## Team
 
