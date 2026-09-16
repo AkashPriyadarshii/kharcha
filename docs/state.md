@@ -112,10 +112,10 @@ Deferred (audit-flagged, rejected on YAGNI): paise-i64 storage (f64 parity locke
 
 ## Next up
 
+**⚠ Owner said WAIT (2026-09-12): deleting the separate delete phase — Compose rewrite (Phase 2) is next and absorbs deletion when it reaches parity. Something is in the works; direction pending. No push, no build until confirmed.**
+
 **Conversion track (branch `feat/kharcha-core`, mainline after review):**
-1. Merge `feat/kharcha-core` (or trim: India-15 bank parsers are the next chunk already).
-2. Port ~15 India bank parsers (HDFC, SBI, ICICI, Axis, Kotak, PNB, etc.) from Kotlin `parser-core` corpora into `kharcha-core` — bank format branch of the unified parser.
-3. UniFFI bindings → Kotlin Compose rewrite of the app (zero Dart, zero Supabase), full offline.
+2. Port ~15 India bank parsers (HDFC, SBI, ICICI, Axis, Kotak, PNB, etc.) from Kotlin `parser-core` corpora into `kharcha-core` — bank format branch of the unified parser. (paused — owner pending)
 
 Legacy app remains on `main` while conversion proceeds.
 
