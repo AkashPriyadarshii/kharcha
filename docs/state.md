@@ -41,6 +41,12 @@ Repository = `android-app/` (Kotlin Compose) + `kharcha-core/` (Rust) only.
   NotificationListenerService (gated on user opt-in via `UserPrefs.listenerWanted`).
 - Bindings committed; `.so` (arm64) built from Desktop `kharcha-core` dist.
   `buildKharchaCore` gradle task disabled — dist/ is the source of truth.
+- **Feed filters (`feat/feed-filters`, unmerged).** AllTransactions gains five
+  in-memory rows, no migration: category chips, method chips (UPI/Cash/Card/
+  Wallet), amount presets (500/2k/10k), wallet chips (doubles as the wallet
+  browser — wallets have no other UI), date presets (7D, Month, Cycle 25–24
+  for statements, Custom via date pickers). Method filter only matches manual
+  entries until capture tags paymentMethod.
 
 **Prior state (historical):**
 
