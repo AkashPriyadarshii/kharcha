@@ -25,6 +25,10 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            // Debug-signed on purpose (ponytail): no release keystore while
+            // sideloading — debug key keeps installs/updates working over the
+            // same-device debug installs and avoids needing a real key vault.
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
@@ -60,6 +64,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.fragment.ktx)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.material3)
