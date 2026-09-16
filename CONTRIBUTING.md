@@ -13,13 +13,14 @@ Read docs/ponytail.md for full details, but the core principles are:
 
 ## Strict Limits
 - **NO AI/LLM:** Do not integrate any AI SDKs, APIs, or features. Automation is rule-based.
-- **NO Third-party Telemetry:** We use our own Supabase app_errors table for logs. No Firebase, no Sentry.
+- **NO Third-party Telemetry:** Offline-first. Zero Firebase, zero Supabase, zero telemetry.
 - **NO Ad libraries.**
+- **NO Cloud:** Fully offline. No internet permission.
 
 ## Development Workflow
 1. Branch off main (feat/ or fix/).
 2. Write tests covering your change (mandatory).
-3. Ensure 'flutter analyze' and 'flutter test' both pass cleanly.
+3. Ensure `cargo test` (in `kharcha-core`) and `./gradlew.bat :app:assembleDebug` (in `android-app`) both pass cleanly.
 4. Submit a PR. The PR description must explicitly state what was changed and how it was tested.
 5. **Documentation:** Update docs/state.md, docs/changelog.md, and any other relevant Markdown files in the *same commit* as your code change.
 

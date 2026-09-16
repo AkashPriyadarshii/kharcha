@@ -66,12 +66,13 @@ Repository = `android-app/` (Kotlin Compose) + `kharcha-core/` (Rust) only.
   prefilter, 500 cap, every message through `CaptureEngine.ingest(quiet=true)`
   so per-insert buzz stays silent; Toast reports the count. Skips without SMS
   permission, never repeats on intro re-run.
-- **Catchup (`feat/catchup`, unmerged, rebased on main).** Ingest-time
+- **Catchup (merged).** Ingest-time
   budget alerts (50/80/100, prefs-deduped); transfer/refund auto-pairing +
   manual link via note + on-demand Transfers category (no migration, no new
   FFI — NDK absent so the .so can't grow exports); autopay suspects card;
   quick-add merchant + type; rescan inbox button (re-uses BacklogScan);
   wallet balance set; new categories; bulk select/delete/categorize/link; split-bill UI on splitBill.
+- **Stack Integration & Release.** All 6 stacked PRs (#8 backlog, #11 filters, #9 budgets, #10 db-safety, #12 settings, #13 catchup) merged into main. Room schema linear migrations v1→v6 verified. Release APK built cleanly via `./gradlew.bat :app:assembleRelease`.
 
 **Prior state (historical):**
 

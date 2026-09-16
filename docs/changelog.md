@@ -2,6 +2,16 @@
 
 All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
 
+## [v0.1.1] — 2026-09-17 — Feature stack integration & Release build
+- **Full Feature Pack Merged.** Integrated 6 feature tracks:
+  - **Backlog Scan (#8):** Pre-install bank SMS one-shot import after onboarding with silent ingest and toast feedback.
+  - **Feed Filters (#11):** In-memory category, payment method, amount preset, wallet, and date range filters on transaction feed.
+  - **Budget Pack (#9):** Overall monthly spend ceiling (`OVERALL_BUDGET_ID`), daily burn rate indicator, one-month unspent rollover, and savings goals tracking (Room DB v4).
+  - **DB Safety (#10):** Throttled VACUUM (30d), full database snapshot backup/restore (`.kharchabackup` via `VACUUM INTO` + SAF), and soft deletion with TrashScreen / undo support (Room DB v5).
+  - **Settings Pack (#12):** Rules/Categories/Accounts management sheets, theme mode + Monet dynamic color toggles, lock grace period + `FLAG_SECURE`, daily summary alarm worker, and category hide / wallet archive (Room DB v6).
+  - **Catchup Pack (#13):** Ingest-time budget threshold alerts (50/80/100%), automatic transfer/refund pairing + note links, recurring subscription detection, bulk select/delete/categorize/link, and split-bill UI.
+- **Verified Gates:** `kharcha-core` Rust test gate (59/59 green) and `./gradlew.bat :app:assembleRelease` passed cleanly.
+
 ## [v0.1.0] — 2026-09-16 — Rust + Kotlin rewrite ships
 
 - **Quick-add split.** FAB = QuickAddSheet (amount only, IME Done saves, auto-focus via `onGloballyPositioned` — kills the `FocusRequester is not initialized` crash that killed sheet launch; "More options" expands to full sheet). Empty-state / Transactions = full AddSheet (merchant, category, date, method, note). Field focus chain Amount → Merchant → Note with IME Next.
