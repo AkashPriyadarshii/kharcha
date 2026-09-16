@@ -28,14 +28,11 @@ historical plan below that is retained only in the changelog.
   `supabase/`, `pubspec.*` gone.
 
 ## Forward plan
-
-1. **Device smoke test** — sideload debug APK; SMS + notification access; verify
+1. **Device smoke test** — sideload built release APK (`app-release.apk`); SMS + notification access; verify
    capture, dedupe, skip, backfill live.
 2. **Autopay / recurring** — Rust side: detect cadence by merchant+amount,
    roll due; app: due list + pay-one-tap.
-3. **Release 1** — version bump, `flutter build apk` equivalent
-   (`./gradlew assembleRelease`? no — `build apk --release --split-per-abi`
-   recipe from AGENTS), tagged release + asset.
+3. **Release 1** — tagged release on GitHub + attach `app-release.apk` asset.
 4. **Banks data-driven** — `BankFormat` engine (narration regex table +
    direction keywords) with HDFC/SBI/ICICI; remaining banks only when live
    captures show them.

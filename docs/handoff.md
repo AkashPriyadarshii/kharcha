@@ -10,9 +10,9 @@
 4. PR, get the owner's review, merge.
 5. Update `docs/state.md`.
 
-## Current handoff (as of 2026-08-09)
+## Current handoff (as of 2026-09-17)
 
-**To: whoever picks up next.** v0.2.2 live-bug fixes are in. **Critical: UPI capture was dead since v0.1.1** — Kotlin wrote `cacheDir/upi_inbox.jsonl`, Dart read `getApplicationCacheDirectory()` (`code_cache/`) — different dirs, inbox never drained. Dart now reads `getTemporaryDirectory()` (= getCacheDir). Capture now also drains every 30s (real-time while open). Feature deletes now tombstone-sync (schema v11 `deleted_features`); app lock fixed via `Kotlin ComposeFragmentActivity`; profile label "Source" not "Open source" (LICENSE is all-rights-reserved). Next: on-device verify capture + lock + push, apply Supabase migrations 0002-0004 if not applied. Full context in `docs/state.md`.
+**To: whoever picks up next.** The 6-part feature pack stack (#8 backlog scan, #11 feed filters, #9 budget pack, #10 db safety, #12 settings pack, #13 catchup pack) is completely rebased, Room migrations v1→v6 verified, and merged into `main`. Rust test gate (`cargo test` 59/59) and `./gradlew.bat :app:assembleRelease` pass cleanly. Release APK is generated at `android-app/app/build/outputs/apk/release/app-release.apk`. Next: device smoke test (sideload, SMS + notification live capture, soft delete trash check, backup/restore SAF check), then Release 1 on GitHub. Full context in `docs/state.md`.
 
 ## Known gotchas
 
