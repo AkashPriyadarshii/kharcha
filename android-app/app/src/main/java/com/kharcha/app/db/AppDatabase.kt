@@ -84,11 +84,29 @@ interface KharchaDao {
 
     @Query("DELETE FROM budgets WHERE categoryId = :categoryId")
     suspend fun deleteBudget(categoryId: Long)
+
+    // --- Managers ---
+    @Query("DELETE FROM rules WHERE id = :id")
+    suspend fun deleteRule(id: Long)
+
+    @Update suspend fun updateCategory(category: Category)
+
+    @Query("UPDATE categories SET isHidden = :hidden WHERE id = :id")
+    suspend fun setCategoryHidden(id: Long, hidden: Boolean)
+
+    @Query("UPDATE wallets SET name = :name WHERE id = :id")
+    suspend fun renameWallet(id: Long, name: String)
+
+    @Query("UPDATE wallets SET isArchived = :archived WHERE id = :id")
+    suspend fun setWalletArchived(id: Long, archived: Boolean)
+
+    @Query("DELETE FROM transactions")
+    suspend fun wipeTransactions()
 }
 
 @Database(
     entities = [TransactionRow::class, Category::class, RuleRow::class, Wallet::class, Budget::class],
-    version = 3,
+    version = 4,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -110,9 +128,18 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // NOTE: third claimant on 3→4 (also budget-pack goals, db-safety
+        // isDeleted). Whoever merges second rebases to 4→5, third to 5→6.
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE categories ADD COLUMN isHidden INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE wallets ADD COLUMN isArchived INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         fun create(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "kharcha.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .addCallback(SeedCallback())
                 .build()
     }
