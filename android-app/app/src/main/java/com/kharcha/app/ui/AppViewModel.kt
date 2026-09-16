@@ -138,6 +138,36 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         refreshAll()
     }
 
+    val subscriptions: StateFlow<List<com.kharcha.app.db.SubRow>> =
+        dao.subscriptions().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    suspend fun addCategory(name: String, emoji: String) {
+        dao.insertCategory(com.kharcha.app.db.Category(name = name, emoji = emoji, sort = 99))
+    }
+
+    suspend fun setWalletBalance(id: Long, balancePaise: Long) {
+        dao.updateWalletBalance(id, balancePaise)
+    }
+
+    suspend fun linkTransactions(aId: Long, bId: Long): Boolean {
+        val ok = com.kharcha.app.capture.Pairing.linkIds(dao, aId, bId)
+        if (ok) refreshAll()
+        return ok
+    }
+
+    suspend fun bulkDelete(ids: Set<Long>) {
+        ids.forEach { dao.deleteById(it) }
+        lastDeleted = null
+        refreshAll()
+    }
+
+    suspend fun bulkCategorize(ids: Set<Long>, categoryId: Long) {
+        ids.forEach { id ->
+            dao.transactionById(id)?.let { dao.update(it.copy(categoryId = categoryId)) }
+        }
+        refreshAll()
+    }
+
     suspend fun updateTransaction(txn: TransactionRow, teachRule: Boolean) {
         dao.update(txn)
         if (teachRule && txn.categoryId != null && txn.merchant.isNotBlank()) {

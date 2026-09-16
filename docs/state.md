@@ -41,6 +41,13 @@ Repository = `android-app/` (Kotlin Compose) + `kharcha-core/` (Rust) only.
   NotificationListenerService (gated on user opt-in via `UserPrefs.listenerWanted`).
 - Bindings committed; `.so` (arm64) built from Desktop `kharcha-core` dist.
   `buildKharchaCore` gradle task disabled — dist/ is the source of truth.
+- **Catchup (`feat/catchup`, unmerged, stacked on settings-pack).** Ingest-time
+  budget alerts (50/80/100, prefs-deduped); transfer/refund auto-pairing +
+  manual link via note + on-demand Transfers category (no migration, no new
+  FFI — NDK absent so the .so can't grow exports); autopay suspects card;
+  quick-add merchant + type; rescan inbox button (BacklogScan core copied
+  identical from #8 for a clean merge); wallet balance set; new categories;
+  bulk select/delete/categorize/link; split-bill UI on splitBill.
 - **Settings pack (`feat/settings-pack`, unmerged).** Rules/Categories/Accounts
   manager screens; theme mode + Monet toggle; lock grace + FLAG_SECURE;
   daily summary worker (inexact alarm, boot re-arm, time picker); wipe +

@@ -64,6 +64,24 @@ object UserPrefs {
             .putInt(KEY_SUMMARY_HOUR, hour).putInt(KEY_SUMMARY_MIN, minute).apply()
     }
 
+    private const val KEY_BACKLOG_SCANNED = "backlog_scanned"
+
+    /** True once the one-shot pre-install SMS import has run — never repeats. */
+    fun backlogScanned(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_BACKLOG_SCANNED, false)
+
+    fun markBacklogScanned(context: Context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_BACKLOG_SCANNED, true).apply()
+    }
+
+    /** Highest budget-alert level already pushed per category (0/50/80/100). */
+    fun budgetAlertLevel(context: Context, categoryId: Long): Int =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt("alert_$categoryId", 0)
+
+    fun setBudgetAlertLevel(context: Context, categoryId: Long, level: Int) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putInt("alert_$categoryId", level).apply()
+    }
+
     /** Last successful auto-capture, 0 = never. Dead-man signal for silent listener death. */
     fun lastCaptureMs(context: Context): Long =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getLong(KEY_LAST_CAPTURE_MS, 0)
