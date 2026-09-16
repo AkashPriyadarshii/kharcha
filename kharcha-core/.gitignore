@@ -1,0 +1,18 @@
+# Rust build output — never committed (also hides local absolute paths in .d files)
+/target/
+
+# Editor / OS noise
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Rust lib convention: no lockfile for libraries (consumers resolve).
+# Remove this line if you ever publish a binary-led workflow.
+Cargo.lock
+
+# Local uniffi / Android keystores — never public
+*.jks
+*.keystore
+key.properties
