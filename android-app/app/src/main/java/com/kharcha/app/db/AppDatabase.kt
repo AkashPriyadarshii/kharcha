@@ -111,6 +111,7 @@ interface KharchaDao {
     suspend fun addSaving(id: Long, amount: Long)
 }
 
+@Database(
     entities = [TransactionRow::class, Category::class, RuleRow::class, Wallet::class, Budget::class, Goal::class],
     version = 5,
     exportSchema = false,
