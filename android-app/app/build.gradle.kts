@@ -1,4 +1,6 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import java.util.Properties
+import java.io.FileInputStream
 
 plugins {
     alias(libs.plugins.android.application)
@@ -6,6 +8,15 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
 }
+
+// Real release key if present locally (key.properties + keystore/ are
+// gitignored — PUBLIC repo). Without it, release falls back to debug signing
+// so sideloads still work from a fresh clone (BACKUP_KEYS contract).
+val keystoreProps = Properties().apply {
+    val f = rootProject.file("key.properties")
+    if (f.exists()) load(FileInputStream(f))
+}
+val hasReleaseKey = keystoreProps.getProperty("storeFile") != null
 
 android {
     namespace = "com.kharcha.app"
@@ -22,13 +33,24 @@ android {
         ndk { abiFilters += listOf("arm64-v8a") }
     }
 
+    signingConfigs {
+        if (hasReleaseKey) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
-            // Debug-signed on purpose (ponytail): no release keystore while
-            // sideloading — debug key keeps installs/updates working over the
-            // same-device debug installs and avoids needing a real key vault.
-            signingConfig = signingConfigs.getByName("debug")
+            // Real key (CN=Akash Priyadarshi) when key.properties exists —
+            // REQUIRED to update an already-installed build (same signature).
+            // Fallback: debug key so fresh-clone sideloads still install.
+            signingConfig = if (hasReleaseKey) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
         }
     }
 

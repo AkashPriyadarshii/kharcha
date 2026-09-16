@@ -59,3 +59,5 @@ android-app/.kotlin/
 android-app/local.properties
 android-app/app/src/main/jniLibs/
 kharcha-core/dist/
+android-app/key.properties
+android-app/keystore/

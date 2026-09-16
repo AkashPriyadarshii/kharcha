@@ -71,13 +71,24 @@ Proven recipe — do NOT deviate:
 cd android-app
 # Build debug APK (installable):
 ./gradlew.bat :app:assembleDebug
-# Release APK (arm64, debug-signed — sideload-safe):
+# Release APK (arm64, signed):
 ./gradlew.bat :app:assembleRelease
 # → android-app/app/build/outputs/apk/release/app-release.apk
 ```
 
+- **Release signing = real key, not debug.** `app/build.gradle.kts` reads
+  `android-app/key.properties` when present and signs release with
+  `keystore/kharcha-release.jks` (alias `kharcha`, CN=Akash Priyadarshi). The
+  installed app on the phone is signed with THIS key — a debug-signed
+  release will NOT install over it ("app not signed" / signature mismatch).
+  If `key.properties` is missing (fresh clone), release falls back to debug
+  signing so sideloads still work.
+- **Keystore + key.properties are GITIGNORED** (`android-app/keystore/`,
+  `android-app/key.properties`) because the repo is PUBLIC. Backup lives at
+  `Desktop/kharcha/android/` (BACKUP_KEYS.txt) + Google Drive — per the
+  BACKUP_KEYS contract, losing the key bricks updating installed builds.
+  Never commit the keystore or passwords.
 - **Auto-update trigger = version bump** in `android-app/app/build.gradle.kts` (`versionName` vs latest GitHub release tag + `kharcha-armv8a-release.apk` asset). Bump first, upload APK to the same-tag release.
-- **Debug-signed REQUIRED for sideload.** Do NOT configure a release keystore while sideloading (`android/` legacy keystore notes are obsolete — that dir is deleted).
 - **Do NOT add `ndk { abiFilters }`** if using split-per-abi builds — conflicts.
 - `packaging { jniLibs { useLegacyPackaging = false } }` stays — page-aligned native libs fix the install error.
 
