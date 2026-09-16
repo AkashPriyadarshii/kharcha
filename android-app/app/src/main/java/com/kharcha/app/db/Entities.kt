@@ -63,6 +63,13 @@ data class Wallet(
     @ColumnInfo(defaultValue = "0") val isArchived: Boolean = false,
 )
 
+/** Recurring suspect for the Subscriptions card. Not a table. */
+data class SubRow(
+    val merchant: String,
+    val amountPaise: Long,
+    val months: Int,
+)
+
 @Entity(tableName = "budgets")
 data class Budget(
     @PrimaryKey val categoryId: Long,

@@ -33,4 +33,20 @@ object CaptureNotify {
             .build()
         mgr.notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), n)
     }
+
+    /** Threshold + summary pushes. Own channel so capture buzz stays separate. */
+    fun alert(context: Context, title: String, text: String) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) return
+        val mgr = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
+        mgr.createNotificationChannel(NotificationChannel("alerts", "Budget alerts", NotificationManager.IMPORTANCE_DEFAULT))
+        val n = NotificationCompat.Builder(context, "alerts")
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setAutoCancel(true)
+            .build()
+        mgr.notify("alerts", title.hashCode(), n)
+    }
 }

@@ -43,6 +43,8 @@ fun CategoriesScreen(
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack) { Text("‹ Back") }
             Text("Categories", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.weight(1f))
+            TextButton(onClick = { editing = Category(id = -1, name = "", emoji = "") }) { Text("+ New") }
         }
         Spacer(Modifier.height(8.dp))
         LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -69,9 +71,10 @@ fun CategoriesScreen(
     editing?.let { c ->
         var name by remember(c.id) { mutableStateOf(c.name) }
         var emoji by remember(c.id) { mutableStateOf(c.emoji) }
+        val isNew = c.id == -1L
         AlertDialog(
             onDismissRequest = { editing = null },
-            title = { Text("Edit category") },
+            title = { Text(if (isNew) "New category" else "Edit category") },
             text = {
                 Column {
                     OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, singleLine = true)
@@ -82,7 +85,10 @@ fun CategoriesScreen(
             confirmButton = {
                 TextButton(onClick = {
                     editing = null
-                    if (name.isNotBlank()) scope.launch { vm.renameCategory(c, name.trim(), emoji.ifBlank { c.emoji }) }
+                    if (name.isNotBlank()) scope.launch {
+                        if (isNew) vm.addCategory(name.trim(), emoji.ifBlank { "🧾" })
+                        else vm.renameCategory(c, name.trim(), emoji.ifBlank { c.emoji })
+                    }
                 }) { Text("Save") }
             },
             dismissButton = { TextButton(onClick = { editing = null }) { Text("Cancel") } },

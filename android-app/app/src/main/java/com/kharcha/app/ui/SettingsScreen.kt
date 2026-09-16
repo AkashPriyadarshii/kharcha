@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kharcha.app.BuildConfig
 import com.kharcha.app.MainActivity
+import com.kharcha.app.capture.BacklogScan
 import com.kharcha.app.capture.CrashLog
 import com.kharcha.app.capture.SummaryAlarm
 import com.kharcha.app.db.Category
@@ -542,6 +543,20 @@ fun SettingsScreen(
                 modifier = Modifier.weight(1f).heightIn(min = 46.dp),
             ) { Text("Wipe data", color = MaterialTheme.colorScheme.error) }
         }
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(
+            onClick = {
+                scope.launch(Dispatchers.IO) {
+                    // ponytail: on-demand pass, no flag touch — onboarding owns the once-ever scan.
+                    val app = context.applicationContext as com.kharcha.app.KharchaApp
+                    val r = BacklogScan.scan(context, app.database.captureDao(), app.database.dao())
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "Scan: ${r.inserted} new, ${r.duplicates} dupes", Toast.LENGTH_LONG).show()
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
+        ) { Text("Rescan SMS inbox") }
 
         if (confirmWipe) {
             AlertDialog(
