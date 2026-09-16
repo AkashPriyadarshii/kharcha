@@ -4,11 +4,19 @@
 
 ## Current status
 
-**v0.1.0 — Kotlin + Rust only. Swap-over complete (2026-09-16).**
+**v0.1.0 — Kotlin + Rust only. Released & Installed on Physical Device (2026-09-17).**
+
+Kharcha v0.1.0 completes now with signed arm64 release APK (`kharcha-armv8a-release.apk` & `app-release.apk`) published to GitHub Releases and installed on connected hardware (`T8EUQK7DUKOBXK5L`).
+Remaining edge-case bugs and minor refinements will be resolved on September 1 evening at 6:00 PM IST.
 
 Kotlin Compose, Dart, Supabase, and the legacy Kotlin parser are gone from the repo.
 `lib/`, `test/`, `android/` (incl. `parser-core`), `supabase/`, `pubspec.*` deleted.
 Repository = `android-app/` (Kotlin Compose) + `kharcha-core/` (Rust) only.
+
+- **Dedicated Budgets & Goals Screens:** Shipped `BudgetsScreen` (category limits, rollover, segmented meters, cap removal) and `GoalsScreen` (milestone progress, `+ Save` deposit dialog, delete goal). Clutter removed from `HomeScreen`.
+- **Home Feed Customization:** Top-right `Customize` toggle in header opening `CustomizeHomeDialog` for persistent section visibility toggling (Budgets, Goals, Subscriptions, Daily Burn).
+- **Atomic Interaction Logging:** `CrashLog` buffer expanded to 1000 lines with atomic action logs across all user mutations, navigation changes, and engine processes.
+- **Brutalist Design & Polish:** 1dp `outlineVariant` card borders, 8dp corner radius, discrete 10-block `SegmentedMeter` telemetry, tabular numerals (`tnum, zero`), two-tone hero numbers, and tactile press micro-interactions.
 
 - **`kharcha-core` v0.1** — deterministic UPI capture engine in Rust:
   `categorize`, `dedupe`, `engine`, `ffi`, `filter`, `money`, `non_transaction`,

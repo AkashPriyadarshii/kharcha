@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.kharcha.app.KharchaApp
+import com.kharcha.app.capture.CrashLog
 import com.kharcha.app.db.Budget
 import com.kharcha.app.db.Goal
 import com.kharcha.app.db.OVERALL_BUDGET_ID
@@ -49,6 +50,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             dao.allTransactions().collect {
                 dataLoaded.value = true
                 refreshTotals()
+                refreshBudgetSpends()
+            }
+        }
+        viewModelScope.launch {
+            budgets.collect {
                 refreshBudgetSpends()
             }
         }
@@ -114,44 +120,56 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     suspend fun saveTransaction(txn: TransactionRow): Long {
         val id = dao.insert(txn)
+        CrashLog.log("UserAction", "Created transaction id=$id merchant='${txn.merchant}' amount=${txn.amountPaise}p income=${txn.isIncome}")
         refreshAll()
         return id
     }
 
     suspend fun setBudget(categoryId: Long, limitPaise: Long) {
         dao.upsertBudget(Budget(categoryId, limitPaise))
+        CrashLog.log("UserAction", "Updated budget categoryId=$categoryId limit=${limitPaise}p")
         refreshBudgetSpends()
     }
 
-    suspend fun removeBudget(categoryId: Long) = dao.deleteBudget(categoryId)
+    suspend fun removeBudget(categoryId: Long) {
+        dao.deleteBudget(categoryId)
+        CrashLog.log("UserAction", "Removed budget categoryId=$categoryId")
+        refreshBudgetSpends()
+    }
 
     val rules: StateFlow<List<RuleRow>> =
         dao.allRulesFlow().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     suspend fun deleteRule(id: Long) {
         dao.deleteRule(id)
+        CrashLog.log("UserAction", "Deleted categorization rule id=$id")
     }
 
     suspend fun renameCategory(category: com.kharcha.app.db.Category, name: String, emoji: String) {
         dao.updateCategory(category.copy(name = name, emoji = emoji))
+        CrashLog.log("UserAction", "Renamed category id=${category.id} to '$name' ($emoji)")
     }
 
     suspend fun setCategoryHidden(id: Long, hidden: Boolean) {
         dao.setCategoryHidden(id, hidden)
+        CrashLog.log("UserAction", "Set category id=$id hidden=$hidden")
     }
 
     suspend fun renameWallet(id: Long, name: String) {
         dao.renameWallet(id, name)
+        CrashLog.log("UserAction", "Renamed wallet id=$id to '$name'")
     }
 
     suspend fun setWalletArchived(id: Long, archived: Boolean) {
         dao.setWalletArchived(id, archived)
+        CrashLog.log("UserAction", "Set wallet id=$id archived=$archived")
     }
 
     /** Factory wipe: transactions only. Rules, budgets, wallets, categories stay. */
     suspend fun wipeAllTransactions() {
         dao.wipeTransactions()
         lastDeleted = null
+        CrashLog.log("UserAction", "Factory wipe executed: all transactions purged.")
         refreshAll()
     }
 
@@ -160,14 +178,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     suspend fun addCategory(name: String, emoji: String) {
         dao.insertCategory(com.kharcha.app.db.Category(name = name, emoji = emoji, sort = 99))
+        CrashLog.log("UserAction", "Created category '$name' ($emoji)")
     }
 
     suspend fun setWalletBalance(id: Long, balancePaise: Long) {
         dao.updateWalletBalance(id, balancePaise)
+        CrashLog.log("UserAction", "Updated wallet id=$id balance=${balancePaise}p")
     }
 
     suspend fun linkTransactions(aId: Long, bId: Long): Boolean {
         val ok = com.kharcha.app.capture.Pairing.linkIds(dao, aId, bId)
+        CrashLog.log("UserAction", "Linked transactions aId=$aId bId=$bId success=$ok")
         if (ok) refreshAll()
         return ok
     }
@@ -175,6 +196,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     suspend fun bulkDelete(ids: Set<Long>) {
         ids.forEach { dao.deleteById(it) }
         lastDeleted = null
+        CrashLog.log("UserAction", "Bulk deleted ${ids.size} transactions: $ids")
         refreshAll()
     }
 
@@ -182,6 +204,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         ids.forEach { id ->
             dao.transactionById(id)?.let { dao.update(it.copy(categoryId = categoryId)) }
         }
+        CrashLog.log("UserAction", "Bulk categorized ${ids.size} transactions to categoryId=$categoryId")
         refreshAll()
     }
 
@@ -190,14 +213,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     suspend fun setGoal(name: String, targetPaise: Long) {
         dao.upsertGoal(Goal(name = name, targetPaise = targetPaise))
+        CrashLog.log("UserAction", "Set savings goal '$name' target=${targetPaise}p")
     }
 
     suspend fun addSaving(goalId: Long, amountPaise: Long) {
         dao.addSaving(goalId, amountPaise)
+        CrashLog.log("UserAction", "Logged contribution to goal id=$goalId amount=${amountPaise}p")
+    }
+
+    suspend fun deleteGoal(goalId: Long) {
+        dao.deleteGoal(goalId)
+        CrashLog.log("UserAction", "Deleted goal id=$goalId")
     }
 
     suspend fun updateTransaction(txn: TransactionRow, teachRule: Boolean) {
         dao.update(txn)
+        CrashLog.log("UserAction", "Updated transaction id=${txn.id} merchant='${txn.merchant}' amount=${txn.amountPaise}p categoryId=${txn.categoryId} teachRule=$teachRule")
         if (teachRule && txn.categoryId != null && txn.merchant.isNotBlank()) {
             // Dedupe learned rules: re-teaching the same merchant must not append rows forever.
             val existing = dao.allRules().any {
@@ -205,6 +236,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
             if (!existing) {
                 dao.insertRule(RuleRow(pattern = txn.merchant, ruleType = "learned", categoryId = txn.categoryId))
+                CrashLog.log("UserAction", "Auto-learned rule: '${txn.merchant}' -> categoryId=${txn.categoryId}")
             }
         }
         refreshAll()
@@ -218,6 +250,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val row = dao.transactionById(id)
         dao.trashById(id)
         lastDeleted = row
+        CrashLog.log("UserAction", "Moved transaction id=$id ('${row?.merchant}') to trash")
         refreshAll()
         return row
     }
@@ -226,6 +259,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val row = lastDeleted ?: return null
         lastDeleted = null
         dao.restoreById(row.id)
+        CrashLog.log("UserAction", "Restored last deleted transaction id=${row.id}")
         refreshAll()
         return row.id
     }
@@ -235,11 +269,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     suspend fun restoreTransaction(id: Long) {
         dao.restoreById(id)
+        CrashLog.log("UserAction", "Restored transaction id=$id from trash")
         refreshAll()
     }
 
     suspend fun emptyTrash() {
         dao.purgeTrash()
+        CrashLog.log("UserAction", "Emptied trash: purged all soft-deleted records")
         refreshAll()
     }
 

@@ -2,24 +2,32 @@
 
 All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
 
-## [v0.1.1] — 2026-09-17 — Feature stack integration & Release build
-- **Full Feature Pack Merged.** Integrated 6 feature tracks:
-  - **Backlog Scan (#8):** Pre-install bank SMS one-shot import after onboarding with silent ingest and toast feedback.
-  - **Feed Filters (#11):** In-memory category, payment method, amount preset, wallet, and date range filters on transaction feed.
-  - **Budget Pack (#9):** Overall monthly spend ceiling (`OVERALL_BUDGET_ID`), daily burn rate indicator, one-month unspent rollover, and savings goals tracking (Room DB v4).
-  - **DB Safety (#10):** Throttled VACUUM (30d), full database snapshot backup/restore (`.kharchabackup` via `VACUUM INTO` + SAF), and soft deletion with TrashScreen / undo support (Room DB v5).
-  - **Settings Pack (#12):** Rules/Categories/Accounts management sheets, theme mode + Monet dynamic color toggles, lock grace period + `FLAG_SECURE`, daily summary alarm worker, and category hide / wallet archive (Room DB v6).
-  - **Catchup Pack (#13):** Ingest-time budget threshold alerts (50/80/100%), automatic transfer/refund pairing + note links, recurring subscription detection, bulk select/delete/categorize/link, and split-bill UI.
-- **Audit Hardening:**
-  - `SmsReceiver`: Guarded with `android.permission.BROADCAST_SMS` to block unprivileged 3rd-party intent spoofing.
-  - `CaptureEngine`: Added `Mutex` on `ingest` to eliminate race-condition duplicates between SMS and notification listeners.
-  - `AddSheet`: Removed duplicate `note` input field in Compose tree.
-  - `BudgetSheet` & `GoalSheet`: Added `imePadding()`, `verticalScroll()`, and numeric keypad options so keyboard does not obscure Save buttons.
-  - `AppTheme`: Defined missing `surfaceVariant`, `outlineVariant`, and `outline` tokens for full ink-green / warm paper aesthetic fidelity.
-  - `ExportButton`: Removed dead legacy pre-Q storage branches.
-- **Verified Gates:** `kharcha-core` Rust test gate (59/59 green) and `./gradlew.bat :app:assembleRelease` passed cleanly.
+## [v0.1.0] — 2026-09-17 — Final v0.1 Release Build & UX Polish
 
-## [v0.1.0] — 2026-09-16 — Rust + Kotlin rewrite ships
+- **Release Status:** Kharcha v0.1.0 completes now with signed arm64 release APK (`kharcha-armv8a-release.apk` & `app-release.apk`) published to GitHub Releases. Remaining edge-case bugs scheduled for wrap-up on September 1 evening at 6:00 PM IST.
+- **Dedicated Management Screens Built & Wired:**
+  - `BudgetsScreen`: Full category spending limits list, effective limits including rollover, remaining/over budget telemetry with segmented meters, inline cap removal with confirmation, and `+ Add Cap` entry point.
+  - `GoalsScreen`: Savings milestones tracking with target vs saved progress, inline `+ Save` deposit dialog with `parseAmount` validation, goal deletion dialog, and `+ New Goal` entry point.
+- **Home Feed Ergonomics & Customization:**
+  - Cleaned cluttered `+ Set cap` and `+ New goal` buttons off `HomeScreen` and transferred them directly into their dedicated screens.
+  - Added header top-right `Customize` button opening `CustomizeHomeDialog` allowing users to toggle visibility of Category Budgets, Savings Goals, Subscriptions (suspects), and Daily Burn Rate pace.
+  - Preferences persisted via `UserPrefs` (`showHomeBudgets`, `showHomeGoals`, `showHomeSubs`, `showHomeDailyBurn`).
+- **Atomic Console Logging:**
+  - Expanded `CrashLog` buffer from 500 to 1000 lines with cached application context.
+  - Comprehensive atomic interaction logging across all user actions (transaction insert/edit/trash/restore/bulk ops, budget upsert/remove, goal create/deposit/delete, category rename/create/hide, wallet rename/balance/archive, rule deletion/learning, and navigation transitions).
+- **Brutalist Design & Typography Refinement:**
+  - Replaced elevation drop-shadows with 1dp `outlineVariant` hairline borders and calibrated 8dp card corners across Home, Reports, Settings, Budgets, and Goals.
+  - Replaced text month pager chevrons with accessible `IconButton(KeyboardArrowLeft/Right)`.
+  - Replaced continuous progress lines with discrete 10-block `SegmentedMeter` bars.
+  - Added tabular numerals (`TabularNumerals`, `fontFeatureSettings = "tnum, zero"`) and two-tone fractional paise rendering (`formatPaiseParts`) to hero spending.
+  - Added tactile scale press feedback (`Modifier.pressFeedback`).
+- **Audit Hardening & Verification:**
+  - Guaranteed `android.permission.BROADCAST_SMS` on `SmsReceiver`.
+  - Added `Mutex` to `CaptureEngine.ingest`.
+  - 59/59 Rust unit and parity tests passing.
+  - Signed release APK built and installed on physical device `T8EUQK7DUKOBXK5L`.
+
+## [v0.1.0-beta] — 2026-09-16 — Rust + Kotlin rewrite ships
 
 - **Quick-add split.** FAB = QuickAddSheet (amount only, IME Done saves, auto-focus via `onGloballyPositioned` — kills the `FocusRequester is not initialized` crash that killed sheet launch; "More options" expands to full sheet). Empty-state / Transactions = full AddSheet (merchant, category, date, method, note). Field focus chain Amount → Merchant → Note with IME Next.
 - **On-device CrashLog.** Uncaught-exception handler + all capture-channel failures append to `filesDir/kharcha.log` (no INTERNET permission, so no network reporting). Settings → "Share debug log" exports it via FileProvider share sheet. SmsReceiver/Listener coroutine scopes got `CoroutineExceptionHandler`.
