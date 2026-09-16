@@ -69,4 +69,5 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
     implementation(libs.jna)
+    implementation(libs.androidx.biometric)
 }
