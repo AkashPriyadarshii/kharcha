@@ -15,13 +15,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
@@ -91,23 +96,33 @@ fun ShareCardSharer(
     onShared: () -> Unit = {},
 ) {
     val layer = rememberGraphicsLayer()
-    val scope = rememberCoroutineScope()
-    androidx.compose.material3.Button(onClick = {
-        scope.launch {
-            val bmp = layer.toImageBitmap().asAndroidBitmap()
-            val dir = File(context.cacheDir, "share").apply { mkdirs() }
-            val f = File(dir, fileName)
-            FileOutputStream(f).use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
-            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", f)
-            context.startActivity(
-                Intent(Intent.ACTION_SEND).apply {
-                    type = "image/png"
-                    putExtra(Intent.EXTRA_STREAM, uri)
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                }.let { Intent.createChooser(it, "Share") }.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            )
+    var armed by remember { mutableStateOf(false) }
+    androidx.compose.material3.Button(onClick = { armed = true }) { Text("Share") }
+    // Fixed-size off-screen box: dialog content gives the layer 0 size,
+    // which crashes toImageBitmap (width & height must be > 0).
+    if (armed) {
+        androidx.compose.foundation.layout.Box(
+            Modifier.width(1080.dp).wrapContentHeight().graphicsLayer { alpha = 0f }
+                .drawWithContent { layer.record { this@drawWithContent.drawContent() }; drawContent() },
+        ) { card() }
+        androidx.compose.runtime.LaunchedEffect(Unit) {
+            // ponytail: one frame delay so the layer has a placed size before snapshot.
+            kotlinx.coroutines.delay(300)
+            try {
+                val bmp = layer.toImageBitmap().asAndroidBitmap()
+                val dir = File(context.cacheDir, "share").apply { mkdirs() }
+                val f = File(dir, fileName)
+                FileOutputStream(f).use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", f)
+                context.startActivity(
+                    Intent(Intent.ACTION_SEND).apply {
+                        type = "image/png"
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }.let { Intent.createChooser(it, "Share") }.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            } catch (_: Exception) {}
             onShared()
         }
-    }) { Text("Share") }
-    Column(Modifier.drawWithContent { drawLayer(layer); drawContent() }) { card() }
+    }
 }
