@@ -2,9 +2,16 @@
 
 All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
 
+## [v0.1.0] — 2026-09-16 — Rust + Kotlin rewrite ships
+
+- **Stack swap complete.** Kotlin/Rust/Supabase deleted: `lib/`, `test/`, `android/` (incl. KMP `parser-core`), `supabase/`, `pubspec.*`. Repo = `android-app/` (Kotlin Compose) + `kharcha-core/` (Rust) only. Fully offline, zero Supabase, zero AI.
+- **Deterministic capture in Rust.** `kharcha-core` v0.1: single parser engine (generic UPI + HDFC/SBI/ICICI-style bank formats), `parse_capture(s)`, paise-i64 amounts, triple-signal dedupe (ref + 5-min window + content hash), batch API, spam/recharge/OTP non-transaction filter, bill split, filter/all-in-one ops. 56/56 tests.
+- **Kotlin Compose app.** Home (month totals, auto wallets from bank SMS, monthly budgets, recent), All transactions, Add + Edit sheets (manual entry, teach-category → learned rule), CSV export to Downloads, biometric app lock. Room SQLite v1/v2, minSdk 32, arm64.
+- **Full offline.** No network permission in the product. Rules are a local map; categorization is deterministic.
+o              
 ## [v0.2.910] — 2026-09-12
 
-- **Capture Pipeline Regex & Data Integrity** — Corrected rule pattern regex matching in Kotlin helper (`\b${escape(pattern)}\b`), removed non-existent `updated_at` column from wallet insertion, and stored epoch timestamps as `Long` INTEGERs to prevent Drift SQLite schema exceptions.
+- **Capture Pipeline Regex & Data Integrity** — Corrected rule pattern regex matching in Kotlin helper (`\b${escape(pattern)}\b`), removed non-existent `updated_at` column from wallet insertion, and stored epoch timestamps as `Long` INTEGERs to prevent Room SQLite schema exceptions.
 - **Credit vs Debit & Balance Precedence** — Restricted credit matchers to strictly target the user's account (`credited to your account`, `deposited in`), preventing merchant credits ("debited ... credited to VPA [merchant]") from misclassifying expenses as income. Prioritized transaction amounts over available balance prefixes across Dart and Kotlin parsers.
 - **Sync Engine Multi-Tenant & Constraint Hardening** — Enforced `user_id` tenant filters on transaction and feature pulls; constrained Postgres unique violation recovery (error code 23505) strictly to budgets with valid `category_id` references.
 - **Metadata Preservation Across Sync** — Persisted `accountMask`, `emoji`, and `needsReview` fields across remote transaction merge and insert operations.
@@ -38,7 +45,7 @@ All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
 ## [v0.2.8] — 2026-08-23
 
 - **AppLogger & Crash Reporting** — Replaced raw print statements with `AppLogger` Singleton and `app_errors` table for offline telemetry. System logs screen added to profile tab.
-- **Pennywise Parity Integration** — Added True Balance Extraction & Wallet Balance Sync (captured SMS calculates delta to update initialBalance for ground truth).
+- **the legacy app Parity Integration** — Added True Balance Extraction & Wallet Balance Sync (captured SMS calculates delta to update initialBalance for ground truth).
 - **Automation Upgrades** — Added Income Autopay / Subscription Automation. Added Smart Rules engine UI (manage learned and custom categorization rules).
 - **Privacy-First Export** — Added PII-masked CSV export for transaction analysis. All new logic verified with unit tests.
 
@@ -50,7 +57,7 @@ All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
 - **SMS & UPI Multi-Bank Parser Hardening** — robust regex cascade for HDFC Bank SMS balance formats, SBI transfer messages, Axis Bank credit card notifications, and refund messages with VPA cleaning.
 - **Budget Threshold Alert Triggers** — automated push notifications when an auto-captured transaction pushes a category budget to ≥80% or >100%.
 - **Diagnostic Unrecognized Queue** — unparsed financial messages stored into `unrecognized_inbox.jsonl` (circular buffer) for zero-data-loss diagnostics.
-- **arm64 APK** — `app-arm64-v8a-release.apk` (28.3 MB) built debug-signed for sideloading. `pubspec.yaml` bumped to `0.2.7+9`. Auto-update trigger will prompt installed devices.
+- **arm64 APK** — `app-arm64-v8a-release.apk` (28.3 MB) built debug-signed for sideloading. `build.gradle.kts` bumped to `0.2.7+9`. Auto-update trigger will prompt installed devices.
 
 ## [Site] — 2026-08-09
 
@@ -88,13 +95,13 @@ All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
 - **Money precision audit** — every amount boundary routes through `parseAmount` (2dp rounding): add/quick-add expense, budget limit, wallet balance, savings goal target + add, debt amount, subscription amount, CSV import, and the UPI/bank notification parser (was raw `double.parse`, comma bug fixed). New `test/money_test.dart`.
 - **Terms screen reachable pre-login** — router redirect whitelisted `/terms` so signed-out users aren't bounced to `/auth`.
 - **Profile About section** — Akash Priyadarshi + GitHub profile/repo links (opens externally). `url_launcher` promoted to direct dep.
-- **Android 16 prep** — SafeArea (bottom) on wallets/objectives/subscriptions pushed screens (gesture-nav bar can't clip the last item). AGP 8.11.1 / Gradle 8.14 / Kotlin 2.2.20 / Flutter 3.44.9 already satisfy the 16KB-page + targetSdk requirements.
+- **Android 16 prep** — SafeArea (bottom) on wallets/objectives/subscriptions pushed screens (gesture-nav bar can't clip the last item). AGP 8.11.1 / Gradle 8.14 / Kotlin 2.2.20 / Kotlin Compose 3.44.9 already satisfy the 16KB-page + targetSdk requirements.
 - **Repo hygiene** — tracked `android/build/reports/*.html` artifact removed + `/android/build/` gitignored (was inflating GitHub language stats); README "For AI agents" quick-clone block removed.
 - **Backup audit** — all user-entered tables sync (transactions, custom categories, budgets, wallets, recurring, objectives, debts). `rules`/`merchants`/`exchange_rates` + app-lock/onboarding flags stay local by design.
 
 ## [unreleased]
 
-- **Pennywise Architecture Parity & Deep Upgrades** —
+- **the legacy app Architecture Parity & Deep Upgrades** —
   1. *Full Backup JSON Export/Import*: Added `exportFullBackup` and `importJson` across [`lib/data/exporter.dart`](file:///C:/Users/saves/Desktop/kharcha/lib/data/exporter.dart) and [`lib/data/importer.dart`](file:///C:/Users/saves/Desktop/kharcha/lib/data/importer.dart) supporting full database snapshots (transactions, budgets, debts, recurring, goals, wallets, custom categories, and metadata) with automatic table restoration.
   2. *Flexible Multi-Source CSV Importer*: Enhanced `importCsv` to support case-insensitive headers, column aliases (`Merchant`, `Payee`, `Vendor`, `Amount`, `Total`, `Date`, `Description`, `Bank`, `UPI Ref`), and flexible date schemes (`dd/MM/yyyy`, `dd-MM-yyyy`, ISO).
   3. *Comprehensive Indian Merchant Categorizer*: Expanded `ruleMap` in [`lib/data/database.dart`](file:///C:/Users/saves/Desktop/kharcha/lib/data/database.dart) with over 80+ top Indian merchants and services (KFC, Starbucks, Namma Yatri, Fastag, Fuel/Petrol pumps, Ajio, Nykaa, Blinkit, Instamart, Netmeds, Tata 1mg, Tata Power, Indane Gas, etc.).
@@ -105,7 +112,7 @@ All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
   8. *Subscriptions Monthly Commitment Hero*: Added a live recurring commitment summary (`₹/mo committed`, active count, and due count) in [`lib/screens/subscriptions_screen.dart`](file:///C:/Users/saves/Desktop/kharcha/lib/screens/subscriptions_screen.dart).
   9. *Credit/Debt Ledger Filters & Settle UX*: Added pending/all filter toggle and strikethrough styling for settled records in [`lib/screens/debts_screen.dart`](file:///C:/Users/saves/Desktop/kharcha/lib/screens/debts_screen.dart).
 - **Audit & Test Suite Hardening** — Full 26-file test suite passing (166/166 tests) with zero analyzer issues.
-- **Live fixes (v0.2.2)** — (1) **UPI capture was dead: path mismatch.** Kotlin `UpiNotificationListener` wrote the inbox to `context.cacheDir` (`cache/`), Dart read `getApplicationCacheDirectory()` (`code_cache/`) — a different dir, so the inbox was never drained and every capture silently vanished. Dart now reads `getTemporaryDirectory()` (= `getCacheDir()`). (2) **Real-time capture** — inbox drained every 30s (was startup-only), so payments appear ~live while the app is open. (3) **Feature deletes now sync** — deleting a budget/wallet/recurring/objective/debt/custom category writes a tombstone (`deleted_features`, schema v11) that the SyncEngine drains as a remote DELETE + skips on pull; no more resurrection after reinstall. (4) **App lock fixed** — `MainActivity` is now `FlutterFragmentActivity` (local_auth requires it for the biometric prompt; `FlutterActivity` made `authenticate()` fail). (5) **Profile "Open source" → "Source"** — matches the all-rights-reserved LICENSE (view-only, no fork/copy/derivative/commercial).
+- **Live fixes (v0.2.2)** — (1) **UPI capture was dead: path mismatch.** Kotlin `UpiNotificationListener` wrote the inbox to `context.cacheDir` (`cache/`), Dart read `getApplicationCacheDirectory()` (`code_cache/`) — a different dir, so the inbox was never drained and every capture silently vanished. Dart now reads `getTemporaryDirectory()` (= `getCacheDir()`). (2) **Real-time capture** — inbox drained every 30s (was startup-only), so payments appear ~live while the app is open. (3) **Feature deletes now sync** — deleting a budget/wallet/recurring/objective/debt/custom category writes a tombstone (`deleted_features`, schema v11) that the SyncEngine drains as a remote DELETE + skips on pull; no more resurrection after reinstall. (4) **App lock fixed** — `MainActivity` is now `Kotlin ComposeFragmentActivity` (BiometricPrompt requires it for the biometric prompt; `Kotlin ComposeActivity` made `authenticate()` fail). (5) **Profile "Open source" → "Source"** — matches the all-rights-reserved LICENSE (view-only, no fork/copy/derivative/commercial).
 - **Capture everything** — any app's notification with a ₹ amount is captured (UPI + bank + messaging); Dart parser gates on payment keywords so "bhej de ₹200" chats don't become expenses. Money IN captured too (income transactions). Schema v10, parser rework + tests.
 - **Custom-category sync** — custom categories now push to Supabase (per-user rows, migration 0004), budgets/recurring translate category ids. Server `categories` seed (0003).
 - **Android-only** — `windows/` scaffold removed permanently (single platform, README updated).
@@ -143,7 +150,7 @@ All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
 - Repo `AkashPriyadarshii/kharcha` created (private)
 - Design, PRD, implementation plan, team docs, CLAUDE.md written
 - Scope locked: 16 features (see `docs/prd.md` §7)
-- Full app code (2026-08-08): Google sign-in, Drift local DB + seed, manual entry + quick-add, rule-based categorization, UPI notification capture (Kotlin), Supabase sync, daily/weekly Hinglish notifications, 5-tab shell (Home / Transactions / Budget / Reports / Profile) with search + filters, charts, export CSV/JSON, app lock
+- Full app code (2026-08-08): Google sign-in, Room local DB + seed, manual entry + quick-add, rule-based categorization, UPI notification capture (Kotlin), Supabase sync, daily/weekly Hinglish notifications, 5-tab shell (Home / Transactions / Budget / Reports / Profile) with search + filters, charts, export CSV/JSON, app lock
 
 ---
 

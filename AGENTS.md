@@ -5,7 +5,7 @@
 
 ## Project
 
-**Kharcha** — India-first UPI expense tracker. Flutter, Android 12+ (minSdk 32), offline-first, rule-based automation (no AI in the product), Supabase sync.
+**Kharcha** — India-first UPI expense tracker. **Kotlin Compose + Rust (kharcha-core), Android 12+ (minSdk 32), fully offline, zero cloud, zero AI**. v0.1.0 — Flutter/Dart/Supabase deleted, never reintroduce.
 
 One human: Akash (owner). All code via AI agents working under his direction.
 
@@ -35,7 +35,7 @@ Rules: no unrequested abstractions, no boilerplate, no scaffolding "for later", 
 
 - **NO AI/LLM in the product.** No Gemini, OpenAI, "AI insights," "smart features." Categorization is a local rule map. The word "AI" in your PR = rejected.
 - **NO ads in finance screens.**
-- **NO Firebase.** Supabase is chosen. Don't migrate.
+- **NO Firebase / NO cloud at all.** Supabase, Firebase, any server: banned. Fully offline, no INTERNET permission. Don't migrate, don't add.
 - **SMS permission allowed.** Notification capture is still an option, but SMS parsing is permitted as opt-in.
 - **NO mock/placeholder features.** A screen that can't do its job doesn't ship.
 - **NO generic template UI.** Material 3 base but opinionated. No default card grids, no stock hero + gradient blob, no safe-gray flat. See `docs/design.md` design direction.
@@ -43,26 +43,24 @@ Rules: no unrequested abstractions, no boilerplate, no scaffolding "for later", 
 
 ## Standards
 
-- Immutability (never mutate existing objects, use `copyWith`).
+- Immutability (never mutate existing objects, use `copy`/`copyWith`).
 - Descriptive names, self-documenting code, comments explain WHY not WHAT.
-- Type everything. No `dynamic` where avoidable.
+- Type everything. No `dynamic`/`Any` where avoidable.
 - Early returns over deep nesting.
 - Named constants for magic numbers.
 - Functions < 50 lines, files < 800 lines.
 - Errors handled explicitly, never swallowed.
-- Input validated at every trust boundary.
-- **Tests with every change. MANDATORY.** Every feature, bug fix, or non-trivial logic change ships test file(s) in the same commit. No exceptions. A change without tests is not done. `flutter test` is the gate.
+- Input validated at every trust boundary (Rust owns parsing/dedupe/categorize).
+- **Tests with every change. MANDATORY.** Every feature, bug fix, or non-trivial logic change ships test file(s) in the same commit. No exceptions. A change without tests is not done. Rust changes → `cargo test`; app changes → gradle build.
 
 ## Run / verify
 
 ```bash
-flutter pub get
-flutter analyze        # MUST pass before any PR
-flutter test           # MUST pass before any PR
-flutter build apk      # sanity check before merge to main
+cd kharcha-core && cargo test        # Rust core gate (56/56)
+cd android-app && ./gradlew.bat :app:assembleDebug   # app build gate
 ```
 
-**CI:** none (removed 2026-08-06 — free-tier Actions not reliable). Test gate = local `flutter analyze` + `flutter test`. **Do NOT run the full `flutter test` suite** — it crashes on Windows hosts via a sqlite3 native-assets Flutter tool bug (see `docs/troubleshooting.md`). Test individual files or a named batch instead, e.g. `flutter test test/update_checker_test.dart` or `flutter test test/money_test.dart test/update_checker_test.dart`.
+**CI:** none. Test gate = local `cargo test` + gradle assemble. No flutter in this repo.
 
 
 ## Build APK (learned from past errors)
@@ -70,42 +68,18 @@ flutter build apk      # sanity check before merge to main
 Proven recipe — do NOT deviate:
 
 ```bash
-# 1. Clear the Windows native-assets lock first (a leftover sqlite3.dll blocks
-#    the build tool from cleaning — "Flutter failed to delete ... sqlite3.dll").
-rm -rf build/native_assets/windows .dart_tool/hooks_runner
-# 2. Build split-per-abi (NOT --target-platform android-arm64).
-flutter build apk --release --split-per-abi
-# 3. Arm64 APK → build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+cd android-app
+# Build debug APK (installable):
+./gradlew.bat :app:assembleDebug
+# Release APK (arm64, debug-signed — sideload-safe):
+./gradlew.bat :app:assembleRelease
+# → android-app/app/build/outputs/apk/release/app-release.apk
 ```
 
-- **Auto-update trigger = version bump.** The in-app update checker compares
-  installed `versionName` to the latest GitHub release tag and only prompts when
-  a newer release with a `kharcha-armv8a-release.apk` asset exists. If you push
-  a fix without bumping `version` in `pubspec.yaml`, users never update. Every
-  release = bump `version:` first, upload the APK to the same-tag release.
-- **Rate caps (in-app): 1 auto-check/day + 3 manual checks/hour** per device.
-  GitHub's unauthenticated limit is 60 req/hr per IP, so 1000 devices never
-  flag the account; 429 fails silent. Do not raise these.
-- **Always `--split-per-abi`.** `--target-platform android-arm64` produced a
-  broken universal APK ("package is invalid" on install).
-- **`packaging { jniLibs { useLegacyPackaging = false } }`** in
-  `android/app/build.gradle.kts` is REQUIRED — page-aligned (uncompressed)
-  native libs are the real fix for the install error. Keep it.
-- **Do NOT add an `ndk { abiFilters }` block** — it conflicts with
-  `--split-per-abi` ("Conflicting configuration: 'arm64-v8a' in ndk abiFilters
-  cannot be present when splits abi filters are set").
-- Release upload: replace `kharcha-armv8a-release.apk` on the latest GitHub
-  release (delete-asset + upload --clobber). Size sanity: ~24-26MB.
-- **Signing — MUST stay debug-signed for sideload.** `buildTypes.release` falls
-  back to debug signing when `android/key.properties` is absent. This is
-  REQUIRED: the debug key signed every released APK since v0.2.1, and Android
-  refuses to install over an app signed with a different key. A release keystore
-  was generated (2026-08-09) but is PARKED at `android/key.properties.release` —
-  do NOT restore `key.properties` while sideloading or every device hits
-  "package conflicts with existing package" until uninstall. Re-enable it only
-  when publishing to Play Store (which requires real signing), and accept the
-  one-time uninstall across devices. Keystore + password in `android/BACKUP_KEYS.txt`
-  (gitignored).
+- **Auto-update trigger = version bump** in `android-app/app/build.gradle.kts` (`versionName` vs latest GitHub release tag + `kharcha-armv8a-release.apk` asset). Bump first, upload APK to the same-tag release.
+- **Debug-signed REQUIRED for sideload.** Do NOT configure a release keystore while sideloading (`android/` legacy keystore notes are obsolete — that dir is deleted).
+- **Do NOT add `ndk { abiFilters }`** if using split-per-abi builds — conflicts.
+- `packaging { jniLibs { useLegacyPackaging = false } }` stays — page-aligned native libs fix the install error.
 
 
 ## Git workflow
@@ -120,8 +94,7 @@ flutter build apk --release --split-per-abi
 
 - [ ] Matches ponytail + standards + anti-slop
 - [ ] Test file(s) written for the change, covering the new logic
-- [ ] `flutter analyze` passes
-- [ ] `flutter test` passes
+- [ ] `cargo test` passes (Rust) / `./gradlew.bat :app:assembleDebug` passes (app)
 - [ ] Smoke test on Android 12+ device/emulator
 - [ ] `docs/state.md` updated
 

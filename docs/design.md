@@ -10,7 +10,7 @@ India-first UPI expense tracker. Every UPI payment auto-appears as an expense �
 
 ## Principles
 
-- **Offline-first** — Drift SQLite is the source of truth on device. Works with zero network.
+- **Offline-first** — Room SQLite is the source of truth on device. Works with zero network.
 - **Public stance: privacy-first.** Everything users see — privacy policy, Play listing, onboarding — says privacy-first, private, on-device, no data selling. That's the honest public contract.
 - **Internal behavior: track everything, Google-style.** Collect every UPI payment, merchant, category, date, from day one. The product's whole value is granular data. Internal tooling (analytics, sync, future insights) assumes full data. Don't cripple the product chasing a privacy narrative the product doesn't have.
 - **Never sell data. Never ad-target from it.** That boundary holds regardless of framing — monetization is premium subscription, not data.
@@ -64,7 +64,7 @@ No AI slop, no generic anything. UI is a deliberate product of the brief above.
 14. **Budget tab** — per-category limits, progress, 50/80/100% alerts.
 15. **Profile tab** — Google account, payment methods, export CSV/JSON, backup status, settings.
 16. **Offline-first + Supabase sync** from day one.
-17. **App lock** — biometric/PIN (local_auth).
+17. **App lock** — biometric/PIN (BiometricPrompt).
 
 ### P2 (after v0.1.0 stable)
 
@@ -87,12 +87,12 @@ No AI slop, no generic anything. UI is a deliberate product of the brief above.
 ## Architecture
 
 ```
-Flutter app (Android 12+, minSdk 32)
+Compose app (Android 12+, minSdk 32)
 │
-├── UI layer (Material 3, Riverpod, go_router)
+├── UI layer (Material 3, Compose, Compose)
 ├── Domain (expenses, categories, budgets, merchant rules)
 ├── Data layer
-│   ├── Drift SQLite   ← source of truth (offline-first)
+│   ├── Room SQLite   ← source of truth (offline-first)
 │   └── Supabase       ← Google auth + Postgres + background sync
 ├── Capture
 │   ├── SmsReceiver & NotificationListenerService (Kotlin)
@@ -103,7 +103,7 @@ Flutter app (Android 12+, minSdk 32)
 │   │     → auto-category via rule map / learned rule
 │   │     → insert local
 │   └── Manual entry (fallback)
-└── Local notifications (flutter_local_notifications)
+└── Local notifications (local notifications (Android NotificationManager))
     ├── 9PM daily summary (Hinglish)
     └── Sunday weekly recap
 ```
@@ -130,7 +130,7 @@ SMS / Push notification → Receiver (Kotlin)
 
 ## Data model
 
-Supabase Postgres, mirrored locally in Drift.
+Supabase Postgres, mirrored locally in Room.
 
 ```sql
 users:        id (uuid, = auth.uid), email, name, avatar_url, currency, created_at
@@ -156,14 +156,14 @@ budgets:      id, user_id, category_id, amount, period (monthly),
 
 | Concern | Choice |
 |---|---|
-| Framework | Flutter (Android 12+, minSdk 32), Material 3 |
-| State | Riverpod |
-| Navigation | go_router |
-| Local DB | Drift (SQLite) |
+| Framework | Kotlin Compose (Android 12+, minSdk 32), Material 3 |
+| State | Compose |
+| Navigation | Compose |
+| Local DB | Room (SQLite) |
 | Backend | Supabase (Google Auth, Postgres, sync) |
-| Charts | fl_chart |
-| Local notifications | flutter_local_notifications |
-| App lock | local_auth |
+| Charts | Compose |
+| Local notifications | local notifications (Android NotificationManager) |
+| App lock | BiometricPrompt |
 | Capture | NotificationListenerService (Kotlin) |
 | Export | CSV/JSON (dart:convert / csv package) |
 
@@ -173,7 +173,7 @@ budgets:      id, user_id, category_id, amount, period (monthly),
 
 ## Build order
 
-1. App shell + Google sign-in + Drift local schema
+1. App shell + Google sign-in + Room local schema
 2. Manual entry + builtin category/merchant rule map
 3. Notification listener + parser + dedupe
 4. Supabase sync
