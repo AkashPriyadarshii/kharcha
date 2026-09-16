@@ -12,7 +12,10 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.kharcha.app.capture.CaptureDao
 import android.content.Context
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 
 @Dao
 interface KharchaDao {
@@ -22,10 +25,23 @@ interface KharchaDao {
     @Query("DELETE FROM transactions WHERE id = :id")
     suspend fun deleteById(id: Long)
 
+    /** Soft delete: hide, restorable from Trash. Hard purge only via purgeTrash. */
+    @Query("UPDATE transactions SET isDeleted = 1 WHERE id = :id")
+    suspend fun trashById(id: Long)
+
+    @Query("UPDATE transactions SET isDeleted = 0 WHERE id = :id")
+    suspend fun restoreById(id: Long)
+
+    @Query("DELETE FROM transactions WHERE isDeleted = 1")
+    suspend fun purgeTrash()
+
+    @Query("SELECT * FROM transactions WHERE isDeleted = 1 ORDER BY timestampMs DESC")
+    fun trashed(): Flow<List<TransactionRow>>
+
     @Query("SELECT * FROM transactions WHERE id = :id LIMIT 1")
     suspend fun transactionById(id: Long): TransactionRow?
 
-    @Query("SELECT * FROM transactions ORDER BY timestampMs DESC")
+    @Query("SELECT * FROM transactions WHERE isDeleted = 0 ORDER BY timestampMs DESC")
     fun allTransactions(): Flow<List<TransactionRow>>
 
     @Query("SELECT * FROM categories ORDER BY sort ASC, name ASC")
@@ -49,13 +65,13 @@ interface KharchaDao {
     /** Recency-ordered rows for the dedupe gate (mirrors Dart limit(1) contract).
      * LIMIT 200 (audit): a full-table scan × JNA serialize per SMS = ANR inside
      * goAsync; 200 recency-ordered rows covers the ±5 min window with margin. */
-    @Query("SELECT * FROM transactions ORDER BY timestampMs DESC LIMIT 200")
+    @Query("SELECT * FROM transactions WHERE isDeleted = 0 ORDER BY timestampMs DESC LIMIT 200")
     suspend fun recentTransactions(): List<TransactionRow>
 
-    @Query("SELECT COALESCE(SUM(amountPaise), 0) FROM transactions WHERE isIncome = 0 AND timestampMs >= :fromMs AND timestampMs < :toMs")
+    @Query("SELECT COALESCE(SUM(amountPaise), 0) FROM transactions WHERE isDeleted = 0 AND isIncome = 0 AND timestampMs >= :fromMs AND timestampMs < :toMs")
     suspend fun spendBetween(fromMs: Long, toMs: Long): Long
 
-    @Query("SELECT COALESCE(SUM(amountPaise), 0) FROM transactions WHERE isIncome = 1 AND timestampMs >= :fromMs AND timestampMs < :toMs")
+    @Query("SELECT COALESCE(SUM(amountPaise), 0) FROM transactions WHERE isDeleted = 0 AND isIncome = 1 AND timestampMs >= :fromMs AND timestampMs < :toMs")
     suspend fun incomeBetween(fromMs: Long, toMs: Long): Long
 
     // --- Wallets ---
@@ -82,7 +98,7 @@ interface KharchaDao {
     @Query("SELECT * FROM budgets")
     suspend fun allBudgetsOnce(): List<Budget>
 
-    @Query("SELECT COALESCE(SUM(amountPaise), 0) FROM transactions WHERE isIncome = 0 AND categoryId = :categoryId AND timestampMs >= :fromMs AND timestampMs < :toMs")
+    @Query("SELECT COALESCE(SUM(amountPaise), 0) FROM transactions WHERE isDeleted = 0 AND isIncome = 0 AND categoryId = :categoryId AND timestampMs >= :fromMs AND timestampMs < :toMs")
     suspend fun categorySpend(categoryId: Long, fromMs: Long, toMs: Long): Long
 
     @Query("DELETE FROM budgets WHERE categoryId = :categoryId")
@@ -125,11 +141,20 @@ interface KharchaDao {
 
     @Query("DELETE FROM transactions")
     suspend fun wipeTransactions()
+
+    // --- Goals ---
+    @Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE) suspend fun upsertGoal(goal: Goal)
+
+    @Query("SELECT * FROM goals")
+    fun allGoals(): kotlinx.coroutines.flow.Flow<List<Goal>>
+
+    @Query("UPDATE goals SET savedPaise = savedPaise + :amount WHERE id = :id")
+    suspend fun addSaving(id: Long, amount: Long)
 }
 
 @Database(
-    entities = [TransactionRow::class, Category::class, RuleRow::class, Wallet::class, Budget::class],
-    version = 4,
+    entities = [TransactionRow::class, Category::class, RuleRow::class, Wallet::class, Budget::class, Goal::class],
+    version = 6,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -151,19 +176,53 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        // NOTE: third claimant on 3→4 (also budget-pack goals, db-safety
-        // isDeleted). Whoever merges second rebases to 4→5, third to 5→6.
         private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS goals (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, name TEXT NOT NULL, targetPaise INTEGER NOT NULL, savedPaise INTEGER NOT NULL DEFAULT 0)")
+            }
+        }
+
+        // Rebasing: budget-pack owns 3→4 (goals). db-safety is 4→5 (isDeleted).
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE transactions ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        // Settings pack owns 5→6: isHidden on categories, isArchived on wallets.
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE categories ADD COLUMN isHidden INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE wallets ADD COLUMN isArchived INTEGER NOT NULL DEFAULT 0")
             }
         }
 
+        /** Throttled VACUUM (30d): single-user DB fragments slowly; no scheduler yet, on-open check is enough. */
+        private fun vacuumIfDue(context: Context, db: SupportSQLiteDatabase) {
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val p = context.getSharedPreferences("maintenance", Context.MODE_PRIVATE)
+                    val now = System.currentTimeMillis()
+                    if (now - p.getLong("last_vacuum_ms", 0) > 30L * 24 * 60 * 60 * 1000) {
+                        db.execSQL("VACUUM")
+                        p.edit().putLong("last_vacuum_ms", now).apply()
+                    }
+                } catch (e: Exception) {
+                    com.kharcha.app.capture.CrashLog.log(context, "Maintenance", "vacuum failed: ${e.message}")
+                }
+            }
+        }
+
         fun create(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "kharcha.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                 .addCallback(SeedCallback())
+                .addCallback(object : RoomDatabase.Callback() {
+                    override fun onOpen(db: SupportSQLiteDatabase) {
+                        super.onOpen(db)
+                        vacuumIfDue(context, db)
+                    }
+                })
                 .build()
     }
 }

@@ -4,6 +4,9 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
+/** Whole-month ceiling key in budgets. Seed category ids start at 1, so 0 never collides. */
+const val OVERALL_BUDGET_ID = 0L
+
 @Entity(tableName = "categories")
 data class Category(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -43,6 +46,8 @@ data class TransactionRow(
     val sender: String? = null,
     /** Set when a bank/card wallet is identified from the message. */
     val walletId: Long? = null,
+    /** Soft delete flag. Deleted rows hide everywhere; Trash restores or purges. */
+    @ColumnInfo(defaultValue = "0") val isDeleted: Boolean = false,
     /** Manual-entry payment method: UPI | Cash | Card | Wallet. Null = unknown/captured. */
     @ColumnInfo(defaultValue = "NULL") val paymentMethod: String? = null,
 )
@@ -70,4 +75,14 @@ data class Budget(
     @PrimaryKey val categoryId: Long,
     /** Monthly cap, paise. */
     val monthlyLimitPaise: Long,
+)
+
+@Entity(tableName = "goals")
+data class Goal(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    /** Target, paise. */
+    val targetPaise: Long,
+    /** Manually logged savings, paise. No auto-detect — user taps, money moves. */
+    @ColumnInfo(defaultValue = "0") val savedPaise: Long = 0,
 )
