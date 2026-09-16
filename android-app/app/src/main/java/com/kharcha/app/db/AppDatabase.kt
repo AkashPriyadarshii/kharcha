@@ -95,6 +95,9 @@ interface KharchaDao {
     @Query("SELECT * FROM budgets")
     fun allBudgets(): Flow<List<Budget>>
 
+    @Query("SELECT * FROM budgets")
+    suspend fun allBudgetsOnce(): List<Budget>
+
     @Query("SELECT COALESCE(SUM(amountPaise), 0) FROM transactions WHERE isDeleted = 0 AND isIncome = 0 AND categoryId = :categoryId AND timestampMs >= :fromMs AND timestampMs < :toMs")
     suspend fun categorySpend(categoryId: Long, fromMs: Long, toMs: Long): Long
 
@@ -115,6 +118,26 @@ interface KharchaDao {
 
     @Query("UPDATE wallets SET isArchived = :archived WHERE id = :id")
     suspend fun setWalletArchived(id: Long, archived: Boolean)
+
+    @Insert suspend fun insertCategory(category: Category): Long
+
+    /** Counterpart for transfer/refund pairing: same amount, opposite sign, 7-day window, unpaired. */
+    @Query(
+        """SELECT * FROM transactions
+           WHERE amountPaise = :amountPaise AND isIncome != :isIncome AND id != :excludeId
+             AND timestampMs BETWEEN :fromMs AND :toMs AND (note IS NULL OR note NOT LIKE 'Paired%')
+           ORDER BY ABS(timestampMs - :ts) LIMIT 1"""
+    )
+    suspend fun pairCandidate(amountPaise: Long, isIncome: Boolean, excludeId: Long, fromMs: Long, toMs: Long, ts: Long): TransactionRow?
+
+    /** Recurring suspects: same merchant + amount in 2+ distinct months. */
+    @Query(
+        """SELECT merchant AS merchant, amountPaise AS amountPaise,
+             COUNT(DISTINCT strftime('%Y-%m', datetime(timestampMs / 1000, 'unixepoch'))) AS months
+           FROM transactions WHERE isIncome = 0
+           GROUP BY merchant, amountPaise HAVING months >= 2 ORDER BY amountPaise DESC"""
+    )
+    fun subscriptions(): Flow<List<SubRow>>
 
     @Query("DELETE FROM transactions")
     suspend fun wipeTransactions()

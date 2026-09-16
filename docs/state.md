@@ -51,7 +51,7 @@ Repository = `android-app/` (Kotlin Compose) + `kharcha-core/` (Rust) only.
   when the cap is set on the live month; one-month unspent rollover computed
   at read time (overspend never carries); savings goals = new `goals` table
   (DB v4) with manual log-savings sheet. No auto-detect, no compounding.
-- **Settings pack (`feat/settings-pack`, unmerged).** Rules/Categories/Accounts
+- **Settings pack (merged).** Rules/Categories/Accounts
   manager screens; theme mode + Monet toggle; lock grace + FLAG_SECURE;
   daily summary worker (inexact alarm, boot re-arm, time picker); wipe +
   direct log export. Category hide + wallet archive leave pickers (DB v6 via 5→6 migration).
@@ -66,8 +66,12 @@ Repository = `android-app/` (Kotlin Compose) + `kharcha-core/` (Rust) only.
   prefilter, 500 cap, every message through `CaptureEngine.ingest(quiet=true)`
   so per-insert buzz stays silent; Toast reports the count. Skips without SMS
   permission, never repeats on intro re-run.
->>>>>>> origin/main
->>>>>>> origin/main
+- **Catchup (`feat/catchup`, unmerged, rebased on main).** Ingest-time
+  budget alerts (50/80/100, prefs-deduped); transfer/refund auto-pairing +
+  manual link via note + on-demand Transfers category (no migration, no new
+  FFI — NDK absent so the .so can't grow exports); autopay suspects card;
+  quick-add merchant + type; rescan inbox button (re-uses BacklogScan);
+  wallet balance set; new categories; bulk select/delete/categorize/link; split-bill UI on splitBill.
 
 **Prior state (historical):**
 

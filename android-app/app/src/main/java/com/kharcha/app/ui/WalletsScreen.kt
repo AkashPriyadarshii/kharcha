@@ -39,6 +39,7 @@ fun WalletsScreen(
     val wallets by vm.wallets.collectAsState()
     val scope = rememberCoroutineScope()
     var renaming by remember { mutableStateOf<Wallet?>(null) }
+    var balancing by remember { mutableStateOf<Wallet?>(null) }
 
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -67,6 +68,7 @@ fun WalletsScreen(
                             )
                         }
                         TextButton(onClick = { renaming = w }) { Text("Rename") }
+                        TextButton(onClick = { balancing = w }) { Text("Balance") }
                         Switch(
                             checked = !w.isArchived,
                             onCheckedChange = { scope.launch { vm.setWalletArchived(w.id, !it) } },
@@ -93,6 +95,41 @@ fun WalletsScreen(
                 }) { Text("Save") }
             },
             dismissButton = { TextButton(onClick = { renaming = null }) { Text("Cancel") } },
+        )
+    }
+
+    balancing?.let { w ->
+        var amount by remember(w.id) { mutableStateOf("") }
+        var error by remember(w.id) { mutableStateOf<String?>(null) }
+        AlertDialog(
+            onDismissRequest = { balancing = null },
+            title = { Text("Set balance") },
+            text = {
+                Column {
+                    Text(
+                        "Corrects drift from unlogged cash. Overwrites the SMS-tracked figure.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = amount,
+                        onValueChange = { amount = it.filter { c -> c.isDigit() || c == '.' } },
+                        label = { Text("Balance (₹)") },
+                        singleLine = true,
+                    )
+                    error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val p = runCatching { uniffi.kharcha_core.parseAmount(amount.ifBlank { null }) }.getOrNull()
+                    if (p == null) { error = "Enter a valid amount"; return@TextButton }
+                    balancing = null
+                    scope.launch { vm.setWalletBalance(w.id, p) }
+                }) { Text("Save") }
+            },
+            dismissButton = { TextButton(onClick = { balancing = null }) { Text("Cancel") } },
         )
     }
 }
