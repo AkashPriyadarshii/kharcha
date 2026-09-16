@@ -12,7 +12,7 @@ Owner decision: rewrite in **Rust + Kotlin, fully offline, no Supabase** — dro
 - `upi_parser.rs` (unified parser, fancy-regex lookahead) — tests green
 - 17/17 tests, zero warnings
 
-**Phase 0.5 — India bank parsers (next):**
+**Phase 0.5 — India bank parsers (paused — pending owner direction):**
 - Port base bank-format parser + ~15 India banks (HDFC, SBI, ICICI, Axis, Kotak, PNB, Bank of Baroda, Canara, Union, IDFC, Yes, IndusInd, AU, Federal, HDFC CC) from Kotlin `parser-core` corpora into `kharcha-core`.
 - Goldens from `parser-core` test corpus.
 - Verify: `cargo test` all green.
@@ -21,9 +21,11 @@ Owner decision: rewrite in **Rust + Kotlin, fully offline, no Supabase** — dro
 - UDL: `parse_payment`, `parse_payment_batch`, `Categorizer` stateful object.
 - Kotlin bindings generated → consumed by Compose app.
 
-**Phase 2 — Kotlin Compose rewrite:** screens + local DB (Room/SQLite) + offline capture, same UX as Flutter app.
+**Phase 2 — Kotlin Compose rewrite (next):** screens + local DB (Room/SQLite) + offline capture, same UX as Flutter app. When it reaches feature parity it **replaces** the Flutter app — deletion is part of this phase, no separate delete step: `lib/`, `android/.../GenericUpiParser.kt`, Supabase migrations + sync engine all go away the moment the Compose app is the live one (repo = Kotlin + Rust only).
 
-**Phase 3 — delete:** all `lib/`, `android/.../GenericUpiParser.kt`, Supabase migrations + sync engine. Offline means offline.
+**⚠ Owner said WAIT — something in the works. Do not push, do not start building until direction is confirmed.**
+
+~~**Phase 3 — delete:** all `lib/`, `android/.../GenericUpiParser.kt`, Supabase migrations + sync engine.~~ — merged into Phase 2 (rewrite replaces).
 
 ---
 
