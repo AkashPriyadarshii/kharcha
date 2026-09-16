@@ -84,6 +84,7 @@ private fun App() {
     var showAdd by remember { mutableStateOf(false) }
     var showBudget by remember { mutableStateOf(false) }
     var showAll by remember { mutableStateOf(false) }
+    var editTxn by remember { mutableStateOf<com.kharcha.app.db.TransactionRow?>(null) }
     val context = LocalContext.current
     val app = context.applicationContext as KharchaApp
     val categories by remember { mutableStateOf(runBlocking { app.database.dao().allCategoriesOnce() }) }
@@ -96,7 +97,7 @@ private fun App() {
     if (showAll) {
         BackHandler { showAll = false }
         androidx.compose.foundation.layout.Column {
-            AllTransactionsScreen(vm, categoryName, Modifier.weight(1f))
+            AllTransactionsScreen(vm, categoryName, Modifier.weight(1f), onTap = { editTxn = it })
             ExportButton(vm, Modifier.padding(16.dp))
         }
     } else {
@@ -116,4 +117,7 @@ private fun App() {
 
     if (showAdd) AddSheet(vm, categories, onDismiss = { showAdd = false })
     if (showBudget) BudgetSheet(vm, categories, onDismiss = { showBudget = false })
+    editTxn?.let { txn ->
+        com.kharcha.app.ui.EditSheet(txn, categories, vm, onDismiss = { editTxn = null })
+    }
 }

@@ -41,8 +41,9 @@ pub fn normalize_merchant(raw: &str) -> String {
 }
 
 /// Returns the matching rule for a merchant, or None.
-/// Priority: learned beats builtin; within one type, longest pattern first
-/// (stable — ties keep caller order, same as Dart's stable sort).
+/// Priority: learned beats builtin; within one type, longest pattern first.
+/// Stable sort — ties keep caller order (a strengthening; Dart documents
+/// no stability guarantee, but all real rule sets order identically).
 /// ponytail: length is bytes, Dart `length` is UTF-16 units — identical for
 /// the ASCII patterns this engine actually stores; revisit if non-ASCII rule
 /// patterns ever exist.

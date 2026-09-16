@@ -362,6 +362,15 @@ fn premortem_real_life_rows() {
 }
 
 #[test]
+fn multibyte_text_cant_panic_slicing() {
+    // Audit: regex offsets into emoji-adjacent text can split char
+    // boundaries — slicing guards fail open, never panic. Parses fine.
+    let p = parsed("Paid ₹500 to Swiggy🎉. Ref 123456789012");
+    assert_eq!(p.amount_paise, 50000);
+    assert_eq!(p.upi_ref.as_deref(), Some("123456789012"));
+}
+
+#[test]
 fn inbox_line_round_trips() {
     let line = encode_inbox_line("com.phonepe.app", "₹450 paid", "t");
     assert!(line.contains("\"package\":\"com.phonepe.app\""));

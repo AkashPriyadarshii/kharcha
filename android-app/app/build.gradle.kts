@@ -52,7 +52,7 @@ tasks.register<Exec>("buildKharchaCore") {
         "build", "--release"
     )
 }
-tasks.named("preBuild").configure { dependsOn("buildKharchaCore") }
+// tasks.named("preBuild").configure { dependsOn("buildKharchaCore") } // disabled: .so + bindings from Desktop/kharcha-core dist/
 
 dependencies {
     implementation(libs.androidx.core.ktx)

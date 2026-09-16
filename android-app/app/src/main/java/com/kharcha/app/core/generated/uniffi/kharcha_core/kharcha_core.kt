@@ -682,6 +682,10 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_kharcha_core_checksum_func_is_spam(
     ): Int
+    external fun uniffi_kharcha_core_checksum_func_max_batch_items(
+    ): Int
+    external fun uniffi_kharcha_core_checksum_func_max_body_bytes(
+    ): Int
     external fun uniffi_kharcha_core_checksum_func_normalize_merchant_text(
     ): Int
     external fun uniffi_kharcha_core_checksum_func_parse_amount(
@@ -715,6 +719,10 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_kharcha_core_fn_func_is_spam(`text`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Byte
+    external fun uniffi_kharcha_core_fn_func_max_batch_items(uniffi_out_err: UniffiRustCallStatus, 
+    ): Long
+    external fun uniffi_kharcha_core_fn_func_max_body_bytes(uniffi_out_err: UniffiRustCallStatus, 
+    ): Long
     external fun uniffi_kharcha_core_fn_func_normalize_merchant_text(`raw`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_kharcha_core_fn_func_parse_amount(`text`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -857,6 +865,12 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if ((lib.uniffi_kharcha_core_checksum_func_is_spam() and 0xFFFF) != 6271) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_kharcha_core_checksum_func_max_batch_items() and 0xFFFF) != 42144) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_kharcha_core_checksum_func_max_body_bytes() and 0xFFFF) != 44677) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if ((lib.uniffi_kharcha_core_checksum_func_normalize_merchant_text() and 0xFFFF) != 42102) {
@@ -2068,6 +2082,26 @@ public object FfiConverterSequenceOptionalTypeParsedTransaction: FfiConverterRus
     
         
         FfiConverterString.lower(`text`),_status)
+}
+    )
+    }
+    
+ fun `maxBatchItems`(): kotlin.ULong {
+            return FfiConverterULong.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_kharcha_core_fn_func_max_batch_items(
+    
+        _status)
+}
+    )
+    }
+    
+ fun `maxBodyBytes`(): kotlin.ULong {
+            return FfiConverterULong.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_kharcha_core_fn_func_max_body_bytes(
+    
+        _status)
 }
     )
     }

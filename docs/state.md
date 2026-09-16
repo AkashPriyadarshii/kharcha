@@ -15,6 +15,7 @@
   - **Capture**: `SmsReceiver` + `UpiNotificationListener` → single `CaptureEngine.ingest` funnel: Rust `is_spam` → `parse_capture` → `check_capture` dedupe → backfill ref — ALL decisions in Rust, app only stores.
   - **Screens**: Home (month spend/income, recent 8), All transactions, Add sheet (manual expense/income + auto-categorize chip row). No budgets/wallets/export/lock yet (Release 1 scope).
 - APK 34 MB debug builds fine. Untested on device yet (user sideload pending).
+- **Parity batch 1 (2026-09-16)**: wallets (auto-created from bank SMS `bankName`+`accountMask`, balance from `balancePaise`), monthly budgets per category (progress bars on Home, over-limit turns red), CSV export to Downloads, app lock via BiometricPrompt (Strong on, no-creds → falls through so it never bricks the app). Schema v2 + explicit 1→2 migration.
 
 **Legacy Flutter app (v0.2.910 latest) still live until parity swap-over.** History below:
 

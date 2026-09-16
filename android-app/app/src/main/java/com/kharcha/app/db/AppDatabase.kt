@@ -4,6 +4,8 @@ import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Query
 import androidx.room.Insert
+import androidx.room.Update
+import androidx.room.Delete
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
@@ -15,6 +17,10 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface KharchaDao {
     @Insert suspend fun insert(txn: TransactionRow): Long
+    @Update suspend fun update(txn: TransactionRow)
+    @Delete suspend fun delete(txn: TransactionRow)
+    @Query("DELETE FROM transactions WHERE id = :id")
+    suspend fun deleteById(id: Long)
 
     @Query("SELECT * FROM transactions ORDER BY timestampMs DESC")
     fun allTransactions(): Flow<List<TransactionRow>>
