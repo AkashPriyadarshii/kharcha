@@ -32,7 +32,7 @@ Manual logging is friction; cloud sync is a trust tax. Kharcha kills both:
 | | |
 |---|---|
 | **Latest release** | **v0.1.0** |
-| **APK** | `android-app/app/build/outputs/apk/debug/app-debug.apk` (~34 MB) |
+| **APK** | [`kharcha-armv8a-release.apk`](https://github.com/AkashPriyadarshii/kharcha/releases/latest/download/kharcha-armv8a-release.apk) (~29 MB) |
 | **Requirements** | Android 12+ (arm64) |
 
 **Install:** build or grab the APK → open it → allow "Install unknown apps" → done.
@@ -53,7 +53,7 @@ Manual logging is friction; cloud sync is a trust tax. Kharcha kills both:
 
 | Concern | Choice |
 |---|---|
-| Core engine | Rust (`kharcha-core`), UniFFI bindings, 56/56 tests |
+| Core engine | Rust (`kharcha-core`), UniFFI bindings, 59/59 tests (24 unit + 35 parity) |
 | App | Kotlin + Jetpack Compose, Android 12+ (minSdk 32) |
 | Local DB | Room (SQLite) — the only store |
 | Native | JNA, BiometricPrompt, NotificationListenerService |

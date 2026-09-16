@@ -12,7 +12,7 @@ Repository = `android-app/` (Kotlin Compose) + `kharcha-core/` (Rust) only.
 
 - **`kharcha-core` v0.1** — deterministic UPI capture engine in Rust:
   `categorize`, `dedupe`, `engine`, `ffi`, `filter`, `money`, `non_transaction`,
-  `parser`, `split`. 56/56 tests. paise-i64 amounts, batch API, dual-audit
+  `parser`, `split`. 59/59 tests (24 unit + 35 parity). paise-i64 amounts, batch API, dual-audit
   hardening (abs_diff timestamps, batch caps, panic-free slicing). UniFFI
   exports: `parse_capture(s)`, `check_capture` dedupe, `categorize_merchant`,
   `normalize_merchant_text`, `parse_amount`, `is_spam`, `split_bill`,
