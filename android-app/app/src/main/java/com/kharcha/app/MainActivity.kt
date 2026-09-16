@@ -77,6 +77,7 @@ import com.kharcha.app.ui.GoalSheet
 import com.kharcha.app.ui.HomeScreen
 import com.kharcha.app.ui.KharchaTheme
 import com.kharcha.app.ui.QuickAddSheet
+import com.kharcha.app.ui.TrashScreen
 import com.kharcha.app.capture.BacklogScan
 import com.kharcha.app.capture.CrashLog
 import com.kharcha.app.capture.UpiNotificationListener
@@ -385,10 +386,18 @@ private fun App() {
                     onRequestIgnoreBattery = { activity?.requestIgnoreBatteryOptimization() },
                     onRunIntro = { showOnboarding = true },
                     onOpenConsoleLog = { nav.navigate(Tab.ROUTE_CONSOLE_LOG) { launchSingleTop = true } },
+                    onOpenTrash = { nav.navigate(Tab.ROUTE_TRASH) { launchSingleTop = true } },
                 )
             }
             composable(Tab.ROUTE_CONSOLE_LOG) {
                 ConsoleLogScreen(
+                    onBack = { nav.popBackStack() },
+                )
+            }
+            composable(Tab.ROUTE_TRASH) {
+                TrashScreen(
+                    vm,
+                    categories,
                     onBack = { nav.popBackStack() },
                 )
             }
@@ -428,6 +437,7 @@ private object Tab {
     const val ROUTE_REPORTS = "reports"
     const val ROUTE_SETTINGS = "settings"
     const val ROUTE_CONSOLE_LOG = "console_log"
+    const val ROUTE_TRASH = "trash"
 }
 
 @Composable

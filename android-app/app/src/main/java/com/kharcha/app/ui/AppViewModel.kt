@@ -156,7 +156,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     suspend fun deleteTransaction(id: Long): TransactionRow? {
         val row = dao.transactionById(id)
-        dao.deleteById(id)
+        dao.trashById(id)
         lastDeleted = row
         refreshAll()
         return row
@@ -165,9 +165,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     suspend fun restoreLastDeleted(): Long? {
         val row = lastDeleted ?: return null
         lastDeleted = null
-        val id = dao.insert(row.copy(id = 0))
+        dao.restoreById(row.id)
         refreshAll()
-        return id
+        return row.id
+    }
+
+    val trashed: StateFlow<List<TransactionRow>> =
+        dao.trashed().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    suspend fun restoreTransaction(id: Long) {
+        dao.restoreById(id)
+        refreshAll()
+    }
+
+    suspend fun emptyTrash() {
+        dao.purgeTrash()
+        refreshAll()
     }
 
     fun clearUndo() {
