@@ -24,15 +24,17 @@ pub struct ParsedTransaction {
     /// (`HDFCBK`) and a push package (`com.gpay`) for one payment would
     /// otherwise never hash equal, killing the cross-channel gate. Refs are
     /// unique per payment, so same-body collisions across senders need an
-    /// identical ref too — except ref-less duplicates far apart in time,
-    /// which merge (accepted, documented).
+    /// identical ref too. The dedupe hash gate is window-bound (dedupe.rs),
+    /// so ref-less duplicates far apart in time survive as real payments.
     pub content_hash: u64,
 }
 
 /// Hard input cap. Real SMS/notifications are <2 KB; anything past 16 KB is a
 /// paste-attack or a corrupt read — regexing megabytes burns CPU for nothing.
 /// (Premortem: FFI callers pass arbitrary strings; the core must not spin.)
-pub const MAX_BODY_BYTES: usize = 16 * 1024;
+/// Single authority lives in parser.rs (`MAX_INPUT_BYTES`) so direct parser
+/// callers are guarded too; this is the re-export the FFI surface reads.
+pub const MAX_BODY_BYTES: usize = crate::parser::MAX_INPUT_BYTES;
 
 /// Sender-aware parse. Today every sender routes to the generic backend.
 pub fn parse(sms_body: &str, sender: &str, timestamp_ms: i64) -> Option<ParsedTransaction> {
