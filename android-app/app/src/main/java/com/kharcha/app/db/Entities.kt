@@ -4,6 +4,9 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
+/** Whole-month ceiling key in budgets. Seed category ids start at 1, so 0 never collides. */
+const val OVERALL_BUDGET_ID = 0L
+
 @Entity(tableName = "categories")
 data class Category(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -61,4 +64,14 @@ data class Budget(
     @PrimaryKey val categoryId: Long,
     /** Monthly cap, paise. */
     val monthlyLimitPaise: Long,
+)
+
+@Entity(tableName = "goals")
+data class Goal(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    /** Target, paise. */
+    val targetPaise: Long,
+    /** Manually logged savings, paise. No auto-detect — user taps, money moves. */
+    @ColumnInfo(defaultValue = "0") val savedPaise: Long = 0,
 )

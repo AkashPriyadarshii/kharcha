@@ -100,11 +100,19 @@ interface KharchaDao {
 
     @Query("DELETE FROM budgets WHERE categoryId = :categoryId")
     suspend fun deleteBudget(categoryId: Long)
+
+    // --- Goals ---
+    @Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE) suspend fun upsertGoal(goal: Goal)
+
+    @Query("SELECT * FROM goals")
+    fun allGoals(): kotlinx.coroutines.flow.Flow<List<Goal>>
+
+    @Query("UPDATE goals SET savedPaise = savedPaise + :amount WHERE id = :id")
+    suspend fun addSaving(id: Long, amount: Long)
 }
 
-@Database(
-    entities = [TransactionRow::class, Category::class, RuleRow::class, Wallet::class, Budget::class],
-    version = 4,
+    entities = [TransactionRow::class, Category::class, RuleRow::class, Wallet::class, Budget::class, Goal::class],
+    version = 5,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -126,9 +134,8 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        // NOTE: collides with feat/budget-pack (also 3→4, goals table).
-        // Whoever merges second rebases this to 4→5.
-        private val MIGRATION_3_4 = object : Migration(3, 4) {
+        // Rebasing: budget-pack owns 3→4 (goals). This is 4→5.
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE transactions ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0")
             }
@@ -147,12 +154,15 @@ abstract class AppDatabase : RoomDatabase() {
                 } catch (e: Exception) {
                     com.kharcha.app.capture.CrashLog.log(context, "Maintenance", "vacuum failed: ${e.message}")
                 }
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS goals (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, name TEXT NOT NULL, targetPaise INTEGER NOT NULL, savedPaise INTEGER NOT NULL DEFAULT 0)")
             }
         }
 
         fun create(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "kharcha.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .addCallback(SeedCallback())
                 .addCallback(object : RoomDatabase.Callback() {
                     override fun onOpen(db: SupportSQLiteDatabase) {

@@ -70,12 +70,30 @@ fun ReportsScreen(
         m to rows.sumOf { it.amountPaise }
     }.sortedByDescending { it.second }.take(5)
 
+    var showShare by remember { mutableStateOf(false) }
+
     Column(Modifier.fillMaxSize()) {
-        Text(
-            "Reports",
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-        )
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("Reports", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            if (monthTxns.isNotEmpty()) TextButton(onClick = { showShare = true }) { Text("Share") }
+        }
+        if (showShare && monthTxns.isNotEmpty()) {
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { showShare = false },
+                confirmButton = {
+                    ShareCardSharer(
+                        context = androidx.compose.ui.platform.LocalContext.current,
+                        card = { ShareCardContent(monthView, totalSpend, topMerchants.take(3)) },
+                        onShared = { showShare = false },
+                    )
+                },
+                dismissButton = { TextButton(onClick = { showShare = false }) { Text("Close") } },
+                text = { ShareCardContent(monthView, totalSpend, topMerchants.take(3)) },
+            )
+        }
 
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             // Month pager

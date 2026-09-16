@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -72,14 +73,21 @@ import com.kharcha.app.ui.BudgetSheet
 import com.kharcha.app.ui.CaptureSetup
 import com.kharcha.app.ui.EditSheet
 import com.kharcha.app.ui.ExportButton
+import com.kharcha.app.ui.GoalSheet
 import com.kharcha.app.ui.HomeScreen
 import com.kharcha.app.ui.KharchaTheme
 import com.kharcha.app.ui.QuickAddSheet
 import com.kharcha.app.ui.TrashScreen
+import com.kharcha.app.capture.BacklogScan
 import com.kharcha.app.capture.CrashLog
 import com.kharcha.app.capture.UpiNotificationListener
 import com.kharcha.app.ui.formatPaiseCompact
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : FragmentActivity() {
     // Compose state (not plain vars): auth results must recompose the content.
@@ -180,6 +188,26 @@ class MainActivity : FragmentActivity() {
         smsLauncher.launch(arrayOf(Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS))
     }
 
+    /**
+     * One-shot pre-install SMS import after onboarding. Skips silently without
+     * SMS permission; the scanned flag makes it run once ever, even if the
+     * intro is re-run from Settings.
+     */
+    fun runBacklogScan() {
+        if (!smsGranted.value || UserPrefs.backlogScanned(this)) return
+        val errors = CoroutineExceptionHandler { _, e ->
+            CrashLog.log(this, "MainActivity", "backlog scan failed: ${e.message}")
+        }
+        CoroutineScope(SupervisorJob() + Dispatchers.IO + errors).launch {
+            val app = application as KharchaApp
+            val r = BacklogScan.scan(this@MainActivity, app.database.captureDao(), app.database.dao())
+            UserPrefs.markBacklogScanned(this@MainActivity)
+            withContext(Dispatchers.Main) {
+                Toast.makeText(this@MainActivity, "Imported ${r.inserted} past payments", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     fun requestNotifications() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -252,6 +280,7 @@ private fun App() {
     var showAdd by remember { mutableStateOf(false) }
     var showQuickAdd by remember { mutableStateOf(false) }
     var showBudget by remember { mutableStateOf(false) }
+    var showGoal by remember { mutableStateOf(false) }
     var editTxn by remember { mutableStateOf<com.kharcha.app.db.TransactionRow?>(null) }
     // Onboarding gate: first launch (or Settings → "Run intro again")
     var showOnboarding by remember { mutableStateOf(!UserPrefs.isOnboarded(context)) }
@@ -281,7 +310,7 @@ private fun App() {
             onOpenListenerSettings = { activity?.openListenerSettings() },
             onOpenAppSettings = { activity?.openAppSettings() },
             onRequestIgnoreBattery = { activity?.requestIgnoreBatteryOptimization() },
-            onDone = { showOnboarding = false },
+            onDone = { showOnboarding = false; activity?.runBacklogScan() },
         )
         return
     }
@@ -322,6 +351,7 @@ private fun App() {
                     onReports = { nav.navigate(Tab.ROUTE_REPORTS) { launchSingleTop = true } },
                     onAdd = { showAdd = true },
                     onSetBudget = { showBudget = true },
+                    onAddGoal = { showGoal = true },
                     captureSetup = if (captureSetup.smsGranted && captureSetup.listenerEnabled) null else captureSetup,
                     onRequestSms = { activity?.requestSms() },
                     onOpenListenerSettings = { activity?.openListenerSettings() },
@@ -384,6 +414,7 @@ private fun App() {
     )
     if (showAdd) AddSheet(vm, categories, onDismiss = { showAdd = false })
     if (showBudget) BudgetSheet(vm, categories, onDismiss = { showBudget = false })
+    if (showGoal) GoalSheet(vm, vm.goals.collectAsState().value, onDismiss = { showGoal = false })
     editTxn?.let { txn ->
         EditSheet(
             txn,
