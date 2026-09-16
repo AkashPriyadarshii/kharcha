@@ -155,6 +155,9 @@ abstract class AppDatabase : RoomDatabase() {
                 } catch (e: Exception) {
                     com.kharcha.app.capture.CrashLog.log(context, "Maintenance", "vacuum failed: ${e.message}")
                 }
+            }
+        }
+
         private val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("CREATE TABLE IF NOT EXISTS goals (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, name TEXT NOT NULL, targetPaise INTEGER NOT NULL, savedPaise INTEGER NOT NULL DEFAULT 0)")
