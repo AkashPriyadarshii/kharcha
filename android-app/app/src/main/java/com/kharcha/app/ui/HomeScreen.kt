@@ -358,11 +358,7 @@ fun TransactionLine(txn: TransactionRow, emoji: String, category: String) {
         Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            Modifier.size(40.dp).clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer),
-            contentAlignment = Alignment.Center,
-        ) { Text(emoji, fontSize = 20.sp) }
+        BrandAvatar(txn.merchant, emoji)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(txn.merchant, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
