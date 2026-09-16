@@ -29,7 +29,7 @@ Repository = `android-app/` (Kotlin Compose) + `kharcha-core/` (Rust) only.
   app lock (biometric OR device PIN — `BIOMETRIC_STRONG |
   DEVICE_CREDENTIAL` so fingerprint-less phones can't be locked out).
   `applicationId com.kharcha.app` — the live app, overwrites the old Kotlin Compose
-  install in place (same signing identity, debug-signed).
+  install in place (same signing identity, real key — `keystore/kharcha-release.jks`, CN=Akash Priyadarshi).
 - Bindings committed; `.so` (arm64) built from Desktop `kharcha-core` dist.
   `buildKharchaCore` gradle task disabled — dist/ is the source of truth.
 

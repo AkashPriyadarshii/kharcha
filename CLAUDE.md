@@ -109,13 +109,21 @@ cd android-app && ./gradlew.bat :app:assembleDebug   # must pass before any PR
 
 ```bash
 cd android-app
-# Release (arm64 only, debug-signed):
-rm -rf build/native_assets/windows .dart_tool/hooks_runner   # legacy note — not needed in Compose build
+# Release (arm64 only, real-key signed):
 ./gradlew.bat :app:assembleRelease
 # → android-app/app/build/outputs/apk/release/app-release.apk
 ```
 
-- **Debug-signed is REQUIRED for sideload.** Debug app + release app signed by same debug key in the default debug config — installing over the old Flutter install: both used debug signing, package id is now `com.kharcha.app` again (v0.1.0), so it upgrades in place. Do NOT set up a release keystore while sideloading.
+- **Release must be signed with the REAL key**, not debug. `app/build.gradle.kts`
+  loads `android-app/key.properties` → `keystore/kharcha-release.jks`
+  (alias `kharcha`, CN=Akash Priyadarshi, SHA-256
+  `49381ceebbebf75ce65d538981d498cb3056363b64d6d5c6d95ab7ad2df295df`). The
+  phone's installed build uses this key — a debug-signed release fails to
+  install over it ("app not signed"). Missing key.properties = debug fallback
+  (fresh-clone sideload only).
+- **Keystore/passwords never in git** — repo is PUBLIC. `android-app/keystore/`
+  + `android-app/key.properties` are gitignored; backup per BACKUP_KEYS.txt
+  (Desktop + Drive). Losing the keystore bricks updates for installed builds.
 - **Auto-update trigger = version bump** in `android-app/app/build.gradle.kts` (`versionName` vs GitHub release tag + `kharcha-armv8a-release.apk` asset). Every release = bump first, upload APK to same-tag release.
 - **No `ndk { abiFilters }`** block if split-per-abi is used; `--split-per-abi` conflicts with it.
 - `packaging { jniLibs { useLegacyPackaging = false } }` stays in `build.gradle.kts` — page-aligned native libs fix the install error.
