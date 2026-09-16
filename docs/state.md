@@ -47,6 +47,11 @@ Repository = `android-app/` (Kotlin Compose) + `kharcha-core/` (Rust) only.
   browser — wallets have no other UI), date presets (7D, Month, Cycle 25–24
   for statements, Custom via date pickers). Method filter only matches manual
   entries until capture tags paymentMethod.
+- **Backlog import (merged).** `BacklogScan` runs once
+  after onboarding (flag `backlog_scanned`): last-90-days inbox, Rs/INR/₹ SQL
+  prefilter, 500 cap, every message through `CaptureEngine.ingest(quiet=true)`
+  so per-insert buzz stays silent; Toast reports the count. Skips without SMS
+  permission, never repeats on intro re-run.
 
 **Prior state (historical):**
 
