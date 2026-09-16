@@ -2,7 +2,32 @@
 
 Build order. Each step = one PR, merges to `main` after review + passing analyze/test.
 
-## Phase 1 — Foundation
+## ⚠ Conversion plan (supersedes below for the Rust/Kotlin track)
+
+Owner decision: rewrite in **Rust + Kotlin, fully offline, no Supabase** — drop ~2k LOC sync, delete Dart `upi_parser.dart` + Kotlin `GenericUpiParser.kt`, single parser via UniFFI.
+
+**Phase 0 — `kharcha-core` crate (branch `feat/kharcha-core`)** ✅ done, unmerged:
+- `money.rs` (parse_amount, 2dp round) — tests green
+- `categorizer.rs` (`Classifier` precompiled rules) — tests green
+- `upi_parser.rs` (unified parser, fancy-regex lookahead) — tests green
+- 17/17 tests, zero warnings
+
+**Phase 0.5 — India bank parsers (next):**
+- Port base bank-format parser + ~15 India banks (HDFC, SBI, ICICI, Axis, Kotak, PNB, Bank of Baroda, Canara, Union, IDFC, Yes, IndusInd, AU, Federal, HDFC CC) from Kotlin `parser-core` corpora into `kharcha-core`.
+- Goldens from `parser-core` test corpus.
+- Verify: `cargo test` all green.
+
+**Phase 1 — UniFFI:**
+- UDL: `parse_payment`, `parse_payment_batch`, `Categorizer` stateful object.
+- Kotlin bindings generated → consumed by Compose app.
+
+**Phase 2 — Kotlin Compose rewrite:** screens + local DB (Room/SQLite) + offline capture, same UX as Flutter app.
+
+**Phase 3 — delete:** all `lib/`, `android/.../GenericUpiParser.kt`, Supabase migrations + sync engine. Offline means offline.
+
+---
+
+## Phase 1 — Foundation (LEGACY Flutter plan, frozen — conversion above supersedes)
 
 **Step 1.1: Scaffold Flutter app + git setup**
 `flutter create` with org, minSdk 32. Base pubspec: riverpod, go_router, drift, flutter_local_notifications, local_auth, supabase_flutter, fl_chart, intl, csv. Set up analysis_options with strict linting. Branch: `feat/scaffold`.
