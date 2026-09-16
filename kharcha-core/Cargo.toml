@@ -5,6 +5,7 @@ edition = "2021"
 license = "MIT"
 repository = "https://github.com/AkashPriyadarshii/kharcha-core"
 description = "Deterministic core of the Kharcha UPI expense tracker: SMS parsing, spam rejection, categorization, money math, dedupe. Rule-based, no AI."
+keywords = ["upi", "sms", "parser", "fintech", "uniffi"]
 
 [lib]
 name = "kharcha_core"

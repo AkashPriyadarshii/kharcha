@@ -2,6 +2,7 @@ package com.kharcha.app.capture
 
 import com.kharcha.app.db.RuleRow
 import com.kharcha.app.db.TransactionRow
+import com.kharcha.app.db.Wallet
 import uniffi.kharcha_core.CaptureDecision
 import uniffi.kharcha_core.ExistingRow
 import uniffi.kharcha_core.Rule
@@ -52,23 +53,32 @@ object CaptureEngine {
         )) {
             is CaptureDecision.Insert -> {
                 val categoryId = categorize(payment.merchant, txnDao.allRules())
-                IngestResult.Inserted(
-                    txnDao.insert(
-                        TransactionRow(
-                            amountPaise = payment.amountPaise,
-                            merchant = payment.merchant,
-                            categoryId = categoryId,
-                            upiRef = payment.upiRef,
-                            bankName = payment.bankName,
-                            accountMask = payment.accountMask,
-                            needsReview = payment.needsReview,
-                            isIncome = payment.isIncome,
-                            timestampMs = parsed.timestampMs,
-                            contentHash = parsed.contentHash.toLong(),
-                            sender = parsed.sender,
-                        )
+                val txnId = txnDao.insert(
+                    TransactionRow(
+                        amountPaise = payment.amountPaise,
+                        merchant = payment.merchant,
+                        categoryId = categoryId,
+                        upiRef = payment.upiRef,
+                        bankName = payment.bankName,
+                        accountMask = payment.accountMask,
+                        needsReview = payment.needsReview,
+                        isIncome = payment.isIncome,
+                        timestampMs = parsed.timestampMs,
+                        contentHash = parsed.contentHash.toLong(),
+                        sender = parsed.sender,
                     )
                 )
+                if (payment.bankName != null || payment.accountMask != null) {
+                    val name = buildString {
+                        append(payment.bankName ?: "Wallet")
+                        payment.accountMask?.let { append(" (").append(it).append(")") }
+                    }
+                    val walletId = txnDao.walletByName(name)?.id
+                        ?: txnDao.insertWallet(Wallet(name = name))
+                    txnDao.assignWallet(txnId, walletId)
+                    payment.balancePaise?.let { txnDao.updateWalletBalance(walletId, it) }
+                }
+                IngestResult.Inserted(txnId)
             }
             is CaptureDecision.Skip -> {
                 val candidateRef = payment.upiRef

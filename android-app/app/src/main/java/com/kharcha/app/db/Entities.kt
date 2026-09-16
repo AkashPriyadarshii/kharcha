@@ -39,4 +39,22 @@ data class TransactionRow(
     /** FNV-1a64 dedupe key from kharcha-core (bit-identical bits in Long). */
     val contentHash: Long? = null,
     val sender: String? = null,
+    /** Set when a bank/card wallet is identified from the message. */
+    val walletId: Long? = null,
+)
+
+@Entity(tableName = "wallets")
+data class Wallet(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    /** Last known balance from bank SMS, paise. Null until first seen. */
+    val balancePaise: Long? = null,
+    @ColumnInfo(defaultValue = "0") val isIncomeWallet: Boolean = false,
+)
+
+@Entity(tableName = "budgets")
+data class Budget(
+    @PrimaryKey val categoryId: Long,
+    /** Monthly cap, paise. */
+    val monthlyLimitPaise: Long,
 )

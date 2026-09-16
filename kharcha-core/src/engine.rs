@@ -4,12 +4,12 @@
 //!
 //! v0.1: sender-aware dispatch SHAPE with the generic parser as the only
 //! backend. v1.x plugs bank backends ahead of it without changing this
-//! signature (pennywise `BankParserFactory` order: specific senders first,
+//! signature (legacy Kotlin parser `BankParserFactory` order: specific senders first,
 //! generic fallback last).
 
 use crate::parser::{parse_upi_notification, ParsedPayment};
 
-/// A parsed capture with provenance. Mirrors pennywise `ParsedTransaction`:
+/// A parsed capture with provenance. Mirrors the legacy Kotlin parser's `ParsedTransaction`:
 /// sender + timestamp travel WITH the payment, not in a sidecar inbox line.
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct ParsedTransaction {
@@ -45,9 +45,20 @@ pub fn parse(sms_body: &str, sender: &str, timestamp_ms: i64) -> Option<ParsedTr
     Some(ParsedTransaction { payment, sender: sender_norm, timestamp_ms, content_hash })
 }
 
+/// Max batch size. Per-item bytes are already capped by MAX_BODY_BYTES; this
+/// caps the count so a hostile 100k-item drain can't balloon RAM/CPU.
+/// Real backlogs are hundreds — chunk larger drains caller-side; items past
+/// the cap come back None (documented, not silent: caller sees the tail).
+pub const MAX_BATCH_ITEMS: usize = 10_000;
+
 /// Batch drain for SMS backlogs: one call, compiled-once regexes, order kept.
 pub fn parse_batch(items: &[(&str, &str, i64)]) -> Vec<Option<ParsedTransaction>> {
-    items.iter().map(|(body, sender, ts)| parse(body, sender, *ts)).collect()
+    items
+        .iter()
+        .take(MAX_BATCH_ITEMS)
+        .map(|(body, sender, ts)| parse(body, sender, *ts))
+        .chain(items.iter().skip(MAX_BATCH_ITEMS).map(|_| None))
+        .collect()
 }
 
 fn content_hash(p: &ParsedPayment) -> u64 {
@@ -93,6 +104,18 @@ mod tests {
         assert_ne!(a.content_hash, c.content_hash);
         // Spam → None, same as the bare parser.
         assert!(parse("OTP is 123456. Do not share.", "hdfcbk", 1000).is_none());
+    }
+
+    #[test]
+    fn batch_caps_hostile_drains() {
+        // Audit: unbounded batch × 16KB items = RAM/CPU DoS. Tail past
+        // MAX_BATCH_ITEMS comes back None (documented), head still parses.
+        let mut items = vec![("₹450 paid to Swiggy", "gpay", 1)];
+        items.extend(vec![("hello", "x", 2); super::MAX_BATCH_ITEMS]);
+        let out = parse_batch(&items);
+        assert_eq!(out.len(), items.len());
+        assert!(out[0].is_some());
+        assert!(out.iter().skip(1).all(|o| o.is_none()));
     }
 
     #[test]

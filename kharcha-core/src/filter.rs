@@ -69,12 +69,14 @@ impl TransactionFilter {
 
 /// Mirrors Dart double `.toString()`: 540.0 → "540.0", 320.5 → "320.5".
 fn dart_amount_string(paise: i64) -> String {
-    let (r, f) = (paise / 100, (paise % 100).abs());
-    if f == 0 {
-        format!("{r}.0")
+    // Audit: `unsigned_abs` — `-paise` overflows on i64::MIN; `%`/`/` are safe.
+    let (neg, a) = (paise < 0, paise.unsigned_abs());
+    let s = if a % 100 == 0 {
+        format!("{}.0", a / 100)
     } else {
-        format!("{r}.{f:02}").trim_end_matches('0').to_string()
-    }
+        format!("{}.{:02}", a / 100, a % 100).trim_end_matches('0').to_string()
+    };
+    if neg { format!("-{s}") } else { s }
 }
 
 #[cfg(test)]
@@ -140,6 +142,11 @@ mod tests {
         assert_eq!(dart_amount_string(54000), "540.0");
         assert_eq!(dart_amount_string(32050), "320.5");
         assert_eq!(dart_amount_string(5), "0.05");
+        // Audit: sub-rupee negatives keep their sign like Dart ("-0.05",
+        // not "0.05"); unsigned_abs keeps i64::MIN panic-free.
+        assert_eq!(dart_amount_string(-5), "-0.05");
+        assert_eq!(dart_amount_string(-32050), "-320.5");
+        assert_eq!(&dart_amount_string(i64::MIN)[..1], "-");
     }
 
     #[test]

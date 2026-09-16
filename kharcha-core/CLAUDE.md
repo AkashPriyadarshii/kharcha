@@ -1,6 +1,6 @@
 # kharcha-core Contract
 
-Port of kharcha's deterministic core (Dart `lib/core/*` + `GenericUpiParser.kt` + `insertCaptured` dedupe) to Rust. References: `../kharcha`, `../pennywiseai-tracker/parser-core`.
+Port of kharcha's deterministic core (Dart `lib/core/*` + `GenericUpiParser.kt` + `insertCaptured` dedupe) to Rust. References: `../kharcha`.
 
 ## Hard blocks
 

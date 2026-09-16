@@ -1,6 +1,8 @@
 /// Splits `total_paisa` across `count` people so the parts sum EXACTLY to total.
 /// Port of `lib/core/bill_splitter.dart` `splitBillPaisa`.
-/// `div_euclid`/`rem_euclid` match Dart `~/`/`%` exactly (floor div, divisor-signed rem).
+/// `div_euclid`/`rem_euclid` match Dart `~/`/`%` on non-negative totals;
+/// on negatives Rust keeps the exact sum where Dart drifts (improvement,
+/// real inputs are non-negative). Counts past 10k return empty (FFI OOM guard).
 pub fn split_bill_paisa(total_paisa: i64, count: usize) -> Vec<i64> {
     // Audit: unclamped count is an OOM vector via FFI (`split_bill(u64::MAX)`).
     // 10k people is absurd for a bill; refuse beyond it.
