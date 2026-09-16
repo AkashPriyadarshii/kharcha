@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -75,10 +76,16 @@ import com.kharcha.app.ui.ExportButton
 import com.kharcha.app.ui.HomeScreen
 import com.kharcha.app.ui.KharchaTheme
 import com.kharcha.app.ui.QuickAddSheet
+import com.kharcha.app.capture.BacklogScan
 import com.kharcha.app.capture.CrashLog
 import com.kharcha.app.capture.UpiNotificationListener
 import com.kharcha.app.ui.formatPaiseCompact
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : FragmentActivity() {
     // Compose state (not plain vars): auth results must recompose the content.
@@ -177,6 +184,26 @@ class MainActivity : FragmentActivity() {
 
     fun requestSms() {
         smsLauncher.launch(arrayOf(Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS))
+    }
+
+    /**
+     * One-shot pre-install SMS import after onboarding. Skips silently without
+     * SMS permission; the scanned flag makes it run once ever, even if the
+     * intro is re-run from Settings.
+     */
+    fun runBacklogScan() {
+        if (!smsGranted.value || UserPrefs.backlogScanned(this)) return
+        val errors = CoroutineExceptionHandler { _, e ->
+            CrashLog.log(this, "MainActivity", "backlog scan failed: ${e.message}")
+        }
+        CoroutineScope(SupervisorJob() + Dispatchers.IO + errors).launch {
+            val app = application as KharchaApp
+            val r = BacklogScan.scan(this@MainActivity, app.database.captureDao(), app.database.dao())
+            UserPrefs.markBacklogScanned(this@MainActivity)
+            withContext(Dispatchers.Main) {
+                Toast.makeText(this@MainActivity, "Imported ${r.inserted} past payments", Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     fun requestNotifications() {
@@ -280,7 +307,7 @@ private fun App() {
             onOpenListenerSettings = { activity?.openListenerSettings() },
             onOpenAppSettings = { activity?.openAppSettings() },
             onRequestIgnoreBattery = { activity?.requestIgnoreBatteryOptimization() },
-            onDone = { showOnboarding = false },
+            onDone = { showOnboarding = false; activity?.runBacklogScan() },
         )
         return
     }
