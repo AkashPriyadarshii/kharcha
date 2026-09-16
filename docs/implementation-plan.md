@@ -17,10 +17,12 @@ Owner decision: rewrite in **Rust + Kotlin, fully offline, no Supabase** — dro
 - Remaining ~12 banks (Axis, Kotak, PNB, BoB, Canara, Union, IDFC, Yes, IndusInd, AU, Federal, HDFC CC) added only when live captures show them — bank entries are table rows, ~30 min each once engine exists. All-15 upfront = speculative.
 - Goldens ported from Kotlin `parser-core` corpora.
 
-**Phase 1 — UniFFI (next):**
-- `#[uniffi::export]` on `parse_payment`, `is_non_transaction`, `parse_amount`, `normalize_merchant`, `Classifier` (constructor + `category_of`); `uniffi::setup_scaffolding!()`, cdylib crate-type.
-- Kotlin bindings generated → consumed by Compose app.
-- No `parse_payment_batch` — Kotlin loops over messages (one-liner, YAGNI).
+**Phase 1 — UniFFI** ✅ done (merged in PR #4):
+- `#[uniffi::export]` on `parse_capture(sms_body, sender, timestamp_ms)`/`parse_captures(batch)` + `check_capture` (dedupe decision) + `categorize_merchant` (merchant+rules → matched rule) + `normalize_merchant` + `parse_amount` (paise i64) + `is_spam` + `split_bill` + `apply_filter` + `encode_inbox_line`; 2134-line Kotlin binding committed in `android-app`.
+
+**Phase 2 — Kotlin Compose rewrite (branch `feat/compose-rewrite`, IN PROGRESS):**
+- ✅ `android-app/` scaffold (AGP 8.11.1 / Gradle 8.14 wrapper / Kotlin 2.2.20 / Compose BOM / Room / JNA), `buildKharchaCore` → cargo-ndk arm64 .so, bindings committed, captures wired, Home/List/Add screens, APK builds.
+- ⏳ Next: device smoke test (sideload `app-debug.apk`), then budgets/wallets/export/lock for parity.
 
 **Phase 2 — Kotlin Compose rewrite (next, parallel-capable after UniFFI):** screens + local DB (Room/SQLite) + capture layer (SMS receiver + NotificationListener + dedupe matrix: same `upi_ref`/UTR inserts once regardless of channel). Same UX as Flutter app. When it reaches feature parity it **replaces** the Flutter app — deletion is part of this phase, no separate delete step: `lib/`, `android/.../GenericUpiParser.kt`, Supabase migrations + sync engine all go away the moment the Compose app is the live one (repo = Kotlin + Rust only).
 

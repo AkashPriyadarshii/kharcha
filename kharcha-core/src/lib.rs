@@ -1,43 +1,26 @@
-//! Kharcha core — India-first UPI expense tracker logic.
-//! Pure Rust, no Flutter, no network. Consumed via UniFFI by the Kotlin
-//! Compose app.
+//! kharcha-core — deterministic core of the Kharcha UPI expense tracker.
+//!
+//! Rule-based, no AI. Pure functions: SMS/notification text in, structured
+//! payment out. Ports of `lib/core/*` (Dart) + `GenericUpiParser.kt` +
+//! the `insertCaptured` dedupe rules.
 
-pub mod categorizer;
+pub mod categorize;
+pub mod dedupe;
+pub mod engine;
+pub mod ffi;
+pub mod filter;
 pub mod money;
-pub mod upi_parser;
+pub mod non_transaction;
+pub mod parser;
+pub mod split;
+
+pub use categorize::{categorize, normalize_merchant, Rule};
+pub use dedupe::{decide_capture, CaptureDecision, ExistingRow, DRIFT_SECS, WINDOW_MS};
+pub use engine::{parse, parse_batch, ParsedTransaction};
+pub use filter::{TransactionFilter, TxRow};
+pub use money::parse_amount_paise;
+pub use non_transaction::is_non_transaction;
+pub use parser::{encode_inbox_line, parse_upi_notification, ParsedPayment};
+pub use split::split_bill_paisa;
 
 uniffi::setup_scaffolding!();
-
-#[uniffi::export]
-pub fn parse_amount(text: String) -> Option<f64> {
-    money::parse_amount(&text)
-}
-
-#[uniffi::export]
-pub fn normalize_merchant(raw: String) -> String {
-    categorizer::normalize_merchant(&raw)
-}
-
-#[uniffi::export]
-pub fn is_non_transaction(text: String) -> bool {
-    upi_parser::is_non_transaction(&text)
-}
-
-#[uniffi::export]
-pub fn parse_payment(text: String) -> Option<upi_parser::ParsedPayment> {
-    upi_parser::parse_payment(&text)
-}
-
-use categorizer::Classifier;
-
-#[uniffi::export]
-impl Classifier {
-    #[uniffi::constructor]
-    pub fn new_from_vec(rules: Vec<categorizer::Rule>) -> Self {
-        Self::new(&rules)
-    }
-
-    pub fn categorize_id(&self, merchant: String) -> Option<i64> {
-        self.category_of(&merchant)
-    }
-}
