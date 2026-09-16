@@ -41,6 +41,11 @@ Repository = `android-app/` (Kotlin Compose) + `kharcha-core/` (Rust) only.
   NotificationListenerService (gated on user opt-in via `UserPrefs.listenerWanted`).
 - Bindings committed; `.so` (arm64) built from Desktop `kharcha-core` dist.
   `buildKharchaCore` gradle task disabled — dist/ is the source of truth.
+- **Budget pack (`feat/budget-pack`, unmerged).** Overall monthly ceiling via
+  budgets sentinel id 0 (seed ids start at 1); daily burn rate under the hero
+  when the cap is set on the live month; one-month unspent rollover computed
+  at read time (overspend never carries); savings goals = new `goals` table
+  (DB v4) with manual log-savings sheet. No auto-detect, no compounding.
 
 **Prior state (historical):**
 

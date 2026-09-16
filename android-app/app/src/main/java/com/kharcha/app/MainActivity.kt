@@ -72,6 +72,7 @@ import com.kharcha.app.ui.BudgetSheet
 import com.kharcha.app.ui.CaptureSetup
 import com.kharcha.app.ui.EditSheet
 import com.kharcha.app.ui.ExportButton
+import com.kharcha.app.ui.GoalSheet
 import com.kharcha.app.ui.HomeScreen
 import com.kharcha.app.ui.KharchaTheme
 import com.kharcha.app.ui.QuickAddSheet
@@ -251,6 +252,7 @@ private fun App() {
     var showAdd by remember { mutableStateOf(false) }
     var showQuickAdd by remember { mutableStateOf(false) }
     var showBudget by remember { mutableStateOf(false) }
+    var showGoal by remember { mutableStateOf(false) }
     var editTxn by remember { mutableStateOf<com.kharcha.app.db.TransactionRow?>(null) }
     // Onboarding gate: first launch (or Settings → "Run intro again")
     var showOnboarding by remember { mutableStateOf(!UserPrefs.isOnboarded(context)) }
@@ -321,6 +323,7 @@ private fun App() {
                     onReports = { nav.navigate(Tab.ROUTE_REPORTS) { launchSingleTop = true } },
                     onAdd = { showAdd = true },
                     onSetBudget = { showBudget = true },
+                    onAddGoal = { showGoal = true },
                     captureSetup = if (captureSetup.smsGranted && captureSetup.listenerEnabled) null else captureSetup,
                     onRequestSms = { activity?.requestSms() },
                     onOpenListenerSettings = { activity?.openListenerSettings() },
@@ -375,6 +378,7 @@ private fun App() {
     )
     if (showAdd) AddSheet(vm, categories, onDismiss = { showAdd = false })
     if (showBudget) BudgetSheet(vm, categories, onDismiss = { showBudget = false })
+    if (showGoal) GoalSheet(vm, vm.goals.collectAsState().value, onDismiss = { showGoal = false })
     editTxn?.let { txn ->
         EditSheet(
             txn,
