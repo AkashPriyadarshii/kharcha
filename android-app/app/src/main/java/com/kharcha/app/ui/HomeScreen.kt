@@ -89,13 +89,11 @@ fun HomeScreen(
     userName: String,
     onShowAll: () -> Unit,
     onReports: () -> Unit,
-    onSettings: () -> Unit,
     onAdd: () -> Unit,
     onSetBudget: () -> Unit,
     captureSetup: CaptureSetup?,
     onRequestSms: () -> Unit,
     onOpenListenerSettings: () -> Unit,
-    snackbarHost: SnackbarHostState,
 ) {
     val month by vm.selectedMonth.collectAsState()
     val totals by vm.totals.collectAsState()
@@ -110,19 +108,10 @@ fun HomeScreen(
     }
     val net = totals.income - totals.spend
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHost) },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = onAdd,
-                modifier = Modifier.semantics { contentDescription = "Add transaction" },
-            ) { Text("+", fontSize = 28.sp, fontWeight = FontWeight.Bold) }
-        },
-    ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
             item {
                 Spacer(Modifier.height(4.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -135,14 +124,7 @@ fun HomeScreen(
                             Text("Here's your money.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
                         }
                     }
-                    Text(
-                        "⚙",
-                        fontSize = 22.sp,
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clickable { onSettings() }
-                            .semantics { contentDescription = "Open settings" },
-                    )
+                    // Gear icon removed; Settings accessible via bottom nav.
                 }
             }
             if (captureSetup != null) {
@@ -266,7 +248,6 @@ fun HomeScreen(
                 Spacer(Modifier.height(88.dp)) // clear the FAB
             }
         }
-    }
 }
 
 @Composable

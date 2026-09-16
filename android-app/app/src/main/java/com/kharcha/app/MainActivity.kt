@@ -5,7 +5,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.Settings
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -14,8 +13,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material3.Button
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
@@ -30,11 +36,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import com.kharcha.app.ui.AddSheet
 import com.kharcha.app.ui.AllTransactionsScreen
 import com.kharcha.app.ui.AppLock
@@ -167,20 +186,19 @@ private fun App() {
     val activity = context as? MainActivity
     var showAdd by remember { mutableStateOf(false) }
     var showBudget by remember { mutableStateOf(false) }
-    var showAll by remember { mutableStateOf(false) }
-    var showReports by remember { mutableStateOf(false) }
-    var showSettings by remember { mutableStateOf(false) }
     var editTxn by remember { mutableStateOf<com.kharcha.app.db.TransactionRow?>(null) }
-    var skipOnboarding by remember { mutableStateOf(UserPrefs.isOnboarded(context)) }
+    // Onboarding gate: first launch (or Settings → "Run intro again")
+    var showOnboarding by remember { mutableStateOf(!UserPrefs.isOnboarded(context)) }
     val app = context.applicationContext as KharchaApp
     // Flow collection — no runBlocking on the main thread, always fresh after reseeds.
     val categories by app.database.dao().allCategories().collectAsState(initial = emptyList())
+    val nav = rememberNavController()
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) { vm.refreshAll() }
 
-    if (!skipOnboarding) {
+    if (showOnboarding) {
         OnboardingScreen(
             captureSetup = CaptureSetup(
                 smsGranted = activity?.smsState?.value ?: false,
@@ -189,7 +207,7 @@ private fun App() {
             lockEnrollable = activity?.let { AppLock.canAuthenticate(it) } ?: true,
             onRequestSms = { activity?.requestSms() },
             onOpenListenerSettings = { activity?.openListenerSettings() },
-            onDone = { skipOnboarding = true },
+            onDone = { showOnboarding = false },
         )
         return
     }
@@ -202,57 +220,71 @@ private fun App() {
         }
     }
 
-    when {
-        showSettings -> {
-            BackHandler { showSettings = false }
-            SettingsScreen(
-                vm,
-                categories,
-                captureSetup = CaptureSetup(
-                    smsGranted = activity?.smsState?.value ?: false,
-                    listenerEnabled = activity?.listenerState?.value ?: false,
-                ),
-                lockEnrollable = activity?.let { AppLock.canAuthenticate(it) } ?: true,
-                onRequestSms = { activity?.requestSms() },
-                onOpenListenerSettings = { activity?.openListenerSettings() },
-                onBack = { showSettings = false },
-            )
-        }
-        showReports -> {
-            BackHandler { showReports = false }
-            ReportsScreen(vm, categories, onBack = { showReports = false })
-        }
-        showAll -> {
-            BackHandler { showAll = false }
-            Column {
-                AllTransactionsScreen(
+    val captureSetup = CaptureSetup(
+        smsGranted = activity?.smsState?.value ?: false,
+        listenerEnabled = activity?.listenerState?.value ?: false,
+    )
+    val lockEnrollable = activity?.let { AppLock.canAuthenticate(it) } ?: true
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbar) },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showAdd = true },
+                modifier = Modifier.semantics { contentDescription = "Add transaction" },
+            ) { Text("+", fontSize = 28.sp, fontWeight = FontWeight.Bold) }
+        },
+        bottomBar = {
+            NavigationBar {
+                TabItem("Home", Icons.Filled.Home, Tab.ROUTE_HOME, nav) { nav.navigate(Tab.ROUTE_HOME) { popUpTo(Tab.ROUTE_HOME) { inclusive = true }; launchSingleTop = true } }
+                TabItem("Transactions", Icons.AutoMirrored.Filled.List, Tab.ROUTE_TXN, nav) { nav.navigate(Tab.ROUTE_TXN) { launchSingleTop = true } }
+                TabItem("Reports", Icons.Filled.DateRange, Tab.ROUTE_REPORTS, nav) { nav.navigate(Tab.ROUTE_REPORTS) { launchSingleTop = true } }
+                TabItem("Settings", Icons.Filled.Settings, Tab.ROUTE_SETTINGS, nav) { nav.navigate(Tab.ROUTE_SETTINGS) { launchSingleTop = true } }
+            }
+        },
+    ) { padding ->
+        NavHost(nav, startDestination = Tab.ROUTE_HOME, modifier = Modifier.padding(padding)) {
+            composable(Tab.ROUTE_HOME) {
+                HomeScreen(
+                    vm,
+                    categories = categories,
+                    userName = UserPrefs.name(context),
+                    onShowAll = { nav.navigate(Tab.ROUTE_TXN) { launchSingleTop = true } },
+                    onReports = { nav.navigate(Tab.ROUTE_REPORTS) { launchSingleTop = true } },
+                    onAdd = { showAdd = true },
+                    onSetBudget = { showBudget = true },
+                    captureSetup = if (captureSetup.smsGranted && captureSetup.listenerEnabled) null else captureSetup,
+                    onRequestSms = { activity?.requestSms() },
+                    onOpenListenerSettings = { activity?.openListenerSettings() },
+                )
+            }
+            composable(Tab.ROUTE_TXN) {
+                Column {
+                    AllTransactionsScreen(
+                        vm,
+                        categories,
+                        Modifier.weight(1f),
+                        onTap = { editTxn = it },
+                        onAdd = { showAdd = true },
+                    )
+                    ExportButton(vm, categories, Modifier.padding(16.dp))
+                }
+            }
+            composable(Tab.ROUTE_REPORTS) {
+                ReportsScreen(vm, categories)
+            }
+            composable(Tab.ROUTE_SETTINGS) {
+                SettingsScreen(
                     vm,
                     categories,
-                    Modifier.weight(1f),
-                    onTap = { editTxn = it },
-                    onAdd = { showAdd = true },
+                    captureSetup = captureSetup,
+                    lockEnrollable = lockEnrollable,
+                    onRequestSms = { activity?.requestSms() },
+                    onOpenListenerSettings = { activity?.openListenerSettings() },
+                    onRunIntro = { showOnboarding = true },
                 )
-                ExportButton(vm, categories, Modifier.padding(16.dp))
             }
         }
-        else -> HomeScreen(
-            vm,
-            categories = categories,
-            userName = UserPrefs.name(context),
-            onShowAll = { showAll = true },
-            onReports = { showReports = true },
-            onSettings = { showSettings = true },
-            onAdd = { showAdd = true },
-            onSetBudget = { showBudget = true },
-            captureSetup = run {
-                val sms = activity?.smsState?.value ?: false
-                val listener = activity?.listenerState?.value ?: false
-                if (sms && listener) null else CaptureSetup(smsGranted = sms, listenerEnabled = listener)
-            },
-            onRequestSms = { activity?.requestSms() },
-            onOpenListenerSettings = { activity?.openListenerSettings() },
-            snackbarHost = snackbar,
-        )
     }
 
     if (showAdd) AddSheet(vm, categories, onDismiss = { showAdd = false })
@@ -270,4 +302,23 @@ private fun App() {
             },
         )
     }
+}
+
+/** Bottom-nav destinations. */
+private object Tab {
+    const val ROUTE_HOME = "home"
+    const val ROUTE_TXN = "transactions"
+    const val ROUTE_REPORTS = "reports"
+    const val ROUTE_SETTINGS = "settings"
+}
+
+@Composable
+private fun RowScope.TabItem(label: String, icon: ImageVector, route: String, nav: NavHostController, onClick: () -> Unit) {
+    val backStack by nav.currentBackStackEntryAsState()
+    NavigationBarItem(
+        selected = backStack?.destination?.route == route,
+        onClick = onClick,
+        icon = { Icon(icon, contentDescription = label) },
+        label = { Text(label) },
+    )
 }

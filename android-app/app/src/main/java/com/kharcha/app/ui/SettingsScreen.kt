@@ -60,7 +60,7 @@ fun SettingsScreen(
     lockEnrollable: Boolean,
     onRequestSms: () -> Unit,
     onOpenListenerSettings: () -> Unit,
-    onBack: () -> Unit,
+    onRunIntro: () -> Unit,
 ) {
     val context = LocalContext.current
     var name by remember { mutableStateOf(UserPrefs.name(context)) }
@@ -69,16 +69,11 @@ fun SettingsScreen(
     val version = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        // Top bar
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TextButton(onClick = onBack, modifier = Modifier.semantics { contentDescription = "Back" }) {
-                Text("‹", fontSize = 28.sp)
-            }
-            Text("Settings", style = MaterialTheme.typography.titleLarge)
-        }
+        Text(
+            "Settings",
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        )
 
         Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             // Profile
@@ -197,6 +192,12 @@ fun SettingsScreen(
             // Data
             SectionTitle("Data")
             ExportButton(vm, categories, Modifier.fillMaxWidth())
+
+            // Setup
+            SectionTitle("Setup")
+            OutlinedButton(onClick = onRunIntro, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                Text("Run setup tour again (name, capture, lock)")
+            }
 
             // About / updates
             SectionTitle("About")
