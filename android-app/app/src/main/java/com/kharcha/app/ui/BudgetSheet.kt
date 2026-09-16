@@ -55,7 +55,7 @@ fun BudgetSheet(
             Button(
                 onClick = {
                     val catId = selectedId ?: run { error = "Pick a category"; return@Button }
-                    val paise = parseAmount(amount.ifBlank { null }) ?: run { error = "Enter a valid amount"; return@Button }
+                    val paise = runCatching { parseAmount(amount.ifBlank { null }) }.getOrNull() ?: run { error = "Enter a valid amount"; return@Button }
                     scope.launch { vm.setBudget(catId, paise) }
                     onDismiss()
                 },

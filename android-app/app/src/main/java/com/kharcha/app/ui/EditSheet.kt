@@ -139,7 +139,7 @@ fun EditSheet(
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             Button(
                 onClick = {
-                    val paise = parseAmount(amount.ifBlank { null }) ?: run {
+                    val paise = runCatching { parseAmount(amount.ifBlank { null }) }.getOrNull() ?: run {
                         error = "Enter an amount like 240"; return@Button
                     }
                     val cleanMerchant = merchant.trim().ifEmpty { txn.merchant }

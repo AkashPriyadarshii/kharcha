@@ -77,7 +77,7 @@ fun AddSheet(
     val normalizedPreview = merchant.takeIf { it.isNotBlank() }?.let {
         runCatching { normalizeMerchantText(it) }.getOrNull()
     }
-    val paisePreview = parseAmount(amount.ifBlank { null })
+    val paisePreview = runCatching { parseAmount(amount.ifBlank { null }) }.getOrNull()
 
     LaunchedEffect(Unit) { amountFocus.requestFocus() }
 
@@ -166,7 +166,7 @@ fun AddSheet(
             Button(
                 enabled = paisePreview != null,
                 onClick = {
-                    val paise = paisePreview ?: run {
+                    val paise = runCatching { parseAmount(amount.ifBlank { null }) }.getOrNull() ?: run {
                         error = "Enter an amount like 240"; return@Button
                     }
                     val name = merchant.ifBlank { "Manual" }

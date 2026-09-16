@@ -47,7 +47,6 @@ import java.time.YearMonth
 fun ReportsScreen(
     vm: AppViewModel,
     categories: List<Category>,
-    onBack: () -> Unit,
 ) {
     val txns by vm.transactions.collectAsState()
     val month by vm.selectedMonth.collectAsState()
@@ -72,12 +71,11 @@ fun ReportsScreen(
     }.sortedByDescending { it.second }.take(5)
 
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack, modifier = Modifier.semantics { contentDescription = "Back" }) {
-                Text("‹", fontSize = 28.sp)
-            }
-            Text("Reports", style = MaterialTheme.typography.titleLarge)
-        }
+        Text(
+            "Reports",
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        )
 
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             // Month pager
