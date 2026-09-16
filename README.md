@@ -44,6 +44,10 @@ Manual logging is friction; cloud sync is a trust tax. Kharcha kills both:
 - **Auto Wallets** — bank/account masks in messages auto-create wallets; message balance updates them.
 - **Monthly Budgets** — per-category caps with progress bars, over-limit turns red.
 - **Rules Engine (zero AI)** — normalize + longest-pattern match, learned rules beat builtin. Teach a category from any transaction; it remembers the merchant.
+- **220 merchant logos** — word-boundary match, longest key wins. Emoji fallback for the rest.
+- **Rolling spend hero** — 300ms animated ticker on every new capture.
+- **Home widget** — month spend + 1-tap log, refreshed on each insert.
+- **Shareable month cards** — PNG export via system share sheet.
 - **Manual entry** — quick-add for anything the phone can't see.
 - **CSV export** — to Downloads, PII-hashable.
 - **Biometric app lock** — fingerprint/face gate on launch.
@@ -69,8 +73,8 @@ docs/           state, design, plan, handoff, changelog
 
 ## 📝 Notes
 
-- **Not device-tested yet** (v0.1.0) — smoke test is next.
-- Banks: generic UPI engine ships now; per-bank formats (HDFC/SBI/ICICI) land data-driven after Release 1.
+- **Device-tested** (Realme RMX5061, Android 16): live `SMS_RECEIVED` insert, auto-learn, dedupe, notify, widget refresh, share PNG verified on-device.
+- Self-send SIM-to-SIM never broadcasts to third-party apps on ColorOS — live path needs a genuine bank sender.
 - Auto-update: release tag + `kharcha-armv8a-release.apk` asset, version bump gates it.
 
 ## 📄 License & Legal
