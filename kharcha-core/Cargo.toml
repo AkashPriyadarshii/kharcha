@@ -1,0 +1,11 @@
+[package]
+name = "kharcha_core"
+version = "0.1.0"
+edition = "2021"
+description = "Kharcha core logic: money, categorization, UPI/bank SMS parsing. No Dart, no Supabase."
+
+[dependencies]
+fancy-regex = "0.14"
+regex = "1"
+
+[dev-dependencies]
