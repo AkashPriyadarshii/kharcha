@@ -14,6 +14,8 @@ data class Category(
     val emoji: String,
     @ColumnInfo(defaultValue = "0") val isIncome: Boolean = false,
     @ColumnInfo(defaultValue = "0") val sort: Int = 0,
+    /** Hidden from pickers/chips. Rows keep their categoryId. */
+    @ColumnInfo(defaultValue = "0") val isHidden: Boolean = false,
 )
 
 @Entity(tableName = "rules")
@@ -57,6 +59,8 @@ data class Wallet(
     /** Last known balance from bank SMS, paise. Null until first seen. */
     val balancePaise: Long? = null,
     @ColumnInfo(defaultValue = "0") val isIncomeWallet: Boolean = false,
+    /** Archived accounts hide from pickers but keep history. */
+    @ColumnInfo(defaultValue = "0") val isArchived: Boolean = false,
 )
 
 @Entity(tableName = "budgets")

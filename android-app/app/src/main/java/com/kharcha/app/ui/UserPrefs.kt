@@ -33,6 +33,38 @@ object UserPrefs {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_LISTENER_WANTED, wanted).apply()
     }
 
+    private const val KEY_SECURE_FLAG = "secure_flag"
+    private const val KEY_SUMMARY_ON = "summary_on"
+    private const val KEY_SUMMARY_HOUR = "summary_hour"
+    private const val KEY_SUMMARY_MIN = "summary_min"
+
+    /** Mask the app thumbnail in the recent-apps switcher. */
+    fun secureFlag(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_SECURE_FLAG, false)
+
+    fun setSecureFlag(context: Context, on: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_SECURE_FLAG, on).apply()
+    }
+
+    /** Daily summary push. Default 21:00 per PRD. */
+    fun summaryOn(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_SUMMARY_ON, false)
+
+    fun setSummaryOn(context: Context, on: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_SUMMARY_ON, on).apply()
+    }
+
+    fun summaryHour(context: Context): Int =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY_SUMMARY_HOUR, 21)
+
+    fun summaryMinute(context: Context): Int =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY_SUMMARY_MIN, 0)
+
+    fun setSummaryTime(context: Context, hour: Int, minute: Int) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putInt(KEY_SUMMARY_HOUR, hour).putInt(KEY_SUMMARY_MIN, minute).apply()
+    }
+
     /** Last successful auto-capture, 0 = never. Dead-man signal for silent listener death. */
     fun lastCaptureMs(context: Context): Long =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getLong(KEY_LAST_CAPTURE_MS, 0)

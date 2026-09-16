@@ -125,6 +125,36 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     suspend fun removeBudget(categoryId: Long) = dao.deleteBudget(categoryId)
 
+    val rules: StateFlow<List<RuleRow>> =
+        dao.allRulesFlow().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    suspend fun deleteRule(id: Long) {
+        dao.deleteRule(id)
+    }
+
+    suspend fun renameCategory(category: com.kharcha.app.db.Category, name: String, emoji: String) {
+        dao.updateCategory(category.copy(name = name, emoji = emoji))
+    }
+
+    suspend fun setCategoryHidden(id: Long, hidden: Boolean) {
+        dao.setCategoryHidden(id, hidden)
+    }
+
+    suspend fun renameWallet(id: Long, name: String) {
+        dao.renameWallet(id, name)
+    }
+
+    suspend fun setWalletArchived(id: Long, archived: Boolean) {
+        dao.setWalletArchived(id, archived)
+    }
+
+    /** Factory wipe: transactions only. Rules, budgets, wallets, categories stay. */
+    suspend fun wipeAllTransactions() {
+        dao.wipeTransactions()
+        lastDeleted = null
+        refreshAll()
+    }
+
     val goals: StateFlow<List<Goal>> =
         dao.allGoals().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
