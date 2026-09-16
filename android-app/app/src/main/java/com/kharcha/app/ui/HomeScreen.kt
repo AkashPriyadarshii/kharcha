@@ -48,6 +48,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kharcha.app.db.Budget
+import com.kharcha.app.db.Goal
+import com.kharcha.app.db.OVERALL_BUDGET_ID
 import com.kharcha.app.db.Category
 import com.kharcha.app.db.TransactionRow
 import java.text.SimpleDateFormat
@@ -108,6 +110,7 @@ fun HomeScreen(
     onReports: () -> Unit,
     onAdd: () -> Unit,
     onSetBudget: () -> Unit,
+    onAddGoal: () -> Unit,
     captureSetup: CaptureSetup?,
     onRequestSms: () -> Unit,
     onOpenListenerSettings: () -> Unit,
@@ -117,6 +120,8 @@ fun HomeScreen(
     val txns by vm.transactions.collectAsState()
     val budgets by vm.budgets.collectAsState()
     val spendMap by vm.budgetSpends.collectAsState()
+    val carryMap by vm.budgetCarry.collectAsState()
+    val goals by vm.goals.collectAsState()
     val loaded by vm.dataLoaded.collectAsState()
 
     val catEmoji: (Long?) -> String = { id -> categories.firstOrNull { it.id == id }?.emoji ?: "🧾" }
@@ -197,6 +202,18 @@ fun HomeScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.secondary,
                         )
+                        // Daily burn rate: only meaningful with an overall cap on the live month.
+                        val overallCap = budgets.firstOrNull { it.categoryId == OVERALL_BUDGET_ID }
+                        if (overallCap != null && month == YearMonth.now()) {
+                            val remaining = overallCap.monthlyLimitPaise - totals.spend
+                            val daysLeft = month.lengthOfMonth() - java.time.LocalDate.now().dayOfMonth + 1
+                            Text(
+                                if (remaining >= 0) "${formatPaiseCompact(remaining / daysLeft.coerceAtLeast(1))}/day · $daysLeft days left"
+                                else "${formatPaiseCompact(-remaining)} over pace",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (remaining >= 0) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error,
+                            )
+                        }
                     }
                 }
             }
@@ -219,8 +236,35 @@ fun HomeScreen(
                 item { Text("No budgets yet — set caps per category.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary) }
             } else {
                 items(budgets, key = { "b_${it.categoryId}" }) { b ->
-                    BudgetLine(b, spendMap[b.categoryId] ?: 0L, "${catEmoji(b.categoryId)} ${catName(b.categoryId)}")
+                    val carry = carryMap[b.categoryId] ?: 0L
+                    BudgetLine(
+                        b.copy(monthlyLimitPaise = b.monthlyLimitPaise + carry),
+                        spendMap[b.categoryId] ?: 0L,
+                        if (b.categoryId == OVERALL_BUDGET_ID) "Overall"
+                        else "${catEmoji(b.categoryId)} ${catName(b.categoryId)}",
+                        note = if (carry > 0) "+${formatPaiseCompact(carry)} rollover" else null,
+                    )
                 }
+            }
+            item {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Goals", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "New",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .heightIn(min = 48.dp)
+                            .padding(horizontal = 8.dp)
+                            .clickable { onAddGoal() }
+                            .semantics { contentDescription = "Add a savings goal" },
+                    )
+                }
+            }
+            if (goals.isEmpty()) {
+                item { Text("No goals yet — name a target and log savings.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary) }
+            } else {
+                items(goals, key = { "g_${it.id}" }) { g -> GoalLine(g) }
             }
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -307,7 +351,7 @@ private fun CaptureSetupCard(
 }
 
 @Composable
-private fun BudgetLine(budget: Budget, spent: Long, categoryLabel: String) {
+private fun BudgetLine(budget: Budget, spent: Long, categoryLabel: String, note: String? = null) {
     val limit = budget.monthlyLimitPaise
     // Never cap at 100%: overflow must be visible, not clipped.
     val ratio = if (limit <= 0) 0f else spent.toFloat() / limit
@@ -341,10 +385,51 @@ private fun BudgetLine(budget: Budget, spent: Long, categoryLabel: String) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.secondary,
         )
+        note?.let {
+            Text(
+                it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.secondary,
+            )
+        }
         LinearProgressIndicator(
             progress = { ratio.coerceIn(0f, 1f) },
             modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
             color = barColor,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun GoalLine(goal: Goal) {
+    val target = goal.targetPaise
+    val ratio = if (target <= 0) 0f else goal.savedPaise.toFloat() / target
+    val done = target > 0 && goal.savedPaise >= target
+    val status = if (done) "Saved ✓" else "${formatPaiseCompact(target - goal.savedPaise)} left"
+    Column(
+        Modifier.fillMaxWidth().semantics {
+            contentDescription = "${goal.name} goal: saved ${formatPaise(goal.savedPaise)} of ${formatPaise(target)}, $status"
+        },
+    ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(goal.name, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                status,
+                style = MaterialTheme.typography.bodyMedium,
+                fontFamily = TabularNumerals,
+                color = if (done) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+            )
+        }
+        Text(
+            "${formatPaiseCompact(goal.savedPaise)} of ${formatPaiseCompact(target)}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.secondary,
+        )
+        LinearProgressIndicator(
+            progress = { ratio.coerceIn(0f, 1f) },
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            color = MaterialTheme.colorScheme.primary,
             trackColor = MaterialTheme.colorScheme.surfaceVariant,
         )
     }
