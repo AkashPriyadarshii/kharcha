@@ -12,7 +12,8 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.kharcha.app"
+        // app2 while both apps coexist — same ID would silently replace the legacy Flutter app.
+        applicationId = "com.kharcha.app2"
         minSdk = 32
         targetSdk = 36
         versionCode = 300
