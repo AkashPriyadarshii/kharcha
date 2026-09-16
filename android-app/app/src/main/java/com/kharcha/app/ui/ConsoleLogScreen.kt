@@ -174,7 +174,8 @@ fun ConsoleLogScreen(
                 .fillMaxWidth()
                 .weight(1f),
             shape = RoundedCornerShape(8.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E)),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F100D)),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         ) {
             if (displayLogs.isEmpty()) {
                 Box(
