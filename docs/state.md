@@ -4,9 +4,20 @@
 
 ## Current status
 
-**⚠ Conversion in progress — Rust + Kotlin, fully offline, no Supabase.** Branch `feat/kharcha-core`.
+**⚡ Phase 2 — Compose rewrite IN PROGRESS (branch `feat/compose-rewrite`).** Original Flutter app + v0.2.x release history below.
 
-**Phase 1 — `kharcha-core` pure-Rust crate done (2026-09-12, unmerged):**
+**Phase 2, step 1 — Compose app scaffolded, builds, APK installable (2026-09-16):**
+- **`kharcha-core` replaced by the fuller Desktop crate** (user-provided, `C:\Users\saves\Desktop\kharcha-core`): 9 modules incl. `dedupe`, `engine`, `filter`, `split`, `non_transaction`, `parser`; 56/56 tests green; paise-i64 amounts finally landed (audit item #5 closed), batch API (`parse_captures`) landed (audit item #6 closed).
+- **New Android project `android-app/`** (AGP 8.11.1, Gradle 8.14 wrapper, Kotlin 2.2.20, Compose BOM 2025.10, Material3 ink-green on warm paper):
+  - `buildKharchaCore` Gradle task → `cargo ndk -t arm64-v8a` → `jniLibs/libkharcha_core.so` before build (arm64-only, minSdk 32).
+  - **UniFFI Kotlin bindings committed** at `app/src/main/java/com/kharcha/app/core/generated/` (regenerable via repo-local `uniffi-bindgen.exe`; JNA 5.15 dep required by the bindings).
+  - **Room DB** (categories fixed ids 1–12 + income 100, ~55 builtin rules seeded, transactions) — manual `execSQL` seed callback, no migrations yet (v1).
+  - **Capture**: `SmsReceiver` + `UpiNotificationListener` → single `CaptureEngine.ingest` funnel: Rust `is_spam` → `parse_capture` → `check_capture` dedupe → backfill ref — ALL decisions in Rust, app only stores.
+  - **Screens**: Home (month spend/income, recent 8), All transactions, Add sheet (manual expense/income + auto-categorize chip row). No budgets/wallets/export/lock yet (Release 1 scope).
+- APK 34 MB debug builds fine. Untested on device yet (user sideload pending).
+
+**Legacy Flutter app (v0.2.910 latest) still live until parity swap-over.** History below:
+
 - `src/money.rs` — `parse_amount` (Dart-faithful, 2dp boundary rounding). 3 tests.
 - `src/categorizer.rs` — `Classifier` struct: rules pre-compiled once (regex), sorted learned-first then longest-pattern, `NON_ALNUM_RE` static. Replacement for free `categorize()`. 4 tests.
 - `src/upi_parser.rs` — single unified parser (replaces Dart `upi_parser.dart` + Kotlin `GenericUpiParser.kt` — kills the divergence bugs). `fancy-regex 0.14` for Dart lookahead port (patterns without lookaround still use the `regex` linear path). 2026 gaps closed: EMI-promo rejection, numeric-VPA masking (`UPI User (last4)`), UPI Lite (top-ups rejected, Lite debits captured). 10 test groups.
