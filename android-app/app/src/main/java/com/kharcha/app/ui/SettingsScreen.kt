@@ -69,7 +69,6 @@ fun SettingsScreen(
     onOpenAppSettings: () -> Unit,
     onRequestIgnoreBattery: () -> Unit,
     onRunIntro: () -> Unit,
-    onShareLog: () -> Unit,
     onOpenConsoleLog: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -233,24 +232,6 @@ fun SettingsScreen(
                         Text("Open Console")
                     }
                 }
-                HorizontalDivider(Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f).padding(end = 12.dp)) {
-                        Text("Share Error Log", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                        Text(
-                            "Send internal crash & capture log via Android share sheet",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.secondary,
-                        )
-                    }
-                    OutlinedButton(onClick = onShareLog, modifier = Modifier.heightIn(min = 40.dp)) {
-                        Text("Share")
-                    }
-                }
             }
         }
 
@@ -347,7 +328,7 @@ private fun SettingActionRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f).padding(end = 12.dp)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
             Spacer(Modifier.height(2.dp))
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
         }
@@ -358,7 +339,7 @@ private fun SettingActionRow(
                 modifier = Modifier.size(32.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text("✓", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                    Text("✓", color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold)
                 }
             }
         } else {

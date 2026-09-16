@@ -353,7 +353,6 @@ private fun App() {
                     onOpenAppSettings = { activity?.openAppSettings() },
                     onRequestIgnoreBattery = { activity?.requestIgnoreBatteryOptimization() },
                     onRunIntro = { showOnboarding = true },
-                    onShareLog = { activity?.let { CrashLog.export(it) } },
                     onOpenConsoleLog = { nav.navigate(Tab.ROUTE_CONSOLE_LOG) { launchSingleTop = true } },
                 )
             }
