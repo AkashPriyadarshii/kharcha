@@ -28,9 +28,17 @@ Repository = `android-app/` (Kotlin Compose) + `kharcha-core/` (Rust) only.
   Add sheet, Edit sheet (teach-category writes a learned rule), CSV export,
   app lock (biometric OR device PIN — `BIOMETRIC_STRONG |
   DEVICE_CREDENTIAL` so fingerprint-less phones can't be locked out).
-  `applicationId com.akash.kharcha.app` — fresh install identity (changed from
-  `com.kharcha.app` so release sideloads land as a brand-new app — no
-  signature-clash with prior installs).
+  FAB = quick-add (amount only, IME Done saves); empty-state/transactions =
+  full add sheet. `applicationId com.akash.kharcha.app` — fresh install identity
+  (changed from `com.kharcha.app` so release sideloads land as a brand-new app
+  — no signature-clash with prior installs).
+- **Resilience.** Uncaught-exception handler + capture-channel failures append
+  to `filesDir/kharcha.log`; Settings → "Share debug log" exports via
+  FileProvider. SmsReceiver/Listener coroutine scopes have
+  `CoroutineExceptionHandler` (offer/spam SMS can't crash the app).
+  `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` permission; listener watchdog in
+  `MainActivity.onResume` toggles ComponentName to re-bind a killed
+  NotificationListenerService (gated on user opt-in via `UserPrefs.listenerWanted`).
 - Bindings committed; `.so` (arm64) built from Desktop `kharcha-core` dist.
   `buildKharchaCore` gradle task disabled — dist/ is the source of truth.
 
@@ -57,8 +65,9 @@ notification capture), then Release 1.
 
 ## Next up
 
-1. Device smoke test — sideload `android-app/app/build/outputs/apk/debug/app-debug.apk`,
-   grant SMS + notification access, verify capture/dedupe live.
+1. Device smoke test — sideload `android-app/app/build/outputs/apk/release/kharcha-armv8a-release.apk`,
+   grant SMS + notification access, verify capture/dedupe live, check
+   `filesDir/kharcha.log` for capture errors.
 2. Autopay/recurring engine (Rust-side pattern detect + due roll).
 3. Release 1 — tagged release APK on GitHub.
 4. Banks data-driven: `BankFormat` engine + HDFC/SBI/ICICI; remaining banks only
