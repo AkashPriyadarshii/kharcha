@@ -21,16 +21,20 @@ import java.util.Locale
  * - Clear log, test injection, and system share sheet support.
  */
 object CrashLog {
-    private const val MAX_ENTRIES = 500
+    private const val MAX_ENTRIES = 1000
     private val stamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH)
 
     private val _liveLogs = MutableStateFlow<List<String>>(emptyList())
     val liveLogs: StateFlow<List<String>> = _liveLogs.asStateFlow()
 
+    @Volatile
+    private var appContext: Context? = null
+
     private fun file(context: Context): File =
         File(context.filesDir, "kharcha.log")
 
     fun init(context: Context) {
+        appContext = context.applicationContext
         try {
             val f = file(context)
             if (f.exists()) {
@@ -44,8 +48,21 @@ object CrashLog {
         }
     }
 
+    /** Log to logcat, memory buffer, and disk file using cached appContext — never throws. */
+    fun log(tag: String, message: String) {
+        val ctx = appContext
+        if (ctx != null) {
+            log(ctx, tag, message)
+        } else {
+            Log.w(tag, message)
+        }
+    }
+
     /** Log to logcat, memory buffer, and disk file — never throws. */
     fun log(context: Context, tag: String, message: String) {
+        if (appContext == null) {
+            appContext = context.applicationContext
+        }
         Log.w(tag, message)
         val entry = "${stamp.format(Date())} [$tag] $message"
         synchronized(this) {

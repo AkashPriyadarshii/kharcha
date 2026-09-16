@@ -150,6 +150,9 @@ interface KharchaDao {
 
     @Query("UPDATE goals SET savedPaise = savedPaise + :amount WHERE id = :id")
     suspend fun addSaving(id: Long, amount: Long)
+
+    @Query("DELETE FROM goals WHERE id = :id")
+    suspend fun deleteGoal(id: Long)
 }
 
 @Database(

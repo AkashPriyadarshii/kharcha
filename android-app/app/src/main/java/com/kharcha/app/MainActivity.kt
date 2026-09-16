@@ -72,10 +72,12 @@ import com.kharcha.app.ui.SettingsScreen
 import com.kharcha.app.ui.UserPrefs
 import com.kharcha.app.ui.AppViewModel
 import com.kharcha.app.ui.BudgetSheet
+import com.kharcha.app.ui.BudgetsScreen
 import com.kharcha.app.ui.CaptureSetup
 import com.kharcha.app.ui.EditSheet
 import com.kharcha.app.ui.ExportButton
 import com.kharcha.app.ui.GoalSheet
+import com.kharcha.app.ui.GoalsScreen
 import com.kharcha.app.ui.HomeScreen
 import com.kharcha.app.ui.KharchaTheme
 import com.kharcha.app.ui.QuickAddSheet
@@ -375,10 +377,22 @@ private fun App() {
         },
         bottomBar = {
             NavigationBar {
-                TabItem("Home", Icons.Filled.Home, Tab.ROUTE_HOME, nav) { nav.navigate(Tab.ROUTE_HOME) { popUpTo(Tab.ROUTE_HOME) { inclusive = true }; launchSingleTop = true } }
-                TabItem("Transactions", Icons.AutoMirrored.Filled.List, Tab.ROUTE_TXN, nav) { nav.navigate(Tab.ROUTE_TXN) { launchSingleTop = true } }
-                TabItem("Reports", Icons.Filled.DateRange, Tab.ROUTE_REPORTS, nav) { nav.navigate(Tab.ROUTE_REPORTS) { launchSingleTop = true } }
-                TabItem("Settings", Icons.Filled.Settings, Tab.ROUTE_SETTINGS, nav) { nav.navigate(Tab.ROUTE_SETTINGS) { launchSingleTop = true } }
+                TabItem("Home", Icons.Filled.Home, Tab.ROUTE_HOME, nav) {
+                    com.kharcha.app.capture.CrashLog.log("Navigation", "User navigated to Home")
+                    nav.navigate(Tab.ROUTE_HOME) { popUpTo(Tab.ROUTE_HOME) { inclusive = true }; launchSingleTop = true }
+                }
+                TabItem("Transactions", Icons.AutoMirrored.Filled.List, Tab.ROUTE_TXN, nav) {
+                    com.kharcha.app.capture.CrashLog.log("Navigation", "User navigated to Transactions")
+                    nav.navigate(Tab.ROUTE_TXN) { launchSingleTop = true }
+                }
+                TabItem("Reports", Icons.Filled.DateRange, Tab.ROUTE_REPORTS, nav) {
+                    com.kharcha.app.capture.CrashLog.log("Navigation", "User navigated to Reports")
+                    nav.navigate(Tab.ROUTE_REPORTS) { launchSingleTop = true }
+                }
+                TabItem("Settings", Icons.Filled.Settings, Tab.ROUTE_SETTINGS, nav) {
+                    com.kharcha.app.capture.CrashLog.log("Navigation", "User navigated to Settings")
+                    nav.navigate(Tab.ROUTE_SETTINGS) { launchSingleTop = true }
+                }
             }
         },
     ) { padding ->
@@ -394,6 +408,8 @@ private fun App() {
                     onAdd = { showAdd = true },
                     onSetBudget = { showBudget = true },
                     onAddGoal = { showGoal = true },
+                    onOpenBudgets = { nav.navigate(Tab.ROUTE_BUDGETS) { launchSingleTop = true } },
+                    onOpenGoals = { nav.navigate(Tab.ROUTE_GOALS) { launchSingleTop = true } },
                     captureSetup = if (captureSetup.smsGranted && captureSetup.listenerEnabled) null else captureSetup,
                     onRequestSms = { activity?.requestSms() },
                     onOpenListenerSettings = { activity?.openListenerSettings() },
@@ -432,6 +448,23 @@ private fun App() {
                     onOpenRules = { nav.navigate(Tab.ROUTE_RULES) { launchSingleTop = true } },
                     onOpenCats = { nav.navigate(Tab.ROUTE_CATS) { launchSingleTop = true } },
                     onOpenWallets = { nav.navigate(Tab.ROUTE_WALLETS) { launchSingleTop = true } },
+                    onOpenBudgets = { nav.navigate(Tab.ROUTE_BUDGETS) { launchSingleTop = true } },
+                    onOpenGoals = { nav.navigate(Tab.ROUTE_GOALS) { launchSingleTop = true } },
+                )
+            }
+            composable(Tab.ROUTE_BUDGETS) {
+                BudgetsScreen(
+                    vm,
+                    categories,
+                    onBack = { nav.popBackStack() },
+                    onAddBudget = { showBudget = true },
+                )
+            }
+            composable(Tab.ROUTE_GOALS) {
+                GoalsScreen(
+                    vm,
+                    onBack = { nav.popBackStack() },
+                    onAddGoal = { showGoal = true },
                 )
             }
             composable(Tab.ROUTE_CONSOLE_LOG) {
@@ -506,6 +539,8 @@ private object Tab {
     const val ROUTE_RULES = "rules"
     const val ROUTE_CATS = "categories"
     const val ROUTE_WALLETS = "wallets"
+    const val ROUTE_BUDGETS = "budgets"
+    const val ROUTE_GOALS = "goals"
 }
 
 @Composable

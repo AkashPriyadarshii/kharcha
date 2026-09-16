@@ -12,14 +12,20 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -98,24 +104,35 @@ fun ReportsScreen(
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             // Month pager
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                TextButton(
+                IconButton(
                     onClick = { monthView = monthView.minusMonths(1) },
-                    modifier = Modifier.size(48.dp).semantics { contentDescription = "Previous month" },
-                ) { Text("‹", fontSize = 24.sp) }
+                    modifier = Modifier.size(48.dp),
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                        contentDescription = "Previous month",
+                    )
+                }
                 Text(monthLabel(monthView), style = MaterialTheme.typography.titleMedium)
-                TextButton(
+                IconButton(
                     onClick = { monthView = monthView.plusMonths(1) },
                     enabled = monthView < YearMonth.now(),
-                    modifier = Modifier.size(48.dp).semantics { contentDescription = "Next month" },
-                ) { Text("›", fontSize = 24.sp) }
+                    modifier = Modifier.size(48.dp),
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = "Next month",
+                    )
+                }
             }
             Spacer(Modifier.height(8.dp))
 
             // Summary
             Card(
                 Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             ) {
                 Row(Modifier.fillMaxWidth().padding(16.dp)) {
                     Stat("Spent", totalSpend, modifier = Modifier.weight(1f))
@@ -154,8 +171,9 @@ fun ReportsScreen(
                     Spacer(Modifier.height(8.dp))
                     Card(
                         Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     ) {
                         Column(Modifier.padding(16.dp)) {
                             topMerchants.forEachIndexed { i, (merchant, amount) ->

@@ -4,6 +4,7 @@ import android.content.Context
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -94,6 +95,8 @@ fun SettingsScreen(
     onOpenRules: () -> Unit,
     onOpenCats: () -> Unit,
     onOpenWallets: () -> Unit,
+    onOpenBudgets: () -> Unit = {},
+    onOpenGoals: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val activity = context as? MainActivity
@@ -129,9 +132,9 @@ fun SettingsScreen(
         // 1. Profile Section
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(8.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         ) {
             Column(Modifier.padding(16.dp)) {
                 Row(
@@ -199,9 +202,9 @@ fun SettingsScreen(
         SectionHeader("Appearance")
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(8.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         ) {
             Column(Modifier.padding(16.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -249,9 +252,9 @@ fun SettingsScreen(
         SectionHeader("Auto-Capture & Permissions")
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(8.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         ) {
             Column(Modifier.padding(16.dp)) {
                 SettingActionRow(
@@ -295,9 +298,9 @@ fun SettingsScreen(
         SectionHeader("Diagnostics & Logs")
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(8.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         ) {
             Column(Modifier.padding(16.dp)) {
                 Row(
@@ -326,9 +329,9 @@ fun SettingsScreen(
         SectionHeader("Security & Privacy")
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(8.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         ) {
             Row(
                 Modifier.padding(16.dp).fillMaxWidth(),
@@ -397,9 +400,9 @@ fun SettingsScreen(
         SectionHeader("Notifications")
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(8.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         ) {
             Column(Modifier.padding(16.dp)) {
                 Row(
@@ -461,9 +464,9 @@ fun SettingsScreen(
         SectionHeader("Manage")
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(8.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         ) {
             Column(Modifier.padding(16.dp)) {
                 SettingActionRow(
@@ -491,6 +494,24 @@ fun SettingsScreen(
                     alwaysAction = true,
                     actionText = "Open",
                     onAction = onOpenWallets,
+                )
+                HorizontalDivider(Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                SettingActionRow(
+                    title = "Budgets",
+                    subtitle = "Category spending limits and rollover",
+                    isDone = false,
+                    alwaysAction = true,
+                    actionText = "Open",
+                    onAction = onOpenBudgets,
+                )
+                HorizontalDivider(Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                SettingActionRow(
+                    title = "Savings Goals",
+                    subtitle = "Targets, saved amounts, and progress",
+                    isDone = false,
+                    alwaysAction = true,
+                    actionText = "Open",
+                    onAction = onOpenGoals,
                 )
             }
         }

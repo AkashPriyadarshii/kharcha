@@ -89,4 +89,38 @@ object UserPrefs {
     fun stampCapture(context: Context, ms: Long = System.currentTimeMillis()) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putLong(KEY_LAST_CAPTURE_MS, ms).apply()
     }
+
+    // Home screen customizable sections
+    private const val KEY_SHOW_HOME_BUDGETS = "show_home_budgets"
+    private const val KEY_SHOW_HOME_GOALS = "show_home_goals"
+    private const val KEY_SHOW_HOME_SUBS = "show_home_subs"
+    private const val KEY_SHOW_HOME_DAILY_BURN = "show_home_daily_burn"
+
+    fun showHomeBudgets(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_SHOW_HOME_BUDGETS, true)
+
+    fun setShowHomeBudgets(context: Context, show: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_SHOW_HOME_BUDGETS, show).apply()
+    }
+
+    fun showHomeGoals(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_SHOW_HOME_GOALS, true)
+
+    fun setShowHomeGoals(context: Context, show: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_SHOW_HOME_GOALS, show).apply()
+    }
+
+    fun showHomeSubs(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_SHOW_HOME_SUBS, true)
+
+    fun setShowHomeSubs(context: Context, show: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_SHOW_HOME_SUBS, show).apply()
+    }
+
+    fun showHomeDailyBurn(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_SHOW_HOME_DAILY_BURN, true)
+
+    fun setShowHomeDailyBurn(context: Context, show: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_SHOW_HOME_DAILY_BURN, show).apply()
+    }
 }

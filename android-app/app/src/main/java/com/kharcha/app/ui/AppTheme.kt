@@ -97,8 +97,22 @@ object ThemePrefs {
     }
 }
 
-/** Tabular numerals so amounts don't jitter; monospace is universally available. */
+/** Tabular numerals and slashed zero so amounts don't jitter and 0/O is distinct. Monospace fallback. */
 val TabularNumerals: FontFamily = FontFamily.Monospace
+const val NumberFontFeatures: String = "tnum, zero"
+
+/** Split paise into symbol+rupees and optional decimal paise for two-tone typography. */
+fun formatPaiseParts(paise: Long): Pair<String, String> {
+    val abs = kotlin.math.abs(paise)
+    val sign = if (paise < 0) "-" else ""
+    val rupees = abs / 100
+    val p = abs % 100
+    return if (p == 0L && abs >= 10_000L) {
+        "${sign}₹%,d".format(rupees) to ""
+    } else {
+        "${sign}₹%,d".format(rupees) to ".%02d".format(p)
+    }
+}
 
 /** Always-exact ₹ formatting (receipts, export preview). */
 fun formatPaise(paise: Long): String {

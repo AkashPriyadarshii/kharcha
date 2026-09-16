@@ -17,7 +17,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -126,6 +128,8 @@ fun HomeScreen(
     onAdd: () -> Unit,
     onSetBudget: () -> Unit,
     onAddGoal: () -> Unit,
+    onOpenBudgets: () -> Unit = onSetBudget,
+    onOpenGoals: () -> Unit = onAddGoal,
     captureSetup: CaptureSetup?,
     onRequestSms: () -> Unit,
     onOpenListenerSettings: () -> Unit,
@@ -146,6 +150,13 @@ fun HomeScreen(
     }
     val net = totals.income - totals.spend
 
+    val context = LocalContext.current
+    var showCustomizeHome by remember { mutableStateOf(false) }
+    var showBudgetsPref by remember { mutableStateOf(UserPrefs.showHomeBudgets(context)) }
+    var showGoalsPref by remember { mutableStateOf(UserPrefs.showHomeGoals(context)) }
+    var showSubsPref by remember { mutableStateOf(UserPrefs.showHomeSubs(context)) }
+    var showBurnPref by remember { mutableStateOf(UserPrefs.showHomeDailyBurn(context)) }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -162,7 +173,12 @@ fun HomeScreen(
                             Text("Here's your money.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
                         }
                     }
-                    // Gear icon removed; Settings accessible via bottom nav.
+                    TextButton(
+                        onClick = { showCustomizeHome = true },
+                        modifier = Modifier.semantics { contentDescription = "Customize home feed" }
+                    ) {
+                        Text("Customize", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
+                    }
                 }
             }
             if (captureSetup != null) {
@@ -199,8 +215,9 @@ fun HomeScreen(
                 }
                 Card(
                     Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                 ) {
                     Column(Modifier.padding(16.dp)) {
                         Text(
@@ -230,7 +247,7 @@ fun HomeScreen(
                         )
                         // Daily burn rate: only meaningful with an overall cap on the live month.
                         val overallCap = budgets.firstOrNull { it.categoryId == OVERALL_BUDGET_ID }
-                        if (overallCap != null && month == YearMonth.now()) {
+                        if (showBurnPref && overallCap != null && month == YearMonth.now()) {
                             val remaining = overallCap.monthlyLimitPaise - totals.spend
                             val daysLeft = month.lengthOfMonth() - java.time.LocalDate.now().dayOfMonth + 1
                             Text(
@@ -243,36 +260,41 @@ fun HomeScreen(
                     }
                 }
             }
-            item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("Budgets", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        "Set new",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .heightIn(min = 48.dp)
-                            .padding(horizontal = 8.dp)
-                            .clickable { onSetBudget() }
-                            .semantics { contentDescription = "Set a new budget" },
-                    )
+            if (showBudgetsPref) {
+                item {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "Budgets",
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            "Manage →",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .heightIn(min = 48.dp)
+                                .padding(horizontal = 8.dp)
+                                .clickable { onOpenBudgets() }
+                                .semantics { contentDescription = "Manage all budgets" },
+                        )
+                    }
+                }
+                if (budgets.isEmpty()) {
+                    item { Text("No budgets yet — set caps per category in Budgets.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary) }
+                } else {
+                    items(budgets, key = { "b_${it.categoryId}" }) { b ->
+                        val carry = carryMap[b.categoryId] ?: 0L
+                        BudgetLine(
+                            b.copy(monthlyLimitPaise = b.monthlyLimitPaise + carry),
+                            spendMap[b.categoryId] ?: 0L,
+                            if (b.categoryId == OVERALL_BUDGET_ID) "Overall"
+                            else "${catEmoji(b.categoryId)} ${catName(b.categoryId)}",
+                            note = if (carry > 0) "+${formatPaiseCompact(carry)} rollover" else null,
+                        )
+                    }
                 }
             }
-            if (budgets.isEmpty()) {
-                item { Text("No budgets yet — set caps per category.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary) }
-            } else {
-                items(budgets, key = { "b_${it.categoryId}" }) { b ->
-                    val carry = carryMap[b.categoryId] ?: 0L
-                    BudgetLine(
-                        b.copy(monthlyLimitPaise = b.monthlyLimitPaise + carry),
-                        spendMap[b.categoryId] ?: 0L,
-                        if (b.categoryId == OVERALL_BUDGET_ID) "Overall"
-                        else "${catEmoji(b.categoryId)} ${catName(b.categoryId)}",
-                        note = if (carry > 0) "+${formatPaiseCompact(carry)} rollover" else null,
-                    )
-                }
-            }
-            if (subs.isNotEmpty()) {
+            if (showSubsPref && subs.isNotEmpty()) {
                 item {
                     Column {
                         Text("Subscriptions", style = MaterialTheme.typography.titleMedium)
@@ -285,31 +307,37 @@ fun HomeScreen(
                                     "${formatPaiseCompact(s.amountPaise)} · monthly",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.secondary,
+                                    fontFamily = TabularNumerals,
                                 )
                             }
                         }
                     }
                 }
             }
-            item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("Goals", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        "New",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .heightIn(min = 48.dp)
-                            .padding(horizontal = 8.dp)
-                            .clickable { onAddGoal() }
-                            .semantics { contentDescription = "Add a savings goal" },
-                    )
+            if (showGoalsPref) {
+                item {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "Savings Goals",
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            "Manage →",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .heightIn(min = 48.dp)
+                                .padding(horizontal = 8.dp)
+                                .clickable { onOpenGoals() }
+                                .semantics { contentDescription = "Manage all savings goals" },
+                        )
+                    }
                 }
-            }
-            if (goals.isEmpty()) {
-                item { Text("No goals yet — name a target and log savings.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary) }
-            } else {
-                items(goals, key = { "g_${it.id}" }) { g -> GoalLine(g) }
+                if (goals.isEmpty()) {
+                    item { Text("No goals yet — track savings milestones in Goals.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary) }
+                } else {
+                    items(goals, key = { "g_${it.id}" }) { g -> GoalLine(g) }
+                }
             }
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -359,6 +387,83 @@ fun HomeScreen(
                 Spacer(Modifier.height(88.dp)) // clear the FAB
             }
         }
+
+    if (showCustomizeHome) {
+        AlertDialog(
+            onDismissRequest = { showCustomizeHome = false },
+            title = { Text("Customize Home Feed") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Toggle which sections appear on your home screen:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Category Budgets", style = MaterialTheme.typography.bodyLarge)
+                        Switch(
+                            checked = showBudgetsPref,
+                            onCheckedChange = {
+                                showBudgetsPref = it
+                                UserPrefs.setShowHomeBudgets(context, it)
+                            },
+                        )
+                    }
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Savings Goals", style = MaterialTheme.typography.bodyLarge)
+                        Switch(
+                            checked = showGoalsPref,
+                            onCheckedChange = {
+                                showGoalsPref = it
+                                UserPrefs.setShowHomeGoals(context, it)
+                            },
+                        )
+                    }
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Subscriptions (Suspects)", style = MaterialTheme.typography.bodyLarge)
+                        Switch(
+                            checked = showSubsPref,
+                            onCheckedChange = {
+                                showSubsPref = it
+                                UserPrefs.setShowHomeSubs(context, it)
+                            },
+                        )
+                    }
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Daily Burn Rate Pace", style = MaterialTheme.typography.bodyLarge)
+                        Switch(
+                            checked = showBurnPref,
+                            onCheckedChange = {
+                                showBurnPref = it
+                                UserPrefs.setShowHomeDailyBurn(context, it)
+                            },
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showCustomizeHome = false }) {
+                    Text("Done")
+                }
+            },
+        )
+    }
 }
 
 @Composable
@@ -437,11 +542,10 @@ private fun BudgetLine(budget: Budget, spent: Long, categoryLabel: String, note:
                 color = MaterialTheme.colorScheme.secondary,
             )
         }
-        LinearProgressIndicator(
-            progress = { ratio.coerceIn(0f, 1f) },
-            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-            color = barColor,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+        SegmentedMeter(
+            ratio = ratio,
+            activeColor = barColor,
+            modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
         )
     }
 }
@@ -471,12 +575,36 @@ private fun GoalLine(goal: Goal) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.secondary,
         )
-        LinearProgressIndicator(
-            progress = { ratio.coerceIn(0f, 1f) },
-            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-            color = MaterialTheme.colorScheme.primary,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+        SegmentedMeter(
+            ratio = ratio,
+            activeColor = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
         )
+    }
+}
+
+@Composable
+fun SegmentedMeter(
+    ratio: Float,
+    activeColor: androidx.compose.ui.graphics.Color,
+    modifier: Modifier = Modifier,
+    segments: Int = 10,
+) {
+    val filledCount = (ratio * segments).toInt().coerceIn(0, segments)
+    val inactiveColor = MaterialTheme.colorScheme.surfaceVariant
+    Row(
+        modifier = modifier.height(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        for (i in 0 until segments) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(if (i < filledCount) activeColor else inactiveColor),
+            )
+        }
     }
 }
 
