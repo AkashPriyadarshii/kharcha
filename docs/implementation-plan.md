@@ -7,7 +7,7 @@ historical plan below that is retained only in the changelog.
 
 **Phase 0 — `kharcha-core` crate** ✅
 - 9 modules: `categorize`, `dedupe`, `engine`, `ffi`, `filter`, `money`,
-  `non_transaction`, `parser`, `split`. 56/56 tests.
+  `non_transaction`, `parser`, `split`. 59/59 tests (24 unit + 35 parity).
 - Deterministic: parse → dedupe → categorize, all in Rust.
 
 **Phase 0.5 — India bank formats** ⏳ post-Release 1 (data-driven)

@@ -51,7 +51,7 @@ Source of truth = Room SQLite. All capture/parse decisions = Rust. App must work
 
 ```bash
 # Rust core (source of truth Desktop; repo copy is a sync)
-cd kharcha-core && cargo test          # 56/56 must pass
+cd kharcha-core && cargo test          # 59/59 must pass (24 unit + 35 parity)
 # Android app
 cd android-app && ./gradlew.bat :app:assembleDebug   # must pass before any PR
 ```

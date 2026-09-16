@@ -56,7 +56,7 @@ Rules: no unrequested abstractions, no boilerplate, no scaffolding "for later", 
 ## Run / verify
 
 ```bash
-cd kharcha-core && cargo test        # Rust core gate (56/56)
+cd kharcha-core && cargo test        # Rust core gate (59/59: 24 unit + 35 parity)
 cd android-app && ./gradlew.bat :app:assembleDebug   # app build gate
 ```
 
@@ -125,7 +125,7 @@ If no md needs updating, say why in the PR. The md files are the source of truth
 
 ## Stack (don't change without approval)
 
-Flutter · Riverpod · go_router · Drift (SQLite) · Supabase (Google Auth + Postgres) · fl_chart · flutter_local_notifications · local_auth · csv · intl
+Rust `kharcha-core` (UniFFI bindings, paise-i64) · Kotlin + Jetpack Compose (Material 3) · Room (SQLite, only store) · JNA + BiometricPrompt + SmsReceiver/NotificationListener · no network, no cloud
 
 ## Ask when unsure
 
