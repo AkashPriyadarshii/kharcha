@@ -41,6 +41,12 @@ Repository = `android-app/` (Kotlin Compose) + `kharcha-core/` (Rust) only.
   NotificationListenerService (gated on user opt-in via `UserPrefs.listenerWanted`).
 - Bindings committed; `.so` (arm64) built from Desktop `kharcha-core` dist.
   `buildKharchaCore` gradle task disabled — dist/ is the source of truth.
+- **DB safety (`feat/db-safety`, unmerged).** Throttled VACUUM on open (30d);
+  full-file backup/restore (`.kharchabackup` via `VACUUM INTO` + SAF, validated
+  before swap, restart on import); soft deletes (`isDeleted`, DB v4) with Trash
+  screen (restore per row, purge with confirm). NOTE: v4 collides with
+  `feat/budget-pack` (also 3→4) — second merge rebases to 4→5. SQLCipher
+  deferred: new dep + key-management design need owner approval.
 
 **Prior state (historical):**
 
