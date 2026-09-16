@@ -101,6 +101,24 @@ interface KharchaDao {
     @Query("DELETE FROM budgets WHERE categoryId = :categoryId")
     suspend fun deleteBudget(categoryId: Long)
 
+    // --- Managers ---
+    @Query("DELETE FROM rules WHERE id = :id")
+    suspend fun deleteRule(id: Long)
+
+    @Update suspend fun updateCategory(category: Category)
+
+    @Query("UPDATE categories SET isHidden = :hidden WHERE id = :id")
+    suspend fun setCategoryHidden(id: Long, hidden: Boolean)
+
+    @Query("UPDATE wallets SET name = :name WHERE id = :id")
+    suspend fun renameWallet(id: Long, name: String)
+
+    @Query("UPDATE wallets SET isArchived = :archived WHERE id = :id")
+    suspend fun setWalletArchived(id: Long, archived: Boolean)
+
+    @Query("DELETE FROM transactions")
+    suspend fun wipeTransactions()
+
     // --- Goals ---
     @Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE) suspend fun upsertGoal(goal: Goal)
 
@@ -113,7 +131,7 @@ interface KharchaDao {
 
 @Database(
     entities = [TransactionRow::class, Category::class, RuleRow::class, Wallet::class, Budget::class, Goal::class],
-    version = 5,
+    version = 6,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -135,10 +153,24 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        // Rebasing: budget-pack owns 3→4 (goals). This is 4→5.
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS goals (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, name TEXT NOT NULL, targetPaise INTEGER NOT NULL, savedPaise INTEGER NOT NULL DEFAULT 0)")
+            }
+        }
+
+        // Rebasing: budget-pack owns 3→4 (goals). db-safety is 4→5 (isDeleted).
         private val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE transactions ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        // Settings pack owns 5→6: isHidden on categories, isArchived on wallets.
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE categories ADD COLUMN isHidden INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE wallets ADD COLUMN isArchived INTEGER NOT NULL DEFAULT 0")
             }
         }
 
@@ -158,15 +190,9 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        private val MIGRATION_3_4 = object : Migration(3, 4) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("CREATE TABLE IF NOT EXISTS goals (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, name TEXT NOT NULL, targetPaise INTEGER NOT NULL, savedPaise INTEGER NOT NULL DEFAULT 0)")
-            }
-        }
-
         fun create(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "kharcha.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                 .addCallback(SeedCallback())
                 .addCallback(object : RoomDatabase.Callback() {
                     override fun onOpen(db: SupportSQLiteDatabase) {

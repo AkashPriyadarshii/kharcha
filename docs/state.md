@@ -41,7 +41,7 @@ Repository = `android-app/` (Kotlin Compose) + `kharcha-core/` (Rust) only.
   NotificationListenerService (gated on user opt-in via `UserPrefs.listenerWanted`).
 - Bindings committed; `.so` (arm64) built from Desktop `kharcha-core` dist.
   `buildKharchaCore` gradle task disabled — dist/ is the source of truth.
-- **DB safety (`feat/db-safety`, unmerged).** Throttled VACUUM on open (30d);
+- **DB safety (merged).** Throttled VACUUM on open (30d);
   full-file backup/restore (`.kharchabackup` via `VACUUM INTO` + SAF, validated
   before swap, restart on import); soft deletes (`isDeleted`, DB v5 via 4→5
   rebase) with Trash screen (restore per row, purge with confirm). SQLCipher
@@ -51,6 +51,10 @@ Repository = `android-app/` (Kotlin Compose) + `kharcha-core/` (Rust) only.
   when the cap is set on the live month; one-month unspent rollover computed
   at read time (overspend never carries); savings goals = new `goals` table
   (DB v4) with manual log-savings sheet. No auto-detect, no compounding.
+- **Settings pack (`feat/settings-pack`, unmerged).** Rules/Categories/Accounts
+  manager screens; theme mode + Monet toggle; lock grace + FLAG_SECURE;
+  daily summary worker (inexact alarm, boot re-arm, time picker); wipe +
+  direct log export. Category hide + wallet archive leave pickers (DB v6 via 5→6 migration).
 - **Feed filters (merged).** AllTransactions gains five
   in-memory rows, no migration: category chips, method chips (UPI/Cash/Card/
   Wallet), amount presets (500/2k/10k), wallet chips (doubles as the wallet
@@ -62,6 +66,7 @@ Repository = `android-app/` (Kotlin Compose) + `kharcha-core/` (Rust) only.
   prefilter, 500 cap, every message through `CaptureEngine.ingest(quiet=true)`
   so per-insert buzz stays silent; Toast reports the count. Skips without SMS
   permission, never repeats on intro re-run.
+>>>>>>> origin/main
 >>>>>>> origin/main
 
 **Prior state (historical):**

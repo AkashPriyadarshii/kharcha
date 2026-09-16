@@ -10,10 +10,12 @@ import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
+import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -77,10 +79,15 @@ import com.kharcha.app.ui.GoalSheet
 import com.kharcha.app.ui.HomeScreen
 import com.kharcha.app.ui.KharchaTheme
 import com.kharcha.app.ui.QuickAddSheet
+import com.kharcha.app.ui.RulesScreen
+import com.kharcha.app.ui.CategoriesScreen
+import com.kharcha.app.ui.WalletsScreen
 import com.kharcha.app.ui.TrashScreen
 import com.kharcha.app.capture.BacklogScan
 import com.kharcha.app.capture.CrashLog
+import com.kharcha.app.capture.SummaryAlarm
 import com.kharcha.app.capture.UpiNotificationListener
+import com.kharcha.app.ui.ThemePrefs
 import com.kharcha.app.ui.formatPaiseCompact
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -96,6 +103,8 @@ class MainActivity : FragmentActivity() {
     private val smsGranted = mutableStateOf(false)
     private val listenerEnabled = mutableStateOf(false)
     private val notifGranted = mutableStateOf(true)
+    private val themeMode = mutableStateOf("system")
+    private val dynamicColor = mutableStateOf(false)
 
     private val smsLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { refreshCaptureState() }
@@ -111,6 +120,8 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         refreshCaptureState()
+        refreshTheme()
+        applySecureFlag()
 
         // Fail-closed lock: locked until biometrics pass. No silent unlock.
         unlocked.value = !AppLock.isEnabled(this)
@@ -122,7 +133,12 @@ class MainActivity : FragmentActivity() {
         }
 
         setContent {
-            KharchaTheme {
+            val dark = when (themeMode.value) {
+                "light" -> false
+                "dark" -> true
+                else -> isSystemInDarkTheme()
+            }
+            KharchaTheme(darkTheme = dark, dynamicColor = dynamicColor.value) {
                 if (unlocked.value) App() else LockedPlaceholder(
                     enrolled = enrolled.value,
                     onRetry = {
@@ -143,13 +159,39 @@ class MainActivity : FragmentActivity() {
     override fun onResume() {
         super.onResume()
         refreshCaptureState()
+        refreshTheme()
+        applySecureFlag()
         reviveListenerIfKilled()
         if (AppLock.isEnabled(this) && !unlocked.value) {
+            // Grace: backgrounded briefly → skip the prompt, no flash.
+            val graceMs = AppLock.graceMin(this) * 60_000L
+            if (graceMs > 0 && System.currentTimeMillis() - AppLock.lastPauseMs(this) < graceMs) {
+                unlocked.value = true
+                return
+            }
             AppLock.promptIfNeeded(this) { ok, okEnrolled ->
                 enrolled.value = okEnrolled
                 unlocked.value = ok
             }
         }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        if (AppLock.isEnabled(this)) {
+            AppLock.stampPause(this)
+            unlocked.value = false
+        }
+    }
+
+    fun refreshTheme() {
+        themeMode.value = ThemePrefs.mode(this)
+        dynamicColor.value = ThemePrefs.dynamic(this)
+    }
+
+    fun applySecureFlag() {
+        if (UserPrefs.secureFlag(this)) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
     }
 
     /**
@@ -387,6 +429,9 @@ private fun App() {
                     onRunIntro = { showOnboarding = true },
                     onOpenConsoleLog = { nav.navigate(Tab.ROUTE_CONSOLE_LOG) { launchSingleTop = true } },
                     onOpenTrash = { nav.navigate(Tab.ROUTE_TRASH) { launchSingleTop = true } },
+                    onOpenRules = { nav.navigate(Tab.ROUTE_RULES) { launchSingleTop = true } },
+                    onOpenCats = { nav.navigate(Tab.ROUTE_CATS) { launchSingleTop = true } },
+                    onOpenWallets = { nav.navigate(Tab.ROUTE_WALLETS) { launchSingleTop = true } },
                 )
             }
             composable(Tab.ROUTE_CONSOLE_LOG) {
@@ -398,6 +443,26 @@ private fun App() {
                 TrashScreen(
                     vm,
                     categories,
+                    onBack = { nav.popBackStack() },
+                )
+            }
+            composable(Tab.ROUTE_RULES) {
+                RulesScreen(
+                    vm,
+                    categories,
+                    onBack = { nav.popBackStack() },
+                )
+            }
+            composable(Tab.ROUTE_CATS) {
+                CategoriesScreen(
+                    vm,
+                    categories,
+                    onBack = { nav.popBackStack() },
+                )
+            }
+            composable(Tab.ROUTE_WALLETS) {
+                WalletsScreen(
+                    vm,
                     onBack = { nav.popBackStack() },
                 )
             }
@@ -438,6 +503,9 @@ private object Tab {
     const val ROUTE_SETTINGS = "settings"
     const val ROUTE_CONSOLE_LOG = "console_log"
     const val ROUTE_TRASH = "trash"
+    const val ROUTE_RULES = "rules"
+    const val ROUTE_CATS = "categories"
+    const val ROUTE_WALLETS = "wallets"
 }
 
 @Composable

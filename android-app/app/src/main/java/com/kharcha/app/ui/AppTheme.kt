@@ -1,11 +1,16 @@
 package com.kharcha.app.ui
 
+import android.content.Context
+import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 
 // Ink-green on warm paper — kharcha's identity, not Material default blue.
@@ -56,11 +61,36 @@ private val DarkColors = darkColorScheme(
 )
 
 @Composable
-fun KharchaTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
+fun KharchaTheme(darkTheme: Boolean = isSystemInDarkTheme(), dynamicColor: Boolean = false, content: @Composable () -> Unit) {
+    val colorScheme = if (dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val ctx = LocalContext.current
+        if (darkTheme) dynamicDarkColorScheme(ctx) else dynamicLightColorScheme(ctx)
+    } else if (darkTheme) DarkColors else LightColors
     MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
+        colorScheme = colorScheme,
         content = content,
     )
+}
+
+/** Appearance prefs: system|light|dark + Monet wallpaper tint. */
+object ThemePrefs {
+    private const val PREFS = "theme"
+    private const val KEY_MODE = "mode"
+    private const val KEY_DYNAMIC = "dynamic"
+
+    fun mode(context: Context): String =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_MODE, "system") ?: "system"
+
+    fun setMode(context: Context, mode: String) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_MODE, mode).apply()
+    }
+
+    fun dynamic(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_DYNAMIC, false)
+
+    fun setDynamic(context: Context, on: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_DYNAMIC, on).apply()
+    }
 }
 
 /** Tabular numerals so amounts don't jitter; monospace is universally available. */

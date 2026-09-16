@@ -21,6 +21,8 @@ import androidx.fragment.app.FragmentActivity
 object AppLock {
     private const val PREFS = "lock"
     private const val KEY_ENABLED = "enabled"
+    private const val KEY_GRACE_MIN = "grace_min"
+    private const val KEY_LAST_PAUSE_MS = "last_pause_ms"
 
     // BIOMETRIC_STRONG | DEVICE_CREDENTIAL: strong biometric OR device PIN.
     private val AUTH = Authenticators.BIOMETRIC_STRONG or Authenticators.DEVICE_CREDENTIAL
@@ -31,6 +33,21 @@ object AppLock {
     fun setEnabled(context: Context, enabled: Boolean) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_ENABLED, enabled).apply()
     }
+
+    /** Grace minutes before the lock re-engages: 0 = every resume. */
+    fun graceMin(context: Context): Int =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY_GRACE_MIN, 0)
+
+    fun setGraceMin(context: Context, min: Int) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putInt(KEY_GRACE_MIN, min).apply()
+    }
+
+    fun stampPause(context: Context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putLong(KEY_LAST_PAUSE_MS, System.currentTimeMillis()).apply()
+    }
+
+    fun lastPauseMs(context: Context): Long =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getLong(KEY_LAST_PAUSE_MS, 0)
 
     fun canAuthenticate(context: Context): Boolean =
         BiometricManager.from(context).canAuthenticate(AUTH) == BiometricManager.BIOMETRIC_SUCCESS
