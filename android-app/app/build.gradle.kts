@@ -25,7 +25,7 @@ android {
     defaultConfig {
         // Same ID as the legacy Flutter app ON PURPOSE: sideloading replaces it.
         // There is no DB migration path — the Flutter Drift DB is abandoned, v0.1 starts fresh.
-        applicationId = "com.kharcha.app"
+        applicationId = "com.akash.kharcha.app"
         minSdk = 32
         targetSdk = 36
         versionCode = 1
