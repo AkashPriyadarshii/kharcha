@@ -27,6 +27,10 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -35,6 +39,11 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -168,15 +177,25 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    TextButton(
+                    IconButton(
                         onClick = { vm.shiftMonth(-1) },
-                        modifier = Modifier.size(48.dp).semantics { contentDescription = "Previous month" },
-                    ) { Text("‹", fontSize = 24.sp) }
+                        modifier = Modifier.size(48.dp),
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                            contentDescription = "Previous month",
+                        )
+                    }
                     Text(monthLabel(month), style = MaterialTheme.typography.titleMedium)
-                    TextButton(
+                    IconButton(
                         onClick = { vm.shiftMonth(1) },
-                        modifier = Modifier.size(48.dp).semantics { contentDescription = "Next month" },
-                    ) { Text("›", fontSize = 24.sp) }
+                        modifier = Modifier.size(48.dp),
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = "Next month",
+                        )
+                    }
                 }
                 Card(
                     Modifier.fillMaxWidth(),
@@ -509,6 +528,7 @@ fun EmptyState(title: String, body: String, actionLabel: String, onAction: () ->
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AllTransactionsScreen(
     vm: AppViewModel,
@@ -618,6 +638,13 @@ fun AllTransactionsScreen(
                 dismissButton = { TextButton(onClick = { showBulkCat = false }) { Text("Cancel") } },
             )
         }
+        var showFilterSheet by remember { mutableStateOf(false) }
+        val secondaryActiveCount = (if (catId != null) 1 else 0) +
+            (if (method != null) 1 else 0) +
+            (if (minPaise > 0) 1 else 0) +
+            (if (walletId != null) 1 else 0) +
+            (if (dateMode != "All") 1 else 0)
+
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(
             value = query,
@@ -627,7 +654,16 @@ fun AllTransactionsScreen(
             modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Search transactions" },
         )
         Spacer(Modifier.height(8.dp))
+
+        // Single clean primary row: Status + "Filters (N)" trigger
         androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            item {
+                FilterChip(
+                    selected = secondaryActiveCount > 0,
+                    onClick = { showFilterSheet = true },
+                    label = { Text(if (secondaryActiveCount > 0) "Filters ($secondaryActiveCount)" else "Filters") },
+                )
+            }
             items(AllFilter.entries.toList()) { f ->
                 FilterChip(
                     selected = filter == f,
@@ -636,102 +672,193 @@ fun AllTransactionsScreen(
                 )
             }
         }
-        Spacer(Modifier.height(6.dp))
-        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            item {
-                FilterChip(selected = catId == null, onClick = { catId = null }, label = { Text("All cats") })
-            }
-            items(categories, key = { "fc_${it.id}" }) { c ->
-                FilterChip(
-                    selected = catId == c.id,
-                    onClick = { catId = if (catId == c.id) null else c.id },
-                    label = { Text("${c.emoji} ${c.name}") },
-                )
-            }
-        }
-        Spacer(Modifier.height(6.dp))
-        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            item {
-                FilterChip(selected = method == null, onClick = { method = null }, label = { Text("Any way") })
-            }
-            items(PaymentMethods) { m ->
-                FilterChip(
-                    selected = method == m,
-                    onClick = { method = if (method == m) null else m },
-                    label = { Text(m) },
-                )
-            }
-        }
-        Spacer(Modifier.height(6.dp))
-        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            // ponytail: fixed presets, no free-form inputs. Thresholds in paise.
-            val amounts = listOf(0L to "Any ₹", 50_000L to "₹500+", 200_000L to "₹2k+", 1_000_000L to "₹10k+")
-            items(amounts) { (v, label) ->
-                FilterChip(
-                    selected = minPaise == v,
-                    onClick = { minPaise = v },
-                    label = { Text(label) },
-                )
-            }
-        }
-        if (wallets.isNotEmpty()) {
-            Spacer(Modifier.height(6.dp))
+
+        // Active filter pills quick-dismiss strip (shown only when secondary filters are set)
+        if (secondaryActiveCount > 0) {
+            Spacer(Modifier.height(4.dp))
             androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                item {
-                    FilterChip(selected = walletId == null, onClick = { walletId = null }, label = { Text("All wallets") })
+                catId?.let { cid ->
+                    item {
+                        FilterChip(
+                            selected = true,
+                            onClick = { catId = null },
+                            label = { Text("${catName(cid)} ✕") },
+                        )
+                    }
                 }
-                items(wallets, key = { "fw_${it.id}" }) { w ->
-                    FilterChip(
-                        selected = walletId == w.id,
-                        onClick = { walletId = if (walletId == w.id) null else w.id },
-                        label = { Text(w.name) },
-                    )
+                method?.let { m ->
+                    item {
+                        FilterChip(
+                            selected = true,
+                            onClick = { method = null },
+                            label = { Text("$m ✕") },
+                        )
+                    }
+                }
+                if (minPaise > 0) {
+                    item {
+                        FilterChip(
+                            selected = true,
+                            onClick = { minPaise = 0L },
+                            label = { Text("₹${minPaise / 100}+ ✕") },
+                        )
+                    }
+                }
+                walletId?.let { wid ->
+                    val wName = wallets.firstOrNull { it.id == wid }?.name ?: "Wallet"
+                    item {
+                        FilterChip(
+                            selected = true,
+                            onClick = { walletId = null },
+                            label = { Text("$wName ✕") },
+                        )
+                    }
+                }
+                if (dateMode != "All") {
+                    item {
+                        FilterChip(
+                            selected = true,
+                            onClick = { dateMode = "All"; dateFrom = null; dateTo = null },
+                            label = { Text("$dateMode ✕") },
+                        )
+                    }
                 }
             }
         }
-        Spacer(Modifier.height(6.dp))
-        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            val zone = java.time.ZoneId.systemDefault()
-            fun dayMs(y: Int, m: Int, d: Int) =
-                java.time.LocalDate.of(y, m, d).atStartOfDay(zone).toInstant().toEpochMilli()
-            val dates = listOf("All", "7D", "Month", "Cycle", "Custom")
-            items(dates) { label ->
-                FilterChip(
-                    selected = dateMode == label,
-                    onClick = {
-                        dateMode = label
-                        val now = System.currentTimeMillis()
-                        when (label) {
-                            "All" -> { dateFrom = null; dateTo = null }
-                            "7D" -> { dateFrom = now - 7L * 24 * 60 * 60 * 1000; dateTo = null }
-                            "Month" -> monthRange(java.time.YearMonth.now()).let { dateFrom = it.first; dateTo = it.second }
-                            "Cycle" -> {
-                                // Billing cycle 25th→24th: credit-card statement view.
-                                val t = java.time.LocalDate.now(zone)
-                                if (t.dayOfMonth >= 25) {
-                                    val n = t.plusMonths(1)
-                                    dateFrom = dayMs(t.year, t.monthValue, 25)
-                                    dateTo = dayMs(n.year, n.monthValue, 25)
-                                } else {
-                                    val p = t.minusMonths(1)
-                                    dateFrom = dayMs(p.year, p.monthValue, 25)
-                                    dateTo = dayMs(t.year, t.monthValue, 25)
-                                }
-                            }
-                            "Custom" -> showFrom = true
+
+        if (showFilterSheet) {
+            ModalBottomSheet(onDismissRequest = { showFilterSheet = false }) {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 32.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Filters", style = MaterialTheme.typography.titleLarge)
+                        TextButton(onClick = {
+                            catId = null
+                            method = null
+                            minPaise = 0L
+                            walletId = null
+                            dateMode = "All"
+                            dateFrom = null
+                            dateTo = null
+                        }) { Text("Reset all") }
+                    }
+
+                    Text("Category", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        item {
+                            FilterChip(selected = catId == null, onClick = { catId = null }, label = { Text("All") })
                         }
-                    },
-                    label = { Text(if (label == "Cycle") "Cycle 25–24" else label) },
-                )
-            }
-        }
-        if (dateMode == "Custom") {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { showFrom = true }) {
-                    Text(dateFrom?.let { "From ${dateFmt.format(Date(it))}" } ?: "From…")
-                }
-                TextButton(onClick = { showTo = true }) {
-                    Text(dateTo?.let { "To ${dateFmt.format(Date(it))}" } ?: "To…")
+                        items(categories, key = { "sheet_cat_${it.id}" }) { c ->
+                            FilterChip(
+                                selected = catId == c.id,
+                                onClick = { catId = if (catId == c.id) null else c.id },
+                                label = { Text("${c.emoji} ${c.name}") },
+                            )
+                        }
+                    }
+
+                    Text("Payment Method", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        item {
+                            FilterChip(selected = method == null, onClick = { method = null }, label = { Text("Any") })
+                        }
+                        items(PaymentMethods) { m ->
+                            FilterChip(
+                                selected = method == m,
+                                onClick = { method = if (method == m) null else m },
+                                label = { Text(m) },
+                            )
+                        }
+                    }
+
+                    Text("Minimum Amount", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        val amounts = listOf(0L to "Any ₹", 50_000L to "₹500+", 200_000L to "₹2k+", 1_000_000L to "₹10k+")
+                        items(amounts) { (v, label) ->
+                            FilterChip(
+                                selected = minPaise == v,
+                                onClick = { minPaise = v },
+                                label = { Text(label) },
+                            )
+                        }
+                    }
+
+                    if (wallets.isNotEmpty()) {
+                        Text("Account / Wallet", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            item {
+                                FilterChip(selected = walletId == null, onClick = { walletId = null }, label = { Text("All") })
+                            }
+                            items(wallets, key = { "sheet_w_${it.id}" }) { w ->
+                                FilterChip(
+                                    selected = walletId == w.id,
+                                    onClick = { walletId = if (walletId == w.id) null else w.id },
+                                    label = { Text(w.name) },
+                                )
+                            }
+                        }
+                    }
+
+                    Text("Date Range", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    val zone = java.time.ZoneId.systemDefault()
+                    fun dayMs(y: Int, m: Int, d: Int) =
+                        java.time.LocalDate.of(y, m, d).atStartOfDay(zone).toInstant().toEpochMilli()
+                    val dates = listOf("All", "7D", "Month", "Cycle", "Custom")
+                    androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        items(dates) { label ->
+                            FilterChip(
+                                selected = dateMode == label,
+                                onClick = {
+                                    dateMode = label
+                                    val now = System.currentTimeMillis()
+                                    when (label) {
+                                        "All" -> { dateFrom = null; dateTo = null }
+                                        "7D" -> { dateFrom = now - 7L * 24 * 60 * 60 * 1000; dateTo = null }
+                                        "Month" -> monthRange(java.time.YearMonth.now()).let { dateFrom = it.first; dateTo = it.second }
+                                        "Cycle" -> {
+                                            val t = java.time.LocalDate.now(zone)
+                                            if (t.dayOfMonth >= 25) {
+                                                val n = t.plusMonths(1)
+                                                dateFrom = dayMs(t.year, t.monthValue, 25)
+                                                dateTo = dayMs(n.year, n.monthValue, 25)
+                                            } else {
+                                                val p = t.minusMonths(1)
+                                                dateFrom = dayMs(p.year, p.monthValue, 25)
+                                                dateTo = dayMs(t.year, t.monthValue, 25)
+                                            }
+                                        }
+                                        "Custom" -> showFrom = true
+                                    }
+                                },
+                                label = { Text(if (label == "Cycle") "Cycle 25–24" else label) },
+                            )
+                        }
+                    }
+                    if (dateMode == "Custom") {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(onClick = { showFrom = true }) {
+                                Text(dateFrom?.let { "From ${dateFmt.format(Date(it))}" } ?: "From…")
+                            }
+                            TextButton(onClick = { showTo = true }) {
+                                Text(dateTo?.let { "To ${dateFmt.format(Date(it))}" } ?: "To…")
+                            }
+                        }
+                    }
+
+                    Button(
+                        onClick = { showFilterSheet = false },
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    ) { Text("Apply filters") }
                 }
             }
         }

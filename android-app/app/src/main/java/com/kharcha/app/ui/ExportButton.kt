@@ -74,21 +74,15 @@ private fun exportCsv(context: Context, txns: List<TransactionRow>, categories: 
                 .append(t.needsReview).append('\n')
         }
         val name = "kharcha-${System.currentTimeMillis()}.csv"
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val values = ContentValues().apply {
-                put(MediaStore.Downloads.DISPLAY_NAME, name)
-                put(MediaStore.Downloads.MIME_TYPE, "text/csv")
-                put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
-            }
-            val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-                ?: return ExportResult(false, "Export failed: storage unavailable")
-            context.contentResolver.openOutputStream(uri)?.use { it.write(sb.toString().toByteArray()) }
-                ?: return ExportResult(false, "Export failed: could not write file")
-        } else {
-            @Suppress("DEPRECATION")
-            val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-            File(dir, name).writeText(sb.toString())
+        val values = ContentValues().apply {
+            put(MediaStore.Downloads.DISPLAY_NAME, name)
+            put(MediaStore.Downloads.MIME_TYPE, "text/csv")
+            put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
         }
+        val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+            ?: return ExportResult(false, "Export failed: storage unavailable")
+        context.contentResolver.openOutputStream(uri)?.use { it.write(sb.toString().toByteArray()) }
+            ?: return ExportResult(false, "Export failed: could not write file")
         ExportResult(true, "Exported ${txns.size} rows to Downloads/$name")
     } catch (e: SecurityException) {
         ExportResult(false, "Export failed: storage permission denied")

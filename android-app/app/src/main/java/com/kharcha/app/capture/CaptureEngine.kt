@@ -13,6 +13,8 @@ import uniffi.kharcha_core.isSpam
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import uniffi.kharcha_core.maxBodyBytes
 import uniffi.kharcha_core.parseCapture
 
@@ -29,6 +31,7 @@ sealed class IngestResult {
  * The app layer only maps rows and writes.
  */
 object CaptureEngine {
+    private val ingestMutex = Mutex()
     private const val DEDUPE_WINDOW_MS = 5 * 60 * 1000L
 
     // Audit #3: caps exist in Rust but nothing enforced them here. $title $text
@@ -40,11 +43,13 @@ object CaptureEngine {
 
     suspend fun ingest(appContext: android.content.Context, body: String, sender: String, timestampMs: Long, dao: CaptureDao, txnDao: com.kharcha.app.db.KharchaDao, quiet: Boolean = false): IngestResult {
         if (body.length > maxBody) return IngestResult.Unparsed
-        return try {
-            ingestInner(appContext, body, sender, timestampMs, dao, txnDao, quiet)
-        } catch (e: Exception) {
-            CaptureEngine.logCrash(appContext, e)
-            IngestResult.Unparsed
+        return ingestMutex.withLock {
+            try {
+                ingestInner(appContext, body, sender, timestampMs, dao, txnDao, quiet)
+            } catch (e: Exception) {
+                CaptureEngine.logCrash(appContext, e)
+                IngestResult.Unparsed
+            }
         }
     }
 
