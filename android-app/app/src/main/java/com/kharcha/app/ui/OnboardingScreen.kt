@@ -63,70 +63,89 @@ fun OnboardingScreen(
     var step by remember { mutableStateOf(0) }
     var name by remember { mutableStateOf(UserPrefs.name(context)) }
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 24.dp)
-            .verticalScroll(rememberScrollState()),
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background,
+        contentColor = MaterialTheme.colorScheme.onBackground,
     ) {
-        Spacer(Modifier.height(48.dp))
-
-        // Progress Dots
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(bottom = 16.dp),
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp)
+                .verticalScroll(rememberScrollState()),
         ) {
-            repeat(3) { i ->
-                Box(
-                    Modifier
-                        .size(if (i == step) 28.dp else 8.dp, 8.dp)
-                        .clip(CircleShape)
-                        .semantics { contentDescription = "Step ${i + 1} of 3" }
-                        .background(
-                            if (i == step) MaterialTheme.colorScheme.primary
-                            else if (i < step) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                            else MaterialTheme.colorScheme.surfaceVariant
-                        ),
-                )
-            }
-        }
-        Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(48.dp))
 
-        when (step) {
-            0 -> {
-                Text("Welcome to Kharcha", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    "Track Indian UPI & bank expenses 100% offline. Zero ads, zero cloud, zero telemetry.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.secondary,
-                )
-                Spacer(Modifier.height(28.dp))
-                Text("What should we call you?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Your name") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Your name" },
-                )
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    "Used only for your greeting. Stays strictly on this phone.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.secondary,
-                )
+            // Progress Dots
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(bottom = 16.dp),
+            ) {
+                repeat(3) { i ->
+                    Box(
+                        Modifier
+                            .size(if (i == step) 28.dp else 8.dp, 8.dp)
+                            .clip(CircleShape)
+                            .semantics { contentDescription = "Step ${i + 1} of 3" }
+                            .background(
+                                if (i == step) MaterialTheme.colorScheme.primary
+                                else if (i < step) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                else MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                    )
+                }
             }
-            1 -> {
-                Text("Auto-Capture & Reliability", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    "Kharcha runs an offline Rust engine to record payments automatically.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.secondary,
-                )
+            Spacer(Modifier.height(16.dp))
+
+            when (step) {
+                0 -> {
+                    Text(
+                        "Welcome to Kharcha",
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Track Indian UPI & bank expenses 100% offline. Zero ads, zero cloud, zero telemetry.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                    Spacer(Modifier.height(28.dp))
+                    Text(
+                        "What should we call you?",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("Your name") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Your name" },
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "Used only for your greeting. Stays strictly on this phone.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                }
+                1 -> {
+                    Text(
+                        "Auto-Capture & Reliability",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "Kharcha runs an offline Rust engine to record payments automatically.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
                 Spacer(Modifier.height(16.dp))
 
                 // Step 1: SMS Capture
@@ -195,7 +214,12 @@ fun OnboardingScreen(
                 )
             }
             2 -> {
-                Text("Security & Privacy", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text(
+                    "Security & Privacy",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
                 Spacer(Modifier.height(8.dp))
                 Text(
                     if (lockEnrollable) "Optionally lock Kharcha with your biometric or device screen lock."
@@ -218,7 +242,12 @@ fun OnboardingScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(Modifier.weight(1f)) {
-                            Text("App lock on launch", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                "App lock on launch",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
                             Text(
                                 "Fingerprint, face, or device PIN check",
                                 style = MaterialTheme.typography.bodySmall,
@@ -277,6 +306,7 @@ fun OnboardingScreen(
             }
         }
     }
+}
 }
 
 @Composable

@@ -68,7 +68,21 @@ private val DarkColors = darkColorScheme(
 fun KharchaTheme(darkTheme: Boolean = isSystemInDarkTheme(), dynamicColor: Boolean = false, content: @Composable () -> Unit) {
     val colorScheme = if (dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         val ctx = LocalContext.current
-        if (darkTheme) dynamicDarkColorScheme(ctx) else dynamicLightColorScheme(ctx)
+        if (darkTheme) {
+            dynamicDarkColorScheme(ctx).copy(
+                background = DarkColors.background,
+                surface = DarkColors.surface,
+                surfaceVariant = DarkColors.surfaceVariant,
+                outlineVariant = DarkColors.outlineVariant,
+            )
+        } else {
+            dynamicLightColorScheme(ctx).copy(
+                background = LightColors.background,
+                surface = LightColors.surface,
+                surfaceVariant = LightColors.surfaceVariant,
+                outlineVariant = LightColors.outlineVariant,
+            )
+        }
     } else if (darkTheme) DarkColors else LightColors
     MaterialTheme(
         colorScheme = colorScheme,

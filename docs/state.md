@@ -47,12 +47,18 @@ Repository = `android-app/` (Kotlin Compose) + `kharcha-core/` (Rust) only.
   `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` permission; listener watchdog in
   `MainActivity.onResume` toggles ComponentName to re-bind a killed
   NotificationListenerService (gated on user opt-in via `UserPrefs.listenerWanted`).
-- **Security & Interaction Hardening (Audited 2026-09-17).**
-  - Secured `SmsReceiver`: Added `android.permission.BROADCAST_SMS` to prevent 3rd-party intent injection attacks; removed debug action.
-  - Ingestion Concurrency: Added `Mutex` in `CaptureEngine.ingest` to eliminate race condition duplicate inserts between SMS and notification listeners.
-  - UI Bug Fix: Removed duplicate note field in `AddSheet`.
-  - Ergonomics: Added `imePadding()`, `verticalScroll()`, and numeric keypad options to `BudgetSheet` and `GoalSheet`.
-  - Theming: Completed `LightColors` surface and outline tokens (`surfaceVariant`, `outlineVariant`, `outline`) for full ink-green/warm paper compliance.
+- **Security, Reliability & Interaction Hardening (Audited 2026-09-17).**
+  - **Startup Crash Squash:** Corrected Kotlin property initialization order in `AppViewModel.kt` so `selectedMonth`, `budgetSpends`, `budgetCarry`, and `totals` initialize before the `init` block executes.
+  - **Onboarding Dark Mode Contrast:** Wrapped `OnboardingScreen` in `Surface(color = background, contentColor = onBackground)` and set explicit high-contrast colors on all headers to prevent dark text on dark `#12120E` surfaces.
+  - **Navigation State Preservation:** Configured `saveState`/`restoreState` and `launchSingleTop` across bottom bar tabs in `MainActivity.kt`.
+  - **CrashLog Thread Safety:** Added `diskLock` synchronization on `CrashLog.kt` disk writes.
+  - **Streaming CSV Export:** Switched `ExportButton.kt` to direct `bufferedWriter` streaming into SAF `OutputStream`, eliminating in-memory `StringBuilder` OOM risks.
+  - **Monet Theme Dark Clamping:** Clamped `KharchaTheme` dynamic dark theme surfaces and borders to ink-green/warm paper palette.
+  - **Secured `SmsReceiver`:** Added `android.permission.BROADCAST_SMS` to prevent 3rd-party intent injection attacks; removed debug action.
+  - **Ingestion Concurrency:** Added `Mutex` in `CaptureEngine.ingest` to eliminate race condition duplicate inserts between SMS and notification listeners.
+  - **UI Bug Fix:** Removed duplicate note field in `AddSheet`.
+  - **Ergonomics:** Added `imePadding()`, `verticalScroll()`, and numeric keypad options to `BudgetSheet` and `GoalSheet`.
+  - **Theming:** Completed `LightColors` surface and outline tokens (`surfaceVariant`, `outlineVariant`, `outline`) for full ink-green/warm paper compliance.
   - Cleaned dead pre-Q storage branches in `ExportButton` (minSdk 32 guarantee).
 - Bindings committed; `.so` (arm64) built from Desktop `kharcha-core` dist.
   `buildKharchaCore` gradle task disabled — dist/ is the source of truth.

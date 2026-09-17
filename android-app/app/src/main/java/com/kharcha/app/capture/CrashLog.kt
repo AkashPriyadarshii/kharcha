@@ -58,6 +58,8 @@ object CrashLog {
         }
     }
 
+    private val diskLock = Any()
+
     /** Log to logcat, memory buffer, and disk file — never throws. */
     fun log(context: Context, tag: String, message: String) {
         if (appContext == null) {
@@ -74,7 +76,9 @@ object CrashLog {
             _liveLogs.value = current
         }
         try {
-            file(context).appendText("$entry\n")
+            synchronized(diskLock) {
+                file(context).appendText("$entry\n")
+            }
         } catch (_: Exception) {
             // Disk write failure must never crash the app
         }
