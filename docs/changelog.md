@@ -22,6 +22,11 @@ All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
   - Added tabular numerals (`TabularNumerals`, `fontFeatureSettings = "tnum, zero"`) and two-tone fractional paise rendering (`formatPaiseParts`) to hero spending.
   - Added tactile scale press feedback (`Modifier.pressFeedback`).
 - **Audit Hardening & Verification:**
+  - **Startup Crash Resolution:** Reordered `AppViewModel` properties so `selectedMonth` and related state flows initialize before `init` block collection fires.
+  - **Onboarding Dark Mode Readability:** Wrapped `OnboardingScreen` in `Surface` and enforced `onBackground` contrast across typography in dark theme.
+  - **Navigation State Preservation:** Configured bottom bar destinations with `saveState = true`, `restoreState = true`, and `launchSingleTop = true`.
+  - **CrashLog Thread Safety:** Added `diskLock` synchronization for sequential safe file writes.
+  - **Streaming CSV Export:** Switched `ExportButton.kt` to direct `bufferedWriter` streaming into SAF `OutputStream`.
   - Guaranteed `android.permission.BROADCAST_SMS` on `SmsReceiver`.
   - Added `Mutex` to `CaptureEngine.ingest`.
   - 59/59 Rust unit and parity tests passing.

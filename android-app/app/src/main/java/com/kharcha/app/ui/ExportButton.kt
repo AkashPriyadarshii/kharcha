@@ -59,20 +59,6 @@ data class ExportResult(val ok: Boolean, val message: String)
 private fun exportCsv(context: Context, txns: List<TransactionRow>, categories: List<Category>): ExportResult {
     val catName = categories.associate { it.id to it.name }
     return try {
-        val sb = StringBuilder()
-        sb.append("date,amount_rupees,merchant,category,note,upi_ref,income,payment_method,needs_review\n")
-        for (t in txns) {
-            val rupees = "%d.%02d".format(t.amountPaise / 100, kotlin.math.abs(t.amountPaise % 100))
-            sb.append(exportDateFmt.format(Date(t.timestampMs))).append(',')
-                .append(rupees).append(',')
-                .append(csvSafeText(t.merchant)).append(',')
-                .append(csvField(t.categoryId?.let { catName[it] } ?: "")).append(',')
-                .append(csvSafeText(t.note ?: "")).append(',')
-                .append(csvField(t.upiRef ?: "")).append(',')
-                .append(if (t.isIncome) "income" else "expense").append(',')
-                .append(csvField(t.paymentMethod ?: "")).append(',')
-                .append(t.needsReview).append('\n')
-        }
         val name = "kharcha-${System.currentTimeMillis()}.csv"
         val values = ContentValues().apply {
             put(MediaStore.Downloads.DISPLAY_NAME, name)
@@ -81,8 +67,35 @@ private fun exportCsv(context: Context, txns: List<TransactionRow>, categories: 
         }
         val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
             ?: return ExportResult(false, "Export failed: storage unavailable")
-        context.contentResolver.openOutputStream(uri)?.use { it.write(sb.toString().toByteArray()) }
-            ?: return ExportResult(false, "Export failed: could not write file")
+
+        context.contentResolver.openOutputStream(uri)?.use { os ->
+            os.bufferedWriter(Charsets.UTF_8).use { writer ->
+                writer.write("date,amount_rupees,merchant,category,note,upi_ref,income,payment_method,needs_review\n")
+                for (t in txns) {
+                    val rupees = "%d.%02d".format(t.amountPaise / 100, kotlin.math.abs(t.amountPaise % 100))
+                    writer.write(exportDateFmt.format(Date(t.timestampMs)))
+                    writer.write(",")
+                    writer.write(rupees)
+                    writer.write(",")
+                    writer.write(csvSafeText(t.merchant))
+                    writer.write(",")
+                    writer.write(csvField(t.categoryId?.let { catName[it] } ?: ""))
+                    writer.write(",")
+                    writer.write(csvSafeText(t.note ?: ""))
+                    writer.write(",")
+                    writer.write(csvField(t.upiRef ?: ""))
+                    writer.write(",")
+                    writer.write(if (t.isIncome) "income" else "expense")
+                    writer.write(",")
+                    writer.write(csvField(t.paymentMethod ?: ""))
+                    writer.write(",")
+                    writer.write(t.needsReview.toString())
+                    writer.write("\n")
+                }
+                writer.flush()
+            }
+        } ?: return ExportResult(false, "Export failed: could not write file")
+
         ExportResult(true, "Exported ${txns.size} rows to Downloads/$name")
     } catch (e: SecurityException) {
         ExportResult(false, "Export failed: storage permission denied")

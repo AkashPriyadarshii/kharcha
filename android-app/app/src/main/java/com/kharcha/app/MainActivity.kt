@@ -379,19 +379,35 @@ private fun App() {
             NavigationBar {
                 TabItem("Home", Icons.Filled.Home, Tab.ROUTE_HOME, nav) {
                     com.kharcha.app.capture.CrashLog.log("Navigation", "User navigated to Home")
-                    nav.navigate(Tab.ROUTE_HOME) { popUpTo(Tab.ROUTE_HOME) { inclusive = true }; launchSingleTop = true }
+                    nav.navigate(Tab.ROUTE_HOME) {
+                        popUpTo(nav.graph.startDestinationId) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
                 }
                 TabItem("Transactions", Icons.AutoMirrored.Filled.List, Tab.ROUTE_TXN, nav) {
                     com.kharcha.app.capture.CrashLog.log("Navigation", "User navigated to Transactions")
-                    nav.navigate(Tab.ROUTE_TXN) { launchSingleTop = true }
+                    nav.navigate(Tab.ROUTE_TXN) {
+                        popUpTo(nav.graph.startDestinationId) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
                 }
                 TabItem("Reports", Icons.Filled.DateRange, Tab.ROUTE_REPORTS, nav) {
                     com.kharcha.app.capture.CrashLog.log("Navigation", "User navigated to Reports")
-                    nav.navigate(Tab.ROUTE_REPORTS) { launchSingleTop = true }
+                    nav.navigate(Tab.ROUTE_REPORTS) {
+                        popUpTo(nav.graph.startDestinationId) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
                 }
                 TabItem("Settings", Icons.Filled.Settings, Tab.ROUTE_SETTINGS, nav) {
                     com.kharcha.app.capture.CrashLog.log("Navigation", "User navigated to Settings")
-                    nav.navigate(Tab.ROUTE_SETTINGS) { launchSingleTop = true }
+                    nav.navigate(Tab.ROUTE_SETTINGS) {
+                        popUpTo(nav.graph.startDestinationId) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
                 }
             }
         },
