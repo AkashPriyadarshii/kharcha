@@ -25,7 +25,15 @@ private val SEED_RULES = listOf(
     "ajio" to 4L, "nykaa" to 4L, "reliance" to 5L, "jio" to 5L, "airtel" to 5L,
     "vodafone" to 5L, "bsnl" to 5L, "tata power" to 5L, "adani electricity" to 5L,
     "pvr" to 6L, "inox" to 6L, "bookmyshow" to 6L, "netflix" to 6L,
-    "apollo pharmacy" to 7L, "1mg" to 7L, "pharmeasy" to 7L, "netmeds" to 7L,
+    "apollo pharmacy" to 7L, "1mg" to 7L, "pharmeasy" to 7L, "netmeds" to 7L, "medplus" to 7L, "practo" to 7L, "tata 1mg" to 7L,
+    "starbucks" to 1L, "subway" to 1L, "haldiram" to 1L, "chai point" to 1L, "eatclub" to 1L,
+    "nature basket" to 2L, "milkbasket" to 2L, "country delight" to 2L, "dunzo" to 2L,
+    "namma yatri" to 3L, "blusmart" to 3L, "yulu" to 3L, "fastag" to 3L, "zoomcar" to 3L,
+    "zudio" to 4L, "decathlon" to 4L, "croma" to 4L, "vijay sales" to 4L, "tata cliq" to 4L, "zara" to 4L,
+    "bescom" to 5L, "mahadiscom" to 5L, "mgl" to 5L,
+    "spotify" to 6L, "hotstar" to 6L, "sony liv" to 6L,
+    "cleartrip" to 8L, "easemytrip" to 8L, "akasa air" to 8L,
+    "coursera" to 9L, "udemy" to 9L, "unacademy" to 9L, "physicswallah" to 9L,
     "petrol" to 3L, "indian oil" to 3L, "hp petrol" to 3L, "bharat petroleum" to 3L,
     "salary" to 10L, "upi" to 12L,
 )
@@ -41,6 +49,29 @@ class SeedCallback : RoomDatabase.Callback() {
             db.execSQL("INSERT INTO categories (id, name, emoji, isIncome, sort) VALUES (100, 'Income', '↑', 1, 0)")
             SEED_RULES.forEach { (pattern, categoryId) ->
                 db.execSQL("INSERT INTO rules (pattern, ruleType, categoryId) VALUES (?, 'builtin', ?)", arrayOf<Any>(pattern, categoryId))
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    override fun onOpen(db: SupportSQLiteDatabase) {
+        super.onOpen(db)
+        // ponytail: sync newly added builtin rules into existing DBs on open without schema migrations
+        db.beginTransaction()
+        try {
+            val existing = mutableSetOf<String>()
+            db.query("SELECT pattern FROM rules").use { cursor ->
+                while (cursor.moveToNext()) existing.add(cursor.getString(0))
+            }
+            SEED_RULES.forEach { (pattern, categoryId) ->
+                if (pattern !in existing) {
+                    db.execSQL(
+                        "INSERT INTO rules (pattern, ruleType, categoryId) VALUES (?, 'builtin', ?)",
+                        arrayOf<Any>(pattern, categoryId)
+                    )
+                }
             }
             db.setTransactionSuccessful()
         } finally {

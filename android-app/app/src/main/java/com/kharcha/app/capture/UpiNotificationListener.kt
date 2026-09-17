@@ -46,6 +46,9 @@ class UpiNotificationListener : NotificationListenerService() {
         "org.altruist.BajajFinserv",              // Bajaj Pay
         "com.mobikwik_new",                       // MobiKwik
         "com.freecharge.android",                 // Freecharge
+        "money.jupiter",                          // Jupiter Neobank UPI
+        "co.fi.money",                            // Fi Money UPI
+        "com.indusind.indie",                     // Indie UPI
     )
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
