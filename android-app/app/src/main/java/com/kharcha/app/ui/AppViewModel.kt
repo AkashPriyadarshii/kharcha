@@ -45,6 +45,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** True after the first DB emission — lets UI tell loading apart from empty. */
     val dataLoaded: MutableStateFlow<Boolean> = MutableStateFlow(false)
 
+    /** Visible month for hero + budgets. Defaults to current month. */
+    val selectedMonth: MutableStateFlow<YearMonth> = MutableStateFlow(YearMonth.now())
+
+    /** Category spend this month, for budget progress. */
+    val budgetSpends: MutableStateFlow<Map<Long, Long>> = MutableStateFlow(emptyMap())
+
+    /**
+     * Unspent carried from last month, per budget. One-month carry only,
+     * overspend never carries.
+     * ponytail: read-time calc, no migration; compounding later if asked.
+     */
+    val budgetCarry: MutableStateFlow<Map<Long, Long>> = MutableStateFlow(emptyMap())
+
+    /** Selected-month spend/income. */
+    val totals: MutableStateFlow<MonthTotals> = MutableStateFlow(MonthTotals(0, 0))
+
     init {
         viewModelScope.launch {
             dao.allTransactions().collect {
@@ -60,24 +76,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Visible month for hero + budgets. Defaults to current month. */
-    val selectedMonth: MutableStateFlow<YearMonth> = MutableStateFlow(YearMonth.now())
-
     fun shiftMonth(delta: Long) {
         selectedMonth.value = selectedMonth.value.plusMonths(delta)
         refreshTotals()
         refreshBudgetSpends()
     }
-
-    /** Category spend this month, for budget progress. */
-    val budgetSpends: MutableStateFlow<Map<Long, Long>> = MutableStateFlow(emptyMap())
-
-    /**
-     * Unspent carried from last month, per budget. One-month carry only,
-     * overspend never carries.
-     * ponytail: read-time calc, no migration; compounding later if asked.
-     */
-    val budgetCarry: MutableStateFlow<Map<Long, Long>> = MutableStateFlow(emptyMap())
 
     fun refreshBudgetSpends() {
         val month = selectedMonth.value
@@ -98,9 +101,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             budgetCarry.value = carry
         }
     }
-
-    /** Selected-month spend/income. */
-    val totals: MutableStateFlow<MonthTotals> = MutableStateFlow(MonthTotals(0, 0))
 
     fun refreshTotals() {
         val month = selectedMonth.value
