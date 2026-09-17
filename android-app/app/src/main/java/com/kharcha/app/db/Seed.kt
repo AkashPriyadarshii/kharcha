@@ -2,6 +2,10 @@ package com.kharcha.app.db
 
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.kharcha.app.capture.CrashLog
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * Seeds categories (FIXED ids — rules reference them) + builtin rules.
@@ -58,24 +62,31 @@ class SeedCallback : RoomDatabase.Callback() {
 
     override fun onOpen(db: SupportSQLiteDatabase) {
         super.onOpen(db)
-        // ponytail: sync newly added builtin rules into existing DBs on open without schema migrations
-        db.beginTransaction()
-        try {
-            val existing = mutableSetOf<String>()
-            db.query("SELECT pattern FROM rules").use { cursor ->
-                while (cursor.moveToNext()) existing.add(cursor.getString(0))
-            }
-            SEED_RULES.forEach { (pattern, categoryId) ->
-                if (pattern !in existing) {
-                    db.execSQL(
-                        "INSERT INTO rules (pattern, ruleType, categoryId) VALUES (?, 'builtin', ?)",
-                        arrayOf<Any>(pattern, categoryId)
-                    )
+        // ponytail: sync newly added builtin rules into existing DBs on open without schema migrations.
+        // Must run on Dispatchers.IO with try-catch so it never blocks main thread or crashes Room initialization.
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val existing = mutableSetOf<String>()
+                db.query("SELECT pattern FROM rules").use { cursor ->
+                    while (cursor.moveToNext()) existing.add(cursor.getString(0))
                 }
+                db.beginTransaction()
+                try {
+                    SEED_RULES.forEach { (pattern, categoryId) ->
+                        if (pattern !in existing) {
+                            db.execSQL(
+                                "INSERT INTO rules (pattern, ruleType, categoryId) VALUES (?, 'builtin', ?)",
+                                arrayOf<Any>(pattern, categoryId)
+                            )
+                        }
+                    }
+                    db.setTransactionSuccessful()
+                } finally {
+                    db.endTransaction()
+                }
+            } catch (e: Exception) {
+                CrashLog.log("SeedCallback", "rule sync on open failed: ${e.message}")
             }
-            db.setTransactionSuccessful()
-        } finally {
-            db.endTransaction()
         }
     }
 }
