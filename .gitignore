@@ -62,3 +62,4 @@ kharcha-core/dist/
 android-app/key.properties
 android-app/keystore/
 audit.md
+tools/typesafe/
