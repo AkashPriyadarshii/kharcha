@@ -148,7 +148,6 @@ fun HomeScreen(
     val catName: (Long?) -> String = { id ->
         categories.firstOrNull { it.id == id }?.name ?: "Uncategorised"
     }
-    val net = totals.income - totals.spend
 
     val context = LocalContext.current
     var showCustomizeHome by remember { mutableStateOf(false) }
@@ -187,97 +186,11 @@ fun HomeScreen(
                 }
             }
             item {
-                // Month switcher: kills "what month am I seeing?" confusion.
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    IconButton(
-                        onClick = { vm.shiftMonth(-1) },
-                        modifier = Modifier.size(48.dp),
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                            contentDescription = "Previous month",
-                        )
-                    }
-                    Text(monthLabel(month), style = MaterialTheme.typography.titleMedium)
-                    IconButton(
-                        onClick = { vm.shiftMonth(1) },
-                        modifier = Modifier.size(48.dp),
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                            contentDescription = "Next month",
-                        )
-                    }
-                }
-                Card(
-                    Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                ) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text(
-                            "SPENT · ${monthLabel(month)}",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.secondary,
-                        )
-                        Text(
-                            "Auto-capture \u00b7 ${captureAge(lastCaptureMs)}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (lastCaptureMs > 0) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error,
-                        )
-                        AnimatedCurrencyText(
-                            totals.spend,
-                            TextStyle(
-                                fontFamily = TabularNumerals,
-                                fontSize = 44.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface,
-                            ),
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            "In ${formatPaiseCompact(totals.income)} · Left ${formatPaiseCompact(net)}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.secondary,
-                        )
-                        // Daily burn rate: only meaningful with an overall cap on the live month.
-                        val overallCap = budgets.firstOrNull { it.categoryId == OVERALL_BUDGET_ID }
-                        if (showBurnPref && overallCap != null && month == YearMonth.now()) {
-                            val remaining = overallCap.monthlyLimitPaise - totals.spend
-                            val daysLeft = month.lengthOfMonth() - java.time.LocalDate.now().dayOfMonth + 1
-                            Text(
-                                if (remaining >= 0) "${formatPaiseCompact(remaining / daysLeft.coerceAtLeast(1))}/day · $daysLeft days left"
-                                else "${formatPaiseCompact(-remaining)} over pace",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = if (remaining >= 0) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error,
-                            )
-                        }
-                    }
-                }
+                HomeSummaryCard(vm, month, totals, lastCaptureMs, budgets, showBurnPref)
             }
             if (showBudgetsPref) {
                 item {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            "Budgets",
-                            style = MaterialTheme.typography.titleMedium,
-                        )
-                        Text(
-                            "Manage →",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier
-                                .heightIn(min = 48.dp)
-                                .padding(horizontal = 8.dp)
-                                .clickable { onOpenBudgets() }
-                                .semantics { contentDescription = "Manage all budgets" },
-                        )
-                    }
+                    SectionHeader("Budgets", "Manage →", "Manage all budgets", onOpenBudgets)
                 }
                 if (budgets.isEmpty()) {
                     item { Text("No budgets yet — set caps per category in Budgets.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary) }
@@ -316,22 +229,7 @@ fun HomeScreen(
             }
             if (showGoalsPref) {
                 item {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            "Savings Goals",
-                            style = MaterialTheme.typography.titleMedium,
-                        )
-                        Text(
-                            "Manage →",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier
-                                .heightIn(min = 48.dp)
-                                .padding(horizontal = 8.dp)
-                                .clickable { onOpenGoals() }
-                                .semantics { contentDescription = "Manage all savings goals" },
-                        )
-                    }
+                    SectionHeader("Savings Goals", "Manage →", "Manage all savings goals", onOpenGoals)
                 }
                 if (goals.isEmpty()) {
                     item { Text("No goals yet — track savings milestones in Goals.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary) }
@@ -340,34 +238,10 @@ fun HomeScreen(
                 }
             }
             item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("Reports", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        "Insights →",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .heightIn(min = 48.dp)
-                            .padding(horizontal = 8.dp)
-                            .clickable { onReports() }
-                            .semantics { contentDescription = "Open reports" },
-                    )
-                }
+                SectionHeader("Reports", "Insights →", "Open reports", onReports)
             }
             item {
-                Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("Recent", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        "View all →",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .heightIn(min = 48.dp)
-                            .padding(horizontal = 8.dp)
-                            .clickable { onShowAll() }
-                            .semantics { contentDescription = "View all transactions" },
-                    )
-                }
+                SectionHeader("Recent", "View all →", "View all transactions", onShowAll)
             }
             when {
                 !loaded -> items(6, key = { "skel_$it" }) { SkeletonRow() }
@@ -463,6 +337,111 @@ fun HomeScreen(
                 }
             },
         )
+    }
+}
+
+/** Section header row: title left, tappable action right. */
+@Composable
+private fun SectionHeader(title: String, action: String, actionDesc: String, onAction: () -> Unit) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Text(title, style = MaterialTheme.typography.titleMedium)
+        Text(
+            action,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier
+                .heightIn(min = 48.dp)
+                .padding(horizontal = 8.dp)
+                .clickable { onAction() }
+                .semantics { contentDescription = actionDesc },
+        )
+    }
+}
+
+/** Month switcher + spend summary card (extracted from HomeScreen's LazyColumn). */
+@Composable
+private fun HomeSummaryCard(
+    vm: AppViewModel,
+    month: YearMonth,
+    totals: MonthTotals,
+    lastCaptureMs: Long,
+    budgets: List<Budget>,
+    showBurnPref: Boolean,
+) {
+    val net = totals.income - totals.spend
+    Column {
+        // Month switcher: kills "what month am I seeing?" confusion.
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(
+                onClick = { vm.shiftMonth(-1) },
+                modifier = Modifier.size(48.dp),
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                    contentDescription = "Previous month",
+                )
+            }
+            Text(monthLabel(month), style = MaterialTheme.typography.titleMedium)
+            IconButton(
+                onClick = { vm.shiftMonth(1) },
+                modifier = Modifier.size(48.dp),
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = "Next month",
+                )
+            }
+        }
+        Card(
+            Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(8.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        ) {
+            Column(Modifier.padding(16.dp)) {
+                Text(
+                    "SPENT · ${monthLabel(month)}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+                Text(
+                    "Auto-capture \u00b7 ${captureAge(lastCaptureMs)}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (lastCaptureMs > 0) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error,
+                )
+                AnimatedCurrencyText(
+                    totals.spend,
+                    TextStyle(
+                        fontFamily = TabularNumerals,
+                        fontSize = 44.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    ),
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "In ${formatPaiseCompact(totals.income)} · Left ${formatPaiseCompact(net)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+                // Daily burn rate: only meaningful with an overall cap on the live month.
+                val overallCap = budgets.firstOrNull { it.categoryId == OVERALL_BUDGET_ID }
+                if (showBurnPref && overallCap != null && month == YearMonth.now()) {
+                    val remaining = overallCap.monthlyLimitPaise - totals.spend
+                    val daysLeft = month.lengthOfMonth() - java.time.LocalDate.now().dayOfMonth + 1
+                    Text(
+                        if (remaining >= 0) "${formatPaiseCompact(remaining / daysLeft.coerceAtLeast(1))}/day · $daysLeft days left"
+                        else "${formatPaiseCompact(-remaining)} over pace",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (remaining >= 0) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+        }
     }
 }
 

@@ -85,6 +85,8 @@ import com.kharcha.app.ui.RulesScreen
 import com.kharcha.app.ui.CategoriesScreen
 import com.kharcha.app.ui.WalletsScreen
 import com.kharcha.app.ui.TrashScreen
+import com.kharcha.app.ui.Tab
+import com.kharcha.app.ui.TabItem
 import com.kharcha.app.capture.BacklogScan
 import com.kharcha.app.capture.CrashLog
 import com.kharcha.app.capture.SummaryAlarm
@@ -377,38 +379,10 @@ private fun App() {
         },
         bottomBar = {
             NavigationBar {
-                TabItem("Home", Icons.Filled.Home, Tab.ROUTE_HOME, nav) {
-                    com.kharcha.app.capture.CrashLog.log("Navigation", "User navigated to Home")
-                    nav.navigate(Tab.ROUTE_HOME) {
-                        popUpTo(nav.graph.startDestinationId) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                }
-                TabItem("Transactions", Icons.AutoMirrored.Filled.List, Tab.ROUTE_TXN, nav) {
-                    com.kharcha.app.capture.CrashLog.log("Navigation", "User navigated to Transactions")
-                    nav.navigate(Tab.ROUTE_TXN) {
-                        popUpTo(nav.graph.startDestinationId) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                }
-                TabItem("Reports", Icons.Filled.DateRange, Tab.ROUTE_REPORTS, nav) {
-                    com.kharcha.app.capture.CrashLog.log("Navigation", "User navigated to Reports")
-                    nav.navigate(Tab.ROUTE_REPORTS) {
-                        popUpTo(nav.graph.startDestinationId) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                }
-                TabItem("Settings", Icons.Filled.Settings, Tab.ROUTE_SETTINGS, nav) {
-                    com.kharcha.app.capture.CrashLog.log("Navigation", "User navigated to Settings")
-                    nav.navigate(Tab.ROUTE_SETTINGS) {
-                        popUpTo(nav.graph.startDestinationId) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                }
+                TabItem("Home", Icons.Filled.Home, Tab.ROUTE_HOME, nav)
+                TabItem("Transactions", Icons.AutoMirrored.Filled.List, Tab.ROUTE_TXN, nav)
+                TabItem("Reports", Icons.Filled.DateRange, Tab.ROUTE_REPORTS, nav)
+                TabItem("Settings", Icons.Filled.Settings, Tab.ROUTE_SETTINGS, nav)
             }
         },
     ) { padding ->
@@ -542,30 +516,4 @@ private fun App() {
             },
         )
     }
-}
-
-/** Bottom-nav destinations. */
-private object Tab {
-    const val ROUTE_HOME = "home"
-    const val ROUTE_TXN = "transactions"
-    const val ROUTE_REPORTS = "reports"
-    const val ROUTE_SETTINGS = "settings"
-    const val ROUTE_CONSOLE_LOG = "console_log"
-    const val ROUTE_TRASH = "trash"
-    const val ROUTE_RULES = "rules"
-    const val ROUTE_CATS = "categories"
-    const val ROUTE_WALLETS = "wallets"
-    const val ROUTE_BUDGETS = "budgets"
-    const val ROUTE_GOALS = "goals"
-}
-
-@Composable
-private fun RowScope.TabItem(label: String, icon: ImageVector, route: String, nav: NavHostController, onClick: () -> Unit) {
-    val backStack by nav.currentBackStackEntryAsState()
-    NavigationBarItem(
-        selected = backStack?.destination?.route == route,
-        onClick = onClick,
-        icon = { Icon(icon, contentDescription = label) },
-        label = { Text(label) },
-    )
 }

@@ -67,3 +67,6 @@ tools/typesafe/
 # Legacy Flutter android dir (holds release signing) + release APK outputs
 /android/
 /*.apk
+
+# Local supercov quality snapshots
+/.supercov/
