@@ -50,7 +50,7 @@ private val SEED_RULES = listOf(
     "petrol" to 3L, "indian oil" to 3L, "hp petrol" to 3L, "bharat petroleum" to 3L,
     "shell fuel" to 3L, "metro parking" to 3L,
     "salary" to 10L, "upi" to 12L,
-    "amzn" to 4L, "phonepe" to 12L, "tatapower" to 5L,
+    "amzn" to 4L, "phonepe" to 12L, "tatapower" to 5L, "paytm" to 12L,
 )
 
 class SeedCallback : RoomDatabase.Callback() {
