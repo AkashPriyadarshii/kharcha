@@ -1,0 +1,848 @@
+<!doctype html>
+<html lang="en" data-resolution="portrait">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <title>Kharcha — Launch Video</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background-color: #FAF6EE;
+        color: #21201C;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      }
+      #root {
+        position: relative;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: radial-gradient(circle at 50% 40%, #FAF6EE 0%, #EDE6D6 100%);
+      }
+
+      /* Dark canvas for Scene 4 */
+      #dark-backdrop {
+        position: absolute;
+        inset: 0;
+        background: #12120E;
+        opacity: 0;
+        z-index: 50;
+        pointer-events: none;
+      }
+
+      /* Top teaser banner */
+      .top-teaser {
+        position: absolute;
+        top: 60px;
+        left: 0;
+        right: 0;
+        text-align: center;
+        z-index: 20;
+      }
+      .pill-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: #1B5E45;
+        color: #FFFFFF;
+        padding: 10px 24px;
+        border-radius: 999px;
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        box-shadow: 0 8px 24px rgba(27, 94, 69, 0.2);
+      }
+
+      /* Main Phone Mockup Frame */
+      #phone-frame {
+        position: absolute;
+        width: 820px;
+        height: 1480px;
+        left: 130px;
+        top: 180px;
+        background: #FAF6EE;
+        border: 14px solid #1C1B18;
+        border-radius: 56px;
+        box-shadow: 0 40px 100px rgba(0, 0, 0, 0.22), 0 12px 30px rgba(27, 94, 69, 0.12);
+        overflow: hidden;
+        z-index: 10;
+      }
+
+      /* Phone punch hole */
+      .notch {
+        position: absolute;
+        top: 14px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 130px;
+        height: 32px;
+        background: #1C1B18;
+        border-radius: 16px;
+        z-index: 100;
+      }
+
+      /* Status bar inside phone */
+      .status-bar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 52px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 36px;
+        font-size: 17px;
+        font-weight: 600;
+        color: #21201C;
+        z-index: 90;
+      }
+
+      /* App Internal Viewport */
+      .app-viewport {
+        position: absolute;
+        inset: 52px 0 0 0;
+        padding: 20px 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        background: #FFFDF7;
+      }
+
+      /* App Top Bar */
+      .app-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 4px;
+      }
+      .app-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .app-brand img {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+      }
+      .app-brand-name {
+        font-size: 28px;
+        font-weight: 800;
+        color: #1B5E45;
+        letter-spacing: -0.02em;
+      }
+      .app-date-badge {
+        font-size: 15px;
+        font-weight: 600;
+        background: #EFEBE0;
+        padding: 6px 14px;
+        border-radius: 8px;
+        color: #383630;
+      }
+
+      /* Hero Spend Card */
+      .spend-hero-card {
+        background: #1B5E45;
+        color: #FFFFFF;
+        border-radius: 28px;
+        padding: 28px;
+        box-shadow: 0 16px 40px rgba(27, 94, 69, 0.25);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .spend-label {
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #B8EAD7;
+      }
+      .spend-amount-row {
+        display: flex;
+        align-items: baseline;
+        gap: 4px;
+        font-feature-settings: "tnum", "zero";
+      }
+      .spend-currency {
+        font-size: 38px;
+        font-weight: 700;
+        color: #FAF6EE;
+      }
+      .spend-number {
+        font-size: 64px;
+        font-weight: 900;
+        letter-spacing: -0.03em;
+        color: #FAF6EE;
+      }
+      .spend-meta {
+        display: flex;
+        justify-content: space-between;
+        font-size: 14px;
+        font-weight: 500;
+        color: #D1EADE;
+        margin-top: 4px;
+      }
+
+      /* Rust Telemetry Pill */
+      .rust-telemetry {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        align-self: flex-start;
+        background: #E8F5E9;
+        border: 1.5px solid #81C784;
+        color: #1B5E45;
+        font-size: 14px;
+        font-weight: 700;
+        padding: 8px 16px;
+        border-radius: 999px;
+        letter-spacing: 0.02em;
+        box-shadow: 0 4px 12px rgba(27, 94, 69, 0.08);
+      }
+
+      /* Notification Banner (Simulated Hook) */
+      #notif-banner {
+        position: absolute;
+        top: 24px;
+        left: 20px;
+        right: 20px;
+        background: #FFFFFF;
+        border: 2px solid #D6D1C6;
+        border-radius: 24px;
+        padding: 20px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+        z-index: 120;
+        display: flex;
+        gap: 16px;
+      }
+      .notif-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        background: #004B87;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #FFFFFF;
+        font-weight: 900;
+        font-size: 20px;
+        flex-shrink: 0;
+      }
+      .notif-body {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .notif-header {
+        display: flex;
+        justify-content: space-between;
+        font-size: 14px;
+        font-weight: 700;
+        color: #383630;
+      }
+      .notif-text {
+        font-size: 16px;
+        font-weight: 600;
+        color: #21201C;
+        line-height: 1.35;
+      }
+      .notif-amount-highlight {
+        color: #8C5B00;
+        font-weight: 800;
+      }
+
+      /* Transactions Feed */
+      .tx-feed {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        margin-top: 6px;
+      }
+      .tx-title-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 15px;
+        font-weight: 700;
+        color: #4A4740;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .tx-card {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #FAF6EE;
+        border: 1.5px solid #E5E0D5;
+        border-radius: 20px;
+        padding: 16px 20px;
+      }
+      .tx-left {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .tx-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background: #EBE5D8;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+      }
+      .tx-details {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .tx-name {
+        font-size: 18px;
+        font-weight: 700;
+        color: #21201C;
+      }
+      .tx-meta {
+        font-size: 13px;
+        font-weight: 500;
+        color: #4A4740;
+      }
+      .tx-right {
+        text-align: right;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .tx-amount {
+        font-size: 19px;
+        font-weight: 800;
+        color: #1B5E45;
+      }
+      .tx-badge {
+        font-size: 11px;
+        font-weight: 700;
+        background: #E8F5E9;
+        color: #1B5E45;
+        padding: 3px 8px;
+        border-radius: 6px;
+        display: inline-block;
+      }
+
+      /* Highlight card for the incoming item */
+      #tx-starbucks {
+        background: #FFF9ED;
+        border: 2px solid #8C5B00;
+        transform: scale(0.9);
+        opacity: 0;
+        display: none;
+      }
+
+      /* Scene 3 Overlay: Features Showcase Inside Phone */
+      #features-overlay {
+        position: absolute;
+        inset: 52px 0 0 0;
+        background: #FFFDF7;
+        padding: 32px 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+        opacity: 0;
+        pointer-events: none;
+        z-index: 80;
+      }
+      .feat-header {
+        font-size: 14px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #1B5E45;
+      }
+      .feat-box {
+        background: #FAF6EE;
+        border: 2px solid #D6D1C6;
+        border-radius: 24px;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .vpa-morph-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .vpa-pill {
+        padding: 12px 18px;
+        border-radius: 12px;
+        font-family: monospace;
+        font-size: 17px;
+        font-weight: 700;
+      }
+      .vpa-raw {
+        background: #E8E5DD;
+        color: #383630;
+        text-decoration: line-through;
+      }
+      .vpa-resolved {
+        background: #E8F5E9;
+        color: #1B5E45;
+        border: 1.5px solid #81C784;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .mandate-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        background: #FFFFFF;
+        border: 1px solid #E5E0D5;
+        border-radius: 14px;
+      }
+      .mandate-sub {
+        font-size: 13px;
+        color: #4A4740;
+      }
+
+      /* Scene 4: Dark Outro Layer */
+      #outro-screen {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 24px;
+        z-index: 60;
+        opacity: 0;
+        pointer-events: none;
+        padding: 0 60px;
+        text-align: center;
+      }
+      .outro-logo {
+        width: 140px;
+        height: 140px;
+        border-radius: 36px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+        border: 2px solid #2B2A27;
+      }
+      .outro-title {
+        font-size: 68px;
+        font-weight: 900;
+        color: #FAF6EE;
+        letter-spacing: -0.03em;
+      }
+      .outro-claim {
+        font-size: 32px;
+        font-weight: 700;
+        color: #E0A83C;
+        line-height: 1.3;
+        max-width: 860px;
+      }
+      .outro-bullets {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: center;
+        margin-top: 10px;
+      }
+      .outro-badge {
+        background: #21201C;
+        border: 1px solid #383630;
+        color: #FAF6EE;
+        padding: 10px 20px;
+        border-radius: 999px;
+        font-size: 18px;
+        font-weight: 600;
+      }
+      .outro-cta-card {
+        margin-top: 24px;
+        background: #1B5E45;
+        color: #FFFFFF;
+        padding: 20px 48px;
+        border-radius: 20px;
+        font-size: 24px;
+        font-weight: 800;
+        box-shadow: 0 16px 40px rgba(27, 94, 69, 0.4);
+      }
+      .outro-url {
+        font-size: 18px;
+        font-weight: 600;
+        color: #A3D9C3;
+        margin-top: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="composition" data-duration="16.0" data-fps="30" data-width="1080" data-height="1920">
+      <!-- Audio Assets with proper id, data-start, and data-duration -->
+      <audio id="bgm" src="assets/music/bgm.mp3" data-start="0" data-duration="16.0"></audio>
+      <audio id="sfx-drop" src="assets/sfx/drop.ogg" data-start="0.6" data-duration="0.11"></audio>
+      <audio id="sfx-click" src="assets/sfx/click.ogg" data-start="3.8" data-duration="0.09"></audio>
+      <audio id="sfx-switch1" src="assets/sfx/switch.ogg" data-start="8.0" data-duration="0.31"></audio>
+      <audio id="sfx-switch2" src="assets/sfx/switch.ogg" data-start="10.0" data-duration="0.31"></audio>
+      <audio id="sfx-impact" src="assets/sfx/impact.ogg" data-start="12.2" data-duration="0.27"></audio>
+
+      <div id="dark-backdrop"></div>
+
+      <!-- Top Headline Badge (Animated) -->
+      <div class="top-teaser">
+        <div id="teaser-badge" class="pill-badge">
+          <span>⚡</span>
+          <span id="teaser-text">15 UPI SMS every day. Zero manual entry.</span>
+        </div>
+      </div>
+
+      <!-- Simulated Real Phone Mockup -->
+      <div id="phone-frame">
+        <div class="notch"></div>
+        <div class="status-bar" data-layout-allow-occlusion="true" data-layout-allow-overlap="true">
+          <span>09:41</span>
+          <div style="display:flex; gap:8px;">
+            <span>5G</span>
+            <span>98%</span>
+          </div>
+        </div>
+
+        <!-- Android Push Notification Banner (Scene 1 Hook) -->
+        <div id="notif-banner" data-layout-allow-occlusion="true" data-layout-allow-overlap="true">
+          <div class="notif-icon">₹</div>
+          <div class="notif-body">
+            <div class="notif-header">
+              <span>HDFC Bank · UPI Alert</span>
+              <span>now</span>
+            </div>
+            <div class="notif-text">
+              Paid <span class="notif-amount-highlight" data-layout-allow-occlusion="true" data-layout-allow-overlap="true">₹240.00</span> to Starbucks Coffee via UPI. Ref 429182...
+            </div>
+          </div>
+        </div>
+
+        <!-- Working App Interface -->
+        <div class="app-viewport">
+          <!-- App Header -->
+          <div class="app-header" data-layout-allow-occlusion="true" data-layout-allow-overlap="true">
+            <div class="app-brand">
+              <img id="brand-logo-small" src="assets/app_icon_small.png" alt="Kharcha" />
+              <span class="app-brand-name" data-layout-allow-occlusion="true" data-layout-allow-overlap="true">Kharcha</span>
+            </div>
+            <div class="app-date-badge" data-layout-allow-occlusion="true" data-layout-allow-overlap="true">September 2026</div>
+          </div>
+
+          <!-- Hero Spend Card -->
+          <div class="spend-hero-card">
+            <div class="spend-label">Total Monthly Expenses</div>
+            <div class="spend-amount-row">
+              <span class="spend-currency">₹</span>
+              <span id="spend-val" class="spend-number">3,420</span>
+            </div>
+            <div class="spend-meta">
+              <span>48 transactions</span>
+              <span id="avg-val">₹114 / day avg</span>
+            </div>
+          </div>
+
+          <!-- Rust Engine Micro Telemetry -->
+          <div id="rust-badge" class="rust-telemetry">
+            <span>🦀</span>
+            <span>kharcha-core (Rust) · 0.18ms · 100% Offline</span>
+          </div>
+
+          <!-- Transaction List -->
+          <div class="tx-feed">
+            <div class="tx-title-row">
+              <span>Recent Transactions</span>
+              <span>Filter</span>
+            </div>
+
+            <!-- Newly parsed transaction (animates in) -->
+            <div id="tx-starbucks" class="tx-card">
+              <div class="tx-left">
+                <div class="tx-icon">☕</div>
+                <div class="tx-details">
+                  <span class="tx-name">Starbucks Coffee</span>
+                  <span class="tx-meta">UPI (HDFC) · Just now</span>
+                </div>
+              </div>
+              <div class="tx-right">
+                <span class="tx-amount">−₹240.00</span>
+                <span class="tx-badge">Food &amp; Dining</span>
+              </div>
+            </div>
+
+            <!-- Existing sample transactions -->
+            <div class="tx-card">
+              <div class="tx-left">
+                <div class="tx-icon">🍕</div>
+                <div class="tx-details">
+                  <span class="tx-name">Swiggy Gourmet</span>
+                  <span class="tx-meta">UPI · Today, 1:15 PM</span>
+                </div>
+              </div>
+              <div class="tx-right">
+                <span class="tx-amount">−₹450.00</span>
+                <span class="tx-badge">Food</span>
+              </div>
+            </div>
+
+            <div class="tx-card">
+              <div class="tx-left">
+                <div class="tx-icon">🚕</div>
+                <div class="tx-details">
+                  <span class="tx-name">Uber Premier</span>
+                  <span class="tx-meta">UPI · Yesterday</span>
+                </div>
+              </div>
+              <div class="tx-right">
+                <span class="tx-amount">−₹210.00</span>
+                <span class="tx-badge">Commute</span>
+              </div>
+            </div>
+
+            <div class="tx-card">
+              <div class="tx-left">
+                <div class="tx-icon">🛒</div>
+                <div class="tx-details">
+                  <span class="tx-name">Blinkit Grocery</span>
+                  <span class="tx-meta">UPI · 18 Sep</span>
+                </div>
+              </div>
+              <div class="tx-right">
+                <span class="tx-amount">−₹680.00</span>
+                <span class="tx-badge">Groceries</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scene 3: Features Showcase (P2P Resolver + Mandates) -->
+        <div id="features-overlay" data-layout-allow-occlusion="true" data-layout-allow-overlap="true">
+          <!-- Feature 1: P2P Name Resolver -->
+          <div>
+            <div class="feat-header">Feature 01: P2P Contact Resolver</div>
+            <div class="feat-box" style="margin-top: 10px;">
+              <p style="font-size: 15px; color: #383630; font-weight: 600;">Transforms cryptic UPI IDs using your local phonebook:</p>
+              <div class="vpa-morph-container">
+                <div id="vpa-raw-box" class="vpa-pill vpa-raw">9876543210@paytm</div>
+                <div id="vpa-resolved-box" class="vpa-pill vpa-resolved" style="opacity: 0;">
+                  <span>✓</span>
+                  <span>Kiran Sharma (Sister)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Feature 2: Autopay Mandates -->
+          <div>
+            <div class="feat-header">Feature 02: Autopay Mandate Tracker</div>
+            <div class="feat-box" style="margin-top: 10px;">
+              <p style="font-size: 15px; color: #383630; font-weight: 600;">Never get surprised by recurring subscriptions:</p>
+              <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div class="mandate-row">
+                  <div>
+                    <div style="font-weight: 800; font-size: 17px; color: #21201C;">Netflix India</div>
+                    <div class="mandate-sub">Recurring UPI Mandate</div>
+                  </div>
+                  <div style="text-align: right;">
+                    <div style="font-weight: 800; color: #1B5E45; font-size: 16px;">₹649 / mo</div>
+                    <span style="font-size: 11px; font-weight: 700; background: #FFF3D6; color: #8C5B00; padding: 2px 6px; border-radius: 4px;">Due in 2 days</span>
+                  </div>
+                </div>
+
+                <div class="mandate-row">
+                  <div>
+                    <div style="font-weight: 800; font-size: 17px; color: #21201C;">HDFC Flexi SIP</div>
+                    <div class="mandate-sub">Mutual Fund Mandate</div>
+                  </div>
+                  <div style="text-align: right;">
+                    <div style="font-weight: 800; color: #1B5E45; font-size: 16px;">₹5,000 / mo</div>
+                    <span style="font-size: 11px; font-weight: 700; background: #E8F5E9; color: #1B5E45; padding: 2px 6px; border-radius: 4px;">Due ~25th</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scene 4: Dark Outro & Call to Action -->
+      <div id="outro-screen">
+        <img id="outro-logo-big" class="outro-logo" src="assets/app_icon.png" alt="Kharcha Icon" />
+        <h1 class="outro-title">Kharcha</h1>
+        <p class="outro-claim">No Bank Login. No Cloud.<br />Zero Tracking.</p>
+        
+        <div class="outro-bullets">
+          <span class="outro-badge">⚡ Sub-millisecond Rust Engine</span>
+          <span class="outro-badge">🔒 100% Offline &amp; Private</span>
+          <span class="outro-badge">📱 Direct Notification Parsing</span>
+          <span class="outro-badge">🤝 P2P Contact Resolution</span>
+        </div>
+
+        <div class="outro-cta-card">
+          <div>Download v0.1.2 on GitHub Releases</div>
+          <div class="outro-url">github.com/AkashPriyadarshii/kharcha</div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const tl = gsap.timeline({ paused: true });
+
+      // Object to animate tabular counter
+      const spendObj = { val: 3420 };
+      const spendEl = document.getElementById("spend-val");
+      function updateSpend() {
+        if (spendEl) {
+          spendEl.textContent = Math.round(spendObj.val).toLocaleString("en-IN");
+        }
+      }
+
+      // --- Scene 1: The Hook (0.0s - 3.2s) ---
+      // Phone springs in
+      tl.fromTo("#phone-frame", 
+        { y: 80, opacity: 0, scale: 0.94 }, 
+        { y: 0, opacity: 1, scale: 1, duration: 0.6, ease: "power2.out" }, 
+        0.1
+      );
+      // Top teaser badge appears
+      tl.fromTo("#teaser-badge", 
+        { y: -20, opacity: 0 }, 
+        { y: 0, opacity: 1, duration: 0.4, ease: "power2.out" }, 
+        0.2
+      );
+      // Notification drops down from top of phone
+      tl.fromTo("#notif-banner", 
+        { y: -260 },
+        { y: 0, duration: 0.5, ease: "back.out(1.2)" }, 
+        0.6
+      );
+      // Highlight amount pulses
+      tl.fromTo(".notif-amount-highlight", 
+        { scale: 1 }, 
+        { scale: 1.15, duration: 0.3, yoyo: true, repeat: 1 }, 
+        1.2
+      );
+
+      // --- Scene 2: Mechanical Reaction (3.2s - 7.5s) ---
+      // Teaser text updates
+      tl.to("#teaser-text", {
+        opacity: 0,
+        duration: 0.2,
+        onComplete: () => {
+          document.getElementById("teaser-text").textContent = "Sub-millisecond Rust engine. Parsed on device.";
+        }
+      }, 3.0);
+      tl.to("#teaser-text", { opacity: 1, duration: 0.2 }, 3.2);
+
+      // Notification shrinks & absorbs into transaction list
+      tl.to("#notif-banner", 
+        { y: -180, scale: 0.85, opacity: 0, duration: 0.4, ease: "power2.in" }, 
+        3.2
+      );
+      tl.set("#notif-banner", { display: "none" }, 3.6);
+
+      // Show & expand newly parsed Starbucks transaction card
+      tl.set("#tx-starbucks", { display: "flex" }, 3.5);
+      tl.fromTo("#tx-starbucks", 
+        { height: 0, opacity: 0, scale: 0.85, y: -20 }, 
+        { height: "auto", opacity: 1, scale: 1, y: 0, duration: 0.5, ease: "back.out(1.4)" }, 
+        3.5
+      );
+      // Roll spend ticker: ₹3,420 -> ₹3,660
+      tl.to(spendObj, { 
+        val: 3660, 
+        duration: 0.8, 
+        ease: "power1.inOut", 
+        onUpdate: updateSpend 
+      }, 3.8);
+      // Rust Telemetry badge pulses
+      tl.fromTo("#rust-badge", 
+        { scale: 0.9, backgroundColor: "#FFF3D6", borderColor: "#8C5B00" }, 
+        { scale: 1.05, backgroundColor: "#E8F5E9", borderColor: "#81C784", duration: 0.4, yoyo: true, repeat: 1 }, 
+        3.8
+      );
+
+      // --- Scene 3: The Secret Weapons (7.5s - 12.0s) ---
+      // Teaser text updates
+      tl.to("#teaser-text", {
+        opacity: 0,
+        duration: 0.2,
+        onComplete: () => {
+          document.getElementById("teaser-text").textContent = "P2P Contact Names & Recurring Mandates";
+        }
+      }, 7.2);
+      tl.to("#teaser-text", { opacity: 1, duration: 0.2 }, 7.4);
+
+      // Viewport hides when features overlay opens to ensure clean occlusion
+      tl.set(".app-viewport", { display: "none" }, 7.5);
+      // Features overlay fades in over app viewport
+      tl.to("#features-overlay", { opacity: 1, pointerEvents: "auto", duration: 0.4 }, 7.5);
+      // Morph VPA
+      tl.fromTo("#vpa-resolved-box", 
+        { y: 15, opacity: 0 }, 
+        { y: 0, opacity: 1, duration: 0.5, ease: "back.out(1.3)" }, 
+        8.0
+      );
+      // Mandate card slide in
+      tl.fromTo(".mandate-row", 
+        { x: 30, opacity: 0 }, 
+        { x: 0, opacity: 1, duration: 0.4, stagger: 0.2, ease: "power2.out" }, 
+        9.8
+      );
+
+      // --- Scene 4: Dark Outro (12.0s - 16.0s) ---
+      // Dark backdrop fades in
+      tl.to("#dark-backdrop", { opacity: 1, pointerEvents: "auto", duration: 0.4 }, 11.8);
+      // Hide top teaser and shrink phone frame away
+      tl.to("#teaser-badge", { opacity: 0, y: -30, duration: 0.3 }, 11.8);
+      tl.to("#phone-frame", { scale: 0.7, opacity: 0, duration: 0.4, ease: "power2.in" }, 11.8);
+      tl.set("#phone-frame", { display: "none" }, 12.2);
+      tl.set(".top-teaser", { display: "none" }, 12.2);
+      
+      // Outro screen reveals
+      tl.to("#outro-screen", { opacity: 1, pointerEvents: "auto", duration: 0.4 }, 12.1);
+      tl.fromTo(".outro-logo", 
+        { scale: 0.6, opacity: 0 }, 
+        { scale: 1, opacity: 1, duration: 0.6, ease: "back.out(1.5)" }, 
+        12.2
+      );
+      tl.fromTo(".outro-title", 
+        { y: 20, opacity: 0 }, 
+        { y: 0, opacity: 1, duration: 0.4 }, 
+        12.4
+      );
+      tl.fromTo(".outro-claim", 
+        { y: 15, opacity: 0 }, 
+        { y: 0, opacity: 1, duration: 0.4 }, 
+        12.6
+      );
+      tl.fromTo(".outro-badge", 
+        { scale: 0.85, opacity: 0 }, 
+        { scale: 1, opacity: 1, duration: 0.4, stagger: 0.08, ease: "power2.out" }, 
+        12.9
+      );
+      tl.fromTo(".outro-cta-card", 
+        { y: 30, opacity: 0 }, 
+        { y: 0, opacity: 1, duration: 0.5, ease: "back.out(1.2)" }, 
+        13.5
+      );
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["composition"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

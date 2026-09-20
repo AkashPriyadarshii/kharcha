@@ -235,7 +235,20 @@
         <p class="meta-note">Android 12+ · ~25 MB · Free</p>
       </div>
       <div class="hero-visual">
-        <img src="HOME.webp" alt="Kharcha home screen showing today's spend" width="320" height="569" loading="eager" fetchpriority="high" />
+        <video 
+          src="brag.mp4" 
+          poster="brag.jpg" 
+          autoplay 
+          muted 
+          loop 
+          playsinline 
+          controls
+          width="320" 
+          height="569" 
+          style="width: 100%; max-width: 320px; aspect-ratio: 9/16; border-radius: 28px; border: 4px solid var(--hairline-strong); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6); object-fit: cover; background: #1C1B18;"
+        >
+          Your browser does not support the video tag.
+        </video>
       </div>
     </div>
   </section>
@@ -310,12 +323,45 @@
     </div>
   </section>
 
-  <footer>
-    <div class="wrap">
-      <span>Kharcha System</span>
-      <div style="display: flex; gap: 24px;">
-        <a href="https://github.com/AkashPriyadarshii/kharcha">Source Code</a>
-        <a href="https://github.com/AkashPriyadarshii/kharcha/releases">Releases</a>
+  <footer style="padding: 64px 0 48px; border-top: 1px solid var(--hairline); background: var(--surface-1);">
+    <div class="wrap" style="display: flex; flex-direction: column; gap: 32px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+        <span style="font-weight: 700; font-size: 20px; color: var(--ink);">Kharcha · 100% Offline Expense Tracker</span>
+        <div style="display: flex; gap: 24px;">
+          <a href="https://github.com/AkashPriyadarshii/kharcha">Source Code</a>
+          <a href="https://github.com/AkashPriyadarshii/kharcha/releases">Releases</a>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px; font-size: 14px; border-top: 1px solid var(--hairline); padding-top: 24px;">
+        <div>
+          <div style="font-weight: 700; color: var(--primary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">Ecosystem</div>
+          <ul style="list-style: none; display: flex; flex-direction: column; gap: 6px;">
+            <li><a href="https://github.com/AkashPriyadarshii/design-genius">design-genius</a></li>
+            <li><a href="https://github.com/AkashPriyadarshii/akash-design-engineering">akash-design-engineering</a></li>
+            <li><a href="https://github.com/AkashPriyadarshii/tdlib-android">tdlib-android</a></li>
+            <li><a href="https://github.com/AkashPriyadarshii/kharcha">kharcha</a></li>
+          </ul>
+        </div>
+        <div>
+          <div style="font-weight: 700; color: var(--primary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">Author</div>
+          <div style="color: var(--ink); margin-bottom: 6px;">Akash Priyadarshi (Patna, Bihar, India)</div>
+          <ul style="list-style: none; display: flex; flex-direction: column; gap: 6px;">
+            <li><a href="https://github.com/AkashPriyadarshii">GitHub</a></li>
+            <li><a href="https://akashpriyadarshi.vercel.app">Portfolio</a></li>
+            <li><a href="https://linkedin.com/in/akash-priyadarshi-1aa51b37a">LinkedIn</a></li>
+            <li><a href="https://akashpriyadarshii.github.io/Resume/">Resume</a></li>
+          </ul>
+        </div>
+        <div>
+          <div style="font-weight: 700; color: var(--primary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">Social</div>
+          <ul style="list-style: none; display: flex; flex-direction: column; gap: 6px;">
+            <li><a href="https://x.com/Akash__ydv001">X / Twitter</a></li>
+            <li><a href="https://www.threads.net/@akash.priyadarshii">Threads</a></li>
+            <li><a href="https://www.instagram.com/akash.priyadarshii/">Instagram</a></li>
+            <li><a href="https://reddit.com/user/DragonfruitWeak2801">Reddit</a></li>
+          </ul>
+        </div>
       </div>
     </div>
   </footer>
