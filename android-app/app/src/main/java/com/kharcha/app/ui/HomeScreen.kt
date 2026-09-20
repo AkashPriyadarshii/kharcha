@@ -369,6 +369,8 @@ private fun HomeSummaryCard(
     showBurnPref: Boolean,
 ) {
     val net = totals.income - totals.spend
+    val today = remember { java.time.LocalDate.now() }
+    val isCurrentMonth = remember(month, today) { month == YearMonth.from(today) }
     Column {
         // Month switcher: kills "what month am I seeing?" confusion.
         Row(
@@ -430,9 +432,9 @@ private fun HomeSummaryCard(
                 )
                 // Daily burn rate: only meaningful with an overall cap on the live month.
                 val overallCap = budgets.firstOrNull { it.categoryId == OVERALL_BUDGET_ID }
-                if (showBurnPref && overallCap != null && month == YearMonth.now()) {
+                if (showBurnPref && overallCap != null && isCurrentMonth) {
                     val remaining = overallCap.monthlyLimitPaise - totals.spend
-                    val daysLeft = month.lengthOfMonth() - java.time.LocalDate.now().dayOfMonth + 1
+                    val daysLeft = remember(month, today) { month.lengthOfMonth() - today.dayOfMonth + 1 }
                     Text(
                         if (remaining >= 0) "${formatPaiseCompact(remaining / daysLeft.coerceAtLeast(1))}/day · $daysLeft days left"
                         else "${formatPaiseCompact(-remaining)} over pace",
