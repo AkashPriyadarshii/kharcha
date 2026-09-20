@@ -69,8 +69,25 @@ fun ReportsScreen(
     val income = monthTxns.filter { it.isIncome }
     val totalSpend = spend.sumOf { it.amountPaise }
     val totalIncome = income.sumOf { it.amountPaise }
+
+    // Prior month for category trends
+    val prevMonth = monthView.minusMonths(1)
+    val prevStart = prevMonth.atDay(1).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+    val prevEnd = monthStart
+    val prevSpend = txns.filter { it.timestampMs in prevStart until prevEnd && !it.isIncome }
+    val prevCatSpendMap = prevSpend.groupBy { it.categoryId }.mapValues { (_, rows) -> rows.sumOf { it.amountPaise } }
+
     val byCat = spend.groupBy { it.categoryId }.map { (catId, rows) ->
-        CatSpend(catId, rows.sumOf { it.amountPaise }, rows.size)
+        val catTotal = rows.sumOf { it.amountPaise }
+        val prevTotal = prevCatSpendMap[catId]
+        val trendText = when {
+            prevTotal == null || prevTotal == 0L -> "New"
+            catTotal > prevTotal -> "+${((catTotal - prevTotal) * 100 / prevTotal)}% vs last mo"
+            catTotal < prevTotal -> "-${((prevTotal - catTotal) * 100 / prevTotal)}% vs last mo"
+            else -> "0% vs last mo"
+        }
+        val isIncrease = prevTotal != null && prevTotal > 0 && catTotal > prevTotal
+        CatSpend(catId, catTotal, rows.size, trendText, isIncrease)
     }.sortedByDescending { it.amount }.take(8)
     val topMerchants = spend.groupBy { it.merchant }.map { (m, rows) ->
         m to rows.sumOf { it.amountPaise }
@@ -134,10 +151,48 @@ fun ReportsScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             ) {
-                Row(Modifier.fillMaxWidth().padding(16.dp)) {
-                    Stat("Spent", totalSpend, modifier = Modifier.weight(1f))
-                    Stat("Income", totalIncome, modifier = Modifier.weight(1f))
-                    Stat("Net", totalIncome - totalSpend, modifier = Modifier.weight(1f), accent = (totalIncome - totalSpend) >= 0)
+                Column(Modifier.padding(16.dp)) {
+                    Row(Modifier.fillMaxWidth()) {
+                        Stat("Spent", totalSpend, modifier = Modifier.weight(1f))
+                        Stat("Income", totalIncome, modifier = Modifier.weight(1f))
+                        Stat("Net", totalIncome - totalSpend, modifier = Modifier.weight(1f), accent = (totalIncome - totalSpend) >= 0)
+                    }
+                    if (totalIncome > 0) {
+                        Spacer(Modifier.height(14.dp))
+                        val savingsRatio = ((totalIncome - totalSpend).coerceAtLeast(0L).toFloat() / totalIncome).coerceIn(0f, 1f)
+                        val spendRatio = (totalSpend.toFloat() / totalIncome).coerceIn(0f, 1f)
+                        val pctSaved = (savingsRatio * 100).toInt()
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(
+                                "Cash Flow Breakdown",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.secondary,
+                            )
+                            Text(
+                                if (totalSpend > totalIncome) "Deficit (Spent ${((totalSpend * 100) / totalIncome)}%)"
+                                else "Saved $pctSaved%",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = if (totalSpend > totalIncome) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        Row(
+                            Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)).background(MaterialTheme.colorScheme.surfaceVariant),
+                        ) {
+                            if (spendRatio > 0f) {
+                                Box(
+                                    Modifier.weight(spendRatio).fillMaxSize().background(
+                                        if (totalSpend > totalIncome) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary
+                                    )
+                                )
+                            }
+                            if (savingsRatio > 0f) {
+                                Box(
+                                    Modifier.weight(savingsRatio).fillMaxSize().background(MaterialTheme.colorScheme.primary)
+                                )
+                            }
+                        }
+                    }
                 }
             }
             Spacer(Modifier.height(16.dp))
@@ -161,6 +216,8 @@ fun ReportsScreen(
                             amount = c.amount,
                             total = totalSpend,
                             count = c.count,
+                            trend = c.trendText,
+                            isIncrease = c.isIncrease,
                         )
                         Spacer(Modifier.height(10.dp))
                     }
@@ -197,7 +254,13 @@ fun ReportsScreen(
     }
 }
 
-private data class CatSpend(val categoryId: Long?, val amount: Long, val count: Int)
+private data class CatSpend(
+    val categoryId: Long?,
+    val amount: Long,
+    val count: Int,
+    val trendText: String = "",
+    val isIncrease: Boolean = false,
+)
 
 @Composable
 private fun Stat(label: String, amount: Long, modifier: Modifier = Modifier, accent: Boolean = true) {
@@ -212,13 +275,30 @@ private fun Stat(label: String, amount: Long, modifier: Modifier = Modifier, acc
 }
 
 @Composable
-private fun CategoryBar(label: String, amount: Long, total: Long, count: Int) {
+private fun CategoryBar(
+    label: String,
+    amount: Long,
+    total: Long,
+    count: Int,
+    trend: String = "",
+    isIncrease: Boolean = false,
+) {
     val ratio = if (total <= 0) 0f else amount.toFloat() / total
     Column(Modifier.fillMaxWidth().semantics {
-        contentDescription = "$label: ${formatPaise(amount)}, $count transactions"
+        contentDescription = "$label: ${formatPaise(amount)}, $count transactions $trend"
     }) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(label, style = MaterialTheme.typography.bodyLarge)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(label, style = MaterialTheme.typography.bodyLarge)
+                if (trend.isNotBlank()) {
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        trend,
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                        color = if (isIncrease) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary,
+                    )
+                }
+            }
             Text(formatPaiseCompact(amount), style = TextStyle(fontFamily = TabularNumerals), color = MaterialTheme.colorScheme.secondary)
         }
         Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {

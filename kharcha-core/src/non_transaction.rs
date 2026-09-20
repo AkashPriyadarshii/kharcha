@@ -11,7 +11,7 @@
 //! - Otherwise patterns are verbatim from the Dart source so the two files
 //!   stay diffable.
 
-use std::sync::OnceLock;
+use std::sync::LazyLock;
 
 use fancy_regex::Regex;
 
@@ -19,8 +19,7 @@ use fancy_regex::Regex;
 pub(crate) const ASCII_CI: &str = "(?i:";
 
 fn compiled() -> &'static Regex {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| {
+    static RE: LazyLock<Regex> = LazyLock::new(|| {
         Regex::new(concat!(
             "(?i:",
             r#"\b(?:"#,
@@ -59,6 +58,9 @@ fn compiled() -> &'static Regex {
             // voucher tied to promo context gets rejected.
             r#"received[ \t\n\x0B\f\r]*(?:a |the )?(?:rs\.?|inr|₹)?[ \t\n\x0B\f\r]*[0-9,.]*[ \t\n\x0B\f\r]*cashback[ \t\n\x0B\f\r]*voucher|(?:win|won|claim|earn|grab|get)[ \t\n\x0B\f\r]*.*voucher|voucher[ \t\n\x0B\f\r]*(?:of|worth|credited|added|received)|(?:credited|received|added)[ \t\n\x0B\f\r]*.*?voucher|"#,
             r#"invest in|invest rs|start investing|trade now|"#,
+            r#"e-kyc|kyc update|kyc pending|kyc blocked|kyc suspended|account blocked|account suspended|"#,
+            r#"electricity.*disconnected|disconnected tonight|power.*disconnected|"#,
+            r#"fastag|toll.*due|challan|parivahan|"#,
             // 5. Payment requests & Collect requests & Pending/Initiated (not completed payments)
             r#"requesting payment|requested payment|payment request|has requested|collect request|"#,
             r#"approve request|autopay request|mandate request|request to pay|request of (?:rs|inr|₹)|"#,
@@ -71,13 +73,21 @@ fn compiled() -> &'static Regex {
             r#")\b)"#,
         ))
         .expect("static non-transaction pattern")
-    })
+    });
+    &RE
 }
 
 /// True if `text` is a non-transaction message. Engine errors fail open
 /// (false = keep parsing); static patterns are covered by tests below.
 pub fn is_non_transaction(text: &str) -> bool {
-    compiled().is_match(text.trim()).unwrap_or(false)
+    let t = text.trim();
+    let lc = t.to_lowercase();
+    if lc.contains("mandate created")
+        && (lc.contains("debited") || lc.contains("credited") || lc.contains("deducted") || lc.contains("charged"))
+    {
+        return false;
+    }
+    compiled().is_match(t).unwrap_or(false)
 }
 
 #[cfg(test)]

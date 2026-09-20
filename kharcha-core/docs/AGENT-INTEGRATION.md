@@ -32,15 +32,15 @@ unrequested abstractions. Mark real shortcuts with `// ponytail:`.
 ## Adding a v1.x bank backend
 
 Shape is reserved in `engine::parse`: specific-sender backends go AHEAD of
-the generic parser, first non-None wins (the legacy app factory order is the
- reference: legacy Kotlin `BankParserFactory`.
-One backend = one module + its sender gate + corpus rows from the upstream
-bank tests. Never reorder existing backends without stating why.
+the generic parser, first non-None wins, generic fallback last. Backends are
+written fresh from field-harvested samples — no third-party parser code.
+One backend = one module + its sender gate + corpus rows from those samples.
+Never reorder existing backends without stating why.
 
 ## Verification gate (every change)
 
 ```bash
-cargo test                                  # 50+ tests, incl. 29 parity rows
+cargo test                                  # 59 tests: 24 unit + 35 parity rows
 cargo clippy --all-targets -- -D warnings   # zero warnings, no allows
 cargo build                                 # cdylib still links
 ```

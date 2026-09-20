@@ -85,11 +85,16 @@ object CaptureEngine {
             is CaptureDecision.Insert -> {
                 val merchantName = resolveMerchantName(appContext, payment.merchant)
                 val categoryId = categorize(merchantName, txnDao.allRules())
+                val lowerBody = body.lowercase()
+                val isMandateBody = lowerBody.contains("mandate") || lowerBody.contains("autopay") ||
+                        lowerBody.contains("auto-debit") || lowerBody.contains("nach") || lowerBody.contains("standing instruction")
+                val initialNote = if (isMandateBody) "Autopay Mandate" else null
                 val txnId = txnDao.insert(
                     TransactionRow(
                         amountPaise = payment.amountPaise,
                         merchant = merchantName,
                         categoryId = categoryId,
+                        note = initialNote,
                         upiRef = payment.upiRef,
                         bankName = payment.bankName,
                         accountMask = payment.accountMask,

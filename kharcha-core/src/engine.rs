@@ -77,6 +77,21 @@ pub fn parse(sms_body: &str, sender: &str, timestamp_ms: i64) -> Option<ParsedTr
     if sms_body.len() > MAX_BODY_BYTES {
         return None;
     }
+    // Generic promo guard: WhatsApp/Telegram promo "50 credited to wallet/cashback"
+    // without banking anchor. No merchant hardcode. Bank senders and UPI apps bypass.
+    {
+        let lc = sms_body.to_lowercase();
+        let sender_lc = sender.to_lowercase();
+        let is_messaging_sender = sender_lc.contains("whatsapp") || sender_lc.contains("telegram");
+        let looks_credited = lc.contains("credited");
+        let has_promo = lc.contains("wallet") || lc.contains("cashback") || lc.contains("reward") || lc.contains("supercoin") || lc.contains("voucher");
+        if is_messaging_sender && looks_credited && has_promo {
+            let has_anchor = sms_body.contains("UPI") || sms_body.contains("UTR") || sms_body.contains("Ref") || lc.contains("a/c") || lc.contains("bal");
+            if !has_anchor {
+                return None;
+            }
+        }
+    }
     let mut payment = parse_upi_notification(sms_body)?;
     let sender_norm = sender.trim().to_uppercase();
 
@@ -118,9 +133,9 @@ fn content_hash(p: &ParsedPayment) -> u64 {
         .into_iter()
         .chain([b'|', u8::from(p.is_income)])
         .chain([b'|'])
-        .chain(p.merchant.to_lowercase().bytes())
+        .chain(p.merchant.bytes().map(|b| b.to_ascii_lowercase()))
         .chain([b'|'])
-        .chain(p.upi_ref.as_deref().unwrap_or("").to_lowercase().bytes())
+        .chain(p.upi_ref.as_deref().unwrap_or("").bytes().map(|b| b.to_ascii_lowercase()))
     {
         h ^= u64::from(b);
         h = h.wrapping_mul(0x100000001b3);

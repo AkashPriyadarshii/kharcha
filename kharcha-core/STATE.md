@@ -6,16 +6,20 @@
 
 ## Current status
 
-**v0.1 done (2026-09-16).** 49 tests green (20 unit + 29 parity), clippy zero
-warnings, one dep (`fancy-regex` — Dart lookahead ports verbatim; 0.14 rejects
-`(?-u)` so `\d`→`[0-9]` / `\s`→`[ \t\n\x0B\f\r]` is mechanical, `\b` stays
-Unicode — documented in non_transaction.rs).
+**v0.1.2 pending (2026-09-20).** Builds `kharcha_core-arm64-v8a.so`
+**v0.1.1 published (2026-09-20).** Release carries `kharcha_core-arm64-v8a.so`
++ `kharcha_core-x86_64.so` + `kharcha_core.kt`. Also on
+crates.io as `kharcha-core` 0.1.1. 76 tests green (24 unit + 39 parity + 13 notifications),
+clippy zero warnings, two deps (`fancy-regex` — Dart lookahead ports verbatim;
+0.14 rejects `(?-u)` so `\d`→`[0-9]` / `\s`→`[ \t\n\x0B\f\r]` is mechanical,
+`\b` stays Unicode — documented in non_transaction.rs; `uniffi` for the
+Kotlin bridge).
 
 Better-than-parents bets shipped:
 - `engine::parse(sms, sender, ts)` — single entry, sender-aware dispatch shape
   (generic backend today), `parse_batch()` for backlog drains
 - triple-signal dedupe: ref gate → content-hash gate (FNV-1a64, footer-proof,
-  unlike the legacy app md5(body)) → 300s window with ref backfill
+  unlike raw-body hashing) → 300s window with ref backfill
 - i64 paise end to end (both parents float at the edge)
 
 ## Completed
@@ -24,8 +28,10 @@ Better-than-parents bets shipped:
 - [x] money, split, categorize, filter (Dart parity, incl. `2.345→235`)
 - [x] non_transaction + parser (full upi_parser.dart port)
 - [x] dedupe (insertCaptured rules + hash signal)
-- [x] parity corpus (29 rows, all green) + demo CLI
+- [x] parity corpus (35 rows, all green) + demo CLI
 - [x] clippy clean
+- [x] dual-audit round 2 fixed (batch cap, i64::MIN panics, slice guards, doc truth)
+- [x] release pipeline (workflow + consumer docs + v0.1.0 tag)
 
 ## Next up (needs "go" per slice)
 
@@ -33,16 +39,16 @@ Better-than-parents bets shipped:
    `bindings/kotlin/uniffi/kharcha_core/kharcha_core.kt` (74 KB) generated
    with uniffi-bindgen 0.32.1 — all 10 fns + 7 records + 1 enum verified.
    Regen: `uniffi-bindgen generate --library ./target/debug/kharcha_core.dll --language kotlin --out-dir ./bindings/kotlin` (run from crate dir).
-2. v1.x: bank backends behind `engine::parse` (the legacy app factory order as reference)
-3. Corpus growth: harvest harder SMS samples from kharcha test dir + the legacy app bank tests
+2. v1.x: bank backends behind `engine::parse` (specific-first dispatch, written fresh)
+3. Corpus growth: harvest harder SMS samples from kharcha test dir + field captures
 
-Direction locked (owner): Kotlin/Rust is being removed. Consumers are
+Direction locked (owner): Flutter/Dart is being removed. Consumers are
 Kotlin (uniffi/JNI) + Rust only. `docs/INTEGRATION.md` (human) +
 `docs/AGENT-INTEGRATION.md` (agent) define how to apply this core.
 
 ## Independent audit (2026-09-16) — all 16 fixed
 
-Subagent audit found 5 critical / 7 major / 4 minor; all fixed, 54 tests green:
+Subagent audit found 5 critical / 7 major / 4 minor; all fixed, 55 tests green at the time:
 - split count clamp (10k, FFI OOM), punct-class `[[` typo, money 2^63 `>=`,
   VPA UTF-16 units, dedupe truncated-seconds drift
 - sender dropped from content hash (cross-channel gate now real), ref lowercased
@@ -55,7 +61,7 @@ Subagent audit found 5 critical / 7 major / 4 minor; all fixed, 54 tests green:
 UPI Number / mobile@handle is the dominant P2P format and Dart sends it to
 Unknown. Fixed (owner-approved deliberate improvement over Dart): 8–10 digit
 merchant names kept, 1–7 / 11+ still blocked — in both the recipient/fallback
-lookahead and GENERIC_NAME_RE. 55 tests green, no regressions.
+lookahead and GENERIC_NAME_RE. 56 tests green, no regressions.
 Watchlist (no code): Tap & Pay vocab (verbless formats unseen — collect samples
 first). v1.x: multi-currency amounts (AED/SGD…), UPI Lite top-up transfer-type.
 

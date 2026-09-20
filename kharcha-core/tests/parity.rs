@@ -566,3 +566,33 @@ fn modern_indian_banks_benchmark_corpus() {
     let p_91 = parsed("Paid ₹350 to 919876543210@paytm using UPI. Ref 222233334444");
     assert_eq!(p_91.merchant, "9876543210");
 }
+
+#[test]
+fn mandate_autopay_debit_is_real_payment() {
+    let p = parsed("Rs 1,999 debited for mandate towards Netflix via autopay. UPI Ref 123456789012");
+    assert_eq!(p.amount_paise, 199900);
+    assert_eq!(p.merchant, "Netflix");
+    assert!(!p.is_income);
+}
+
+#[test]
+fn corpus_growth_p1_rows() {
+    // IMPS/NEFT via existing patterns, Yes Bank, UPI handle, POS city suffix
+    let imps = parsed("INR 5,000 credited to A/c XX1234 via IMPS from SALARY. UPI Ref 123456789012");
+    assert!(imps.is_income);
+    let yes = parsed("Yes Bank: Rs 900 debited from A/c XX2211 towards UPI to DUNZO. Ref 426190283911");
+    assert_eq!(yes.merchant, "DUNZO");
+    let wa = parsed("You paid ₹250 to Chaayos via UPI. UPI Ref 123456789013");
+    assert_eq!(wa.merchant, "Chaayos");
+}
+
+#[test]
+fn whatsapp_bigbasket_promo_is_null_via_engine() {
+    // Generic promo: "50 credited to wallet" via WhatsApp without banking anchor → null.
+    // No merchant hardcode; paytm wallet cashback via bank sender still parses (see notifications.rs).
+    use kharcha_core::engine::parse;
+    assert!(parse("Rs 50 credited to your wallet from bigbasket", "whatsapp", 0).is_none());
+    assert!(parse("Rs 50 credited to your wallet", "WHATSAPP", 0).is_none());
+    // Same text via bank sender is not suppressed (engine only gates messaging senders)
+    assert!(kharcha_core::parse_upi_notification("Cashback of ₹50 credited to your Paytm wallet").is_some());
+}
