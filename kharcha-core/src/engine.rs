@@ -165,13 +165,80 @@ mod tests {
     }
 
     #[test]
-    fn batch_keeps_order_and_nones() {
-        let out = parse_batch(&[
-            ("₹450 paid to Swiggy using UPI", "gpay", 1),
-            ("hello there", "friend", 2),
-        ]);
-        assert_eq!(out.len(), 2);
-        assert!(out[0].is_some());
-        assert!(out[1].is_none());
+    fn sms_and_push_same_payment_dedupe_contract() {
+        use crate::dedupe::{decide_capture, CaptureDecision, ExistingRow};
+        let ts = 1_000_000_000_000i64;
+        let row = |t: &crate::engine::ParsedTransaction, deleted: bool| ExistingRow {
+            upi_ref: t.payment.upi_ref.clone(),
+            amount_paise: t.payment.amount_paise,
+            is_income: t.payment.is_income,
+            txn_ms: t.timestamp_ms,
+            is_deleted: deleted,
+            content_hash: Some(t.content_hash),
+        };
+        // 1. Both channels carry the ref → one record (gate 1, case-insensitive).
+        let push = parse(
+            "Sent! ₹200.00 to Swiggy. UPI Ref 123456789012",
+            "com.google.android.apps.nbu.paisa.user",
+            ts,
+        )
+        .unwrap();
+        let sms = parse(
+            "INR 200.00 debited for SWIGGY via UPI. UPI Ref 123456789012",
+            "VD-HDFCBK",
+            ts + 45_000,
+        )
+        .unwrap();
+        assert_eq!(
+            decide_capture(
+                sms.payment.upi_ref.as_deref(),
+                sms.payment.amount_paise,
+                sms.payment.is_income,
+                sms.timestamp_ms,
+                Some(sms.content_hash),
+                &[row(&push, false)]
+            ),
+            CaptureDecision::Skip { backfill_ref: false }
+        );
+        // 2. Ref-less redelivery within the window → same content hash catches it.
+        let push_noref = parse("Sent! ₹200.00 to Swiggy", "com.google.android.apps.nbu.paisa.user", ts).unwrap();
+        let redelivery = parse("Sent! ₹200.00 to Swiggy", "com.google.android.apps.nbu.paisa.user", ts + 60_000).unwrap();
+        assert_eq!(push_noref.content_hash, redelivery.content_hash);
+        assert_eq!(
+            decide_capture(
+                None,
+                redelivery.payment.amount_paise,
+                redelivery.payment.is_income,
+                redelivery.timestamp_ms,
+                Some(redelivery.content_hash),
+                &[row(&push_noref, false)]
+            ),
+            CaptureDecision::Skip { backfill_ref: false }
+        );
+        // 3. ponytail: ref-less push (GPay banner drops the ref) then ref'd SMS
+        // 45s later → insert. The ref lives inside the hash, so hashes differ
+        // and gate 3 refuses to merge two ref-less/ref'd same-amount events —
+        // same protection that keeps two genuine back-to-back ₹200 taps from
+        // collapsing. Trade-off is a rare double-count when the push omits the
+        // ref; a false merge eats real spend. Fix when GPay ships refs in all
+        // banners: hash on amount|direction|merchant only, ref moves to gate 1.
+        let pw_noref = parse("Sent! ₹200.00 to Swiggy", "com.google.android.apps.nbu.paisa.user", ts).unwrap();
+        let sms_ref = parse(
+            "INR 200.00 debited for SWIGGY via UPI. UPI Ref 123456789013",
+            "VD-HDFCBK",
+            ts + 45_000,
+        )
+        .unwrap();
+        assert_eq!(
+            decide_capture(
+                sms_ref.payment.upi_ref.as_deref(),
+                sms_ref.payment.amount_paise,
+                sms_ref.payment.is_income,
+                sms_ref.timestamp_ms,
+                Some(sms_ref.content_hash),
+                &[row(&pw_noref, false)]
+            ),
+            CaptureDecision::Insert
+        );
     }
 }
