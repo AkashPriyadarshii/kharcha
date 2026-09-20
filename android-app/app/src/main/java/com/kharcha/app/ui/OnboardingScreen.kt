@@ -51,9 +51,11 @@ import androidx.compose.ui.unit.sp
 fun OnboardingScreen(
     captureSetup: CaptureSetup,
     batteryIgnored: Boolean = true,
+    contactsGranted: Boolean = false,
     lockEnrollable: Boolean,
     onRequestSms: () -> Unit,
     onRequestNotifications: () -> Unit,
+    onRequestContacts: () -> Unit = {},
     onOpenListenerSettings: () -> Unit,
     onOpenAppSettings: () -> Unit,
     onRequestIgnoreBattery: () -> Unit,
@@ -204,9 +206,20 @@ fun OnboardingScreen(
 
                 Spacer(Modifier.height(10.dp))
 
-                // Step 4: Battery Optimization Card
+                // Step 4: Contact Resolution (Offline)
                 PermissionCard(
-                    title = "3. Background Keep-Alive",
+                    title = "3. P2P Contact Names (Optional)",
+                    body = "Resolves phone numbers in UPI payments (e.g. 9876543210@paytm) to your device contacts 100% offline.",
+                    done = contactsGranted,
+                    actionLabel = if (contactsGranted) "Granted ✓" else "Enable Contacts",
+                    onAction = onRequestContacts,
+                )
+
+                Spacer(Modifier.height(10.dp))
+
+                // Step 5: Battery Optimization Card
+                PermissionCard(
+                    title = "4. Background Keep-Alive",
                     body = "Prevents aggressive Android battery savers from killing the background UPI listener.",
                     done = batteryIgnored,
                     actionLabel = if (batteryIgnored) "Unrestricted ✓" else "Ignore Optimization",

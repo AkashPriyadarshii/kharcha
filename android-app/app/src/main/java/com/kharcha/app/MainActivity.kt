@@ -107,6 +107,7 @@ class MainActivity : FragmentActivity() {
     private val smsGranted = mutableStateOf(false)
     private val listenerEnabled = mutableStateOf(false)
     private val notifGranted = mutableStateOf(true)
+    private val contactsGranted = mutableStateOf(false)
     private val themeMode = mutableStateOf("system")
     private val dynamicColor = mutableStateOf(false)
 
@@ -114,11 +115,14 @@ class MainActivity : FragmentActivity() {
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { refreshCaptureState() }
     private val notifLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { refreshCaptureState() }
+    private val contactsLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { refreshCaptureState() }
 
     /** Compose-readable capture state for the onboarding card. */
     val smsState get() = smsGranted
     val listenerState get() = listenerEnabled
     val notifState get() = notifGranted
+    val contactsState get() = contactsGranted
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -226,12 +230,18 @@ class MainActivity : FragmentActivity() {
         notifGranted.value = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
         } else true
+        contactsGranted.value =
+            checkSelfPermission(Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
         val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager
         batteryIgnored.value = pm?.isIgnoringBatteryOptimizations(packageName) ?: true
     }
 
     fun requestSms() {
         smsLauncher.launch(arrayOf(Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS))
+    }
+
+    fun requestContacts() {
+        contactsLauncher.launch(Manifest.permission.READ_CONTACTS)
     }
 
     /**
@@ -350,9 +360,11 @@ private fun App() {
         OnboardingScreen(
             captureSetup = captureSetup,
             batteryIgnored = activity?.batteryState?.value ?: true,
+            contactsGranted = activity?.contactsState?.value ?: false,
             lockEnrollable = lockEnrollable,
             onRequestSms = { activity?.requestSms() },
             onRequestNotifications = { activity?.requestNotifications() },
+            onRequestContacts = { activity?.requestContacts() },
             onOpenListenerSettings = { activity?.openListenerSettings() },
             onOpenAppSettings = { activity?.openAppSettings() },
             onRequestIgnoreBattery = { activity?.requestIgnoreBatteryOptimization() },
@@ -426,9 +438,11 @@ private fun App() {
                     categories,
                     captureSetup = captureSetup,
                     batteryIgnored = activity?.batteryState?.value ?: true,
+                    contactsGranted = activity?.contactsState?.value ?: false,
                     lockEnrollable = lockEnrollable,
                     onRequestSms = { activity?.requestSms() },
                     onRequestNotifications = { activity?.requestNotifications() },
+                    onRequestContacts = { activity?.requestContacts() },
                     onOpenListenerSettings = { activity?.openListenerSettings() },
                     onOpenAppSettings = { activity?.openAppSettings() },
                     onRequestIgnoreBattery = { activity?.requestIgnoreBatteryOptimization() },
