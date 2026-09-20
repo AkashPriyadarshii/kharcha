@@ -1,0 +1,6 @@
+Most expense trackers ask for your bank credentials or upload your private SMS to the cloud.
+
+We built Kharcha: a 100% offline Android expense tracker powered by an embedded Rust engine (kharcha-core). It parses UPI notifications on-device in 0.18ms, resolves cryptic VPAs to real contact names, and tracks upcoming autopay mandates with zero network permission.
+
+v0.1.2 is open-source and live on GitHub:
+https://github.com/AkashPriyadarshii/kharcha
