@@ -28,8 +28,8 @@ android {
         applicationId = "com.akash.kharcha.app"
         minSdk = 32
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.1.1"
         ndk { abiFilters += listOf("arm64-v8a") }
     }
 
