@@ -46,7 +46,9 @@ fn compiled() -> &'static Regex {
             r#"is your code|auth code|use code [0-9]|pin for txn|"#,
             // 4. Marketing promos, Loan offers, Lottery, Referral & Investment spam
             r#"pre-approved|pre approved|loan offer|apply for loan|instant loan|personal loan of|personal loan|"#,
-            r#"credit limit of|approved loan|get a loan|quick cash|instant cash|"#,
+            r#"eligible for .*?(?:loan|credit)|loan sanctioned|approved loan|get a loan|quick cash|instant cash|"#,
+            r#"convert (?:your )?(?:recent )?spend|convert to emi|into (?:easy )?emis|into [0-9]+ (?:easy )?emis|"#,
+            r#"credit limit of|limit (?:has been )?increased|limit enhancement|credit limit upgrade|increased to (?:rs|inr|₹)|"#,
             r#"win up to|stand a chance to win|congratulations you won|congratulations!|congratulations\b|claim your reward|"#,
             r#"flat off|supercoins|free delivery|shop for|save extra|enjoy flat|use code|"#,
             r#"scratch card|refer and earn|invite and earn|voucher of (?:rs|inr|₹)|"#,
@@ -60,10 +62,11 @@ fn compiled() -> &'static Regex {
             // 5. Payment requests & Collect requests & Pending/Initiated (not completed payments)
             r#"requesting payment|requested payment|payment request|has requested|collect request|"#,
             r#"approve request|autopay request|mandate request|request to pay|request of (?:rs|inr|₹)|"#,
-            r#"requested\b|standing instruction|mandate created|autopay scheduled|"#,
+            r#"requested\b|standing instruction|mandate created|autopay scheduled|autopay reminder|"#,
             r#"\bpending\b|\binitiated\b|in progress|processing payment|\bprocessing\b|scheduled for|"#,
-            r#"will be debited|will be credited|"#,
-            // 6. Failed & Declined transactions
+            r#"will be debited|will be deducted|will be charged|will be credited|"#,
+            // 6. Failed, Declined, Blocked & Attempted transactions
+            r#"attempted (?:txn|transaction)|blocked by bank|was blocked|blocked due to|"#,
             r#"failed|declined|unsuccessful|cancelled|canceled|could not be processed|timed out|aborted|rejected"#,
             r#")\b)"#,
         ))
@@ -109,6 +112,9 @@ mod tests {
             "Your verification code for payment of Rs 1,000 is 445566.",
             "Congratulations! You are eligible for pre-approved loan of Rs 5,00,000. Apply now.",
             "Avail instant personal loan of Rs. 1,00,000 in 2 minutes.",
+            "Convert your recent spend of INR 4,500.00 on Card XX8812 into 6 easy EMIs of Rs 799. SMS EMI to 56767.",
+            "Great news! Your credit limit on Card ending 4410 has been increased to Rs 2,50,000. Click to confirm.",
+            "Alert! Attempted txn of Rs 15,000.00 on Card XX1098 was blocked by bank security. Call 18001080.",
             "Swiggy is requesting payment of Rs 350 via UPI. Approve in GPay.",
             "Collect request of Rs 500 received from rahul@upi.",
             "Payment of Rs 500 to Uber failed due to bank server issue.",

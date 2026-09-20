@@ -383,3 +383,167 @@ fn inbox_line_round_trips() {
     let quoted = encode_inbox_line("p", "say \"hi\"\nbye", "t");
     assert!(quoted.contains("\"text\":\"say \\\"hi\\\"\\nbye\""));
 }
+
+#[test]
+fn modern_indian_banks_benchmark_corpus() {
+    // 1. HDFC Bank UPI Debit with unspaced UPI:ref
+    let hdfc_debit = parsed("Alert! INR 340.00 debited from A/C **1234 on 23-AUG-26 to ZOMATO UPI:623829102812. Bal: INR 12,400.00. Not you? Call 18002586161.");
+    assert_eq!(hdfc_debit.amount_paise, 34000);
+    assert_eq!(hdfc_debit.merchant, "ZOMATO");
+    assert!(!hdfc_debit.is_income);
+    assert_eq!(hdfc_debit.upi_ref.as_deref(), Some("623829102812"));
+    assert_eq!(hdfc_debit.account_mask.as_deref(), Some("1234"));
+    assert_eq!(hdfc_debit.balance_paise, Some(1240000));
+
+    // 2. HDFC Bank Card Spend
+    let hdfc_card = parsed("Alert: INR 1,850.00 spent on HDFC Bank Card ending in 8812 at RELIANCE RETAIL on 14-SEP-26. Avl limit: INR 85,200.00.");
+    assert_eq!(hdfc_card.amount_paise, 185000);
+    assert_eq!(hdfc_card.merchant, "RELIANCE RETAIL");
+    assert!(!hdfc_card.is_income);
+    assert_eq!(hdfc_card.account_mask.as_deref(), Some("8812"));
+
+    // 3. ICICI Card Spend with "Info: Swiggy" pattern
+    let icici_card = parsed("Dear Customer, INR 7,689.62 is debited on ICICI Bank Credit Card XX5533 on 12-Sep-26. Info: Swiggy. Available Limit: INR 62,762.76.");
+    assert_eq!(icici_card.amount_paise, 768962);
+    assert_eq!(icici_card.merchant, "Swiggy");
+    assert!(!icici_card.is_income);
+    assert_eq!(icici_card.account_mask.as_deref(), Some("5533"));
+
+    // 4. ICICI UPI Debit with Info: UPI/Ref/Merchant
+    let icici_upi = parsed("Dear Customer, your A/c XX402 has been debited with INR 520.00 on 12-Sep-26. Info: UPI/425510294812/Swiggy. Avail Bal: INR 45,210.50.");
+    assert_eq!(icici_upi.amount_paise, 52000);
+    assert_eq!(icici_upi.merchant, "Swiggy");
+    assert_eq!(icici_upi.upi_ref.as_deref(), Some("425510294812"));
+    assert_eq!(icici_upi.account_mask.as_deref(), Some("402"));
+    assert_eq!(icici_upi.balance_paise, Some(4521050));
+
+    // 5. SBI Inward Remittance with mid-sentence remitter
+    let sbi_income = parsed("Dear SBI UPI User, ur A/cX1690 credited by Rs1000.00 on 17Jan26 by RAMESH PATEL (Ref no 320125212325). Bal: Rs8500.50.");
+    assert_eq!(sbi_income.amount_paise, 100000);
+    assert!(sbi_income.is_income);
+    assert_eq!(sbi_income.merchant, "RAMESH PATEL");
+    assert_eq!(sbi_income.upi_ref.as_deref(), Some("320125212325"));
+    assert_eq!(sbi_income.account_mask.as_deref(), Some("1690"));
+    assert_eq!(sbi_income.balance_paise, Some(850050));
+
+    // 6. Axis Bank Avail Lmt Spend
+    let axis_spend = parsed("Axis Bank: INR 1,450.00 spent on your Credit Card XX9900 at PVR CINEMAS on 19-Sep-26. Avail Lmt: INR 1,12,300.00.");
+    assert_eq!(axis_spend.amount_paise, 145000);
+    assert_eq!(axis_spend.merchant, "PVR CINEMAS");
+    assert_eq!(axis_spend.account_mask.as_deref(), Some("9900"));
+
+    // 7. Axis Bank Card Refund
+    let axis_refund = parsed("Axis Bank: INR 450.00 credited to Credit Card XX9900 on 20-Sep-26 towards refund from SWIGGY. Avail Lmt: INR 1,12,750.00.");
+    assert_eq!(axis_refund.amount_paise, 45000);
+    assert!(axis_refund.is_income);
+    assert_eq!(axis_refund.merchant, "SWIGGY");
+    assert_eq!(axis_refund.account_mask.as_deref(), Some("9900"));
+
+    // 8. Canara Bank Clr Bal UPI Debit
+    let canara = parsed("Your A/C XX3211 is debited for INR 1,500.00 on 18-Sep-26 towards UPI txn to PETROL PUMP UTR:426102938491. Clr Bal is INR 28,900.50. -Canara Bank");
+    assert_eq!(canara.amount_paise, 150000);
+    assert_eq!(canara.merchant, "PETROL PUMP");
+    assert_eq!(canara.upi_ref.as_deref(), Some("426102938491"));
+    assert_eq!(canara.account_mask.as_deref(), Some("3211"));
+    assert_eq!(canara.balance_paise, Some(2890050));
+
+    // 9. OneCard Credit Card Spend
+    let onecard = parsed("Rs. 4,200.00 spent on your OneCard ending in 5621 at ZARA on 18-Sep-26. Available limit: Rs. 95,800.00.");
+    assert_eq!(onecard.amount_paise, 420000);
+    assert_eq!(onecard.merchant, "ZARA");
+    assert_eq!(onecard.account_mask.as_deref(), Some("5621"));
+
+    // 10. Executed e-Mandate / NACH Auto-Debit
+    let mandate = parsed("Dear Customer, Rs.499.00 has been debited from your A/c XX1234 on 20-Sep-26 via NACH/Autopay mandate for NETFLIX. Ref No: MN202609201928. -HDFC Bank");
+    assert_eq!(mandate.amount_paise, 49900);
+    assert_eq!(mandate.merchant, "NETFLIX");
+    assert_eq!(mandate.upi_ref.as_deref(), Some("MN202609201928"));
+    assert_eq!(mandate.account_mask.as_deref(), Some("1234"));
+
+    // 11. DLT Sender Header Bank Enrichment via engine::parse
+    let tx = kharcha_core::engine::parse(
+        "Alert! INR 500.00 debited for Zomato. UPI Ref 426190283012",
+        "AD-HDFCBK-T",
+        1000
+    ).unwrap();
+    assert_eq!(tx.payment.bank_name.as_deref(), Some("HDFC"));
+    assert_eq!(tx.payment.merchant, "Zomato");
+
+    // 12. Kotak Mahindra Bank Outbound UPI
+    let kotak = parsed("Sent Rs.250.00 from Kotak Bank A/c XX4312 to Chaayos on 19-Sep-26. UPI Ref: 426210928301. Bal: Rs.18,920.40.");
+    assert_eq!(kotak.amount_paise, 25000);
+    assert_eq!(kotak.merchant, "Chaayos");
+    assert_eq!(kotak.upi_ref.as_deref(), Some("426210928301"));
+    assert_eq!(kotak.account_mask.as_deref(), Some("4312"));
+    assert_eq!(kotak.balance_paise, Some(1892040));
+
+    // 13. IDFC FIRST Bank UPI Debit
+    let idfc = parsed("Paid! INR 1,200.00 debited from IDFC FIRST Bank A/c XX5567 to Apollo Pharmacy on 18-Sep-26. UPI Ref: 426102938475. Updated Bal: INR 52,190.22.");
+    assert_eq!(idfc.amount_paise, 120000);
+    assert_eq!(idfc.merchant, "Apollo Pharmacy");
+    assert_eq!(idfc.upi_ref.as_deref(), Some("426102938475"));
+    assert_eq!(idfc.account_mask.as_deref(), Some("5567"));
+    assert_eq!(idfc.balance_paise, Some(5219022));
+
+    // 14. IndusInd Bank UPI Debit (Info: format)
+    let indus = parsed("Your IndusInd Bank A/c XX9921 has been debited by Rs 420.00 on 18-Sep-26. UPI Ref no 426190283910. Info: BLINKIT. Avail Bal: Rs 14,800.00.");
+    assert_eq!(indus.amount_paise, 42000);
+    assert_eq!(indus.merchant, "BLINKIT");
+    assert_eq!(indus.upi_ref.as_deref(), Some("426190283910"));
+    assert_eq!(indus.account_mask.as_deref(), Some("9921"));
+    assert_eq!(indus.balance_paise, Some(1480000));
+
+    // 15. Federal Bank UPI Debit
+    let fed = parsed("Rs 350.00 debited from Federal Bank A/c ending in 1122 on 19-Sep-26 for UPI txn to Swiggy Instamart. UPI Ref: 426210928391. Avl Bal: Rs 9,450.00.");
+    assert_eq!(fed.amount_paise, 35000);
+    assert_eq!(fed.merchant, "Swiggy Instamart");
+    assert_eq!(fed.upi_ref.as_deref(), Some("426210928391"));
+    assert_eq!(fed.account_mask.as_deref(), Some("1122"));
+    assert_eq!(fed.balance_paise, Some(945000));
+
+    // 16. Punjab National Bank (PNB) UPI Debit
+    let pnb = parsed("Dear Customer, A/c **4589 debited for Rs.750.00 on 18-Sep-26 thru UPI: 426189201928 to BIGBASKET. Avl Bal Rs.32,150.80. PNB");
+    assert_eq!(pnb.amount_paise, 75000);
+    assert_eq!(pnb.merchant, "BIGBASKET");
+    assert_eq!(pnb.upi_ref.as_deref(), Some("426189201928"));
+    assert_eq!(pnb.account_mask.as_deref(), Some("4589"));
+    assert_eq!(pnb.balance_paise, Some(3215080));
+
+    // 17. Bank of Baroda UPI Debit
+    let bob = parsed("A/c XX7821 debited for INR 430.00 on 18-Sep-26 by UPI/426190283719/ZEPTO. Bal: INR 19,400.00. Helpline 18002584455.");
+    assert_eq!(bob.amount_paise, 43000);
+    assert_eq!(bob.merchant, "ZEPTO");
+    assert_eq!(bob.upi_ref.as_deref(), Some("426190283719"));
+    assert_eq!(bob.account_mask.as_deref(), Some("7821"));
+    assert_eq!(bob.balance_paise, Some(1940000));
+
+    // 18. Union Bank UPI Debit
+    let union = parsed("Union Bank Alert: A/C ending in 9012 debited for Rs 850.00 on 19-Sep-26. Info: UPI/426210928391/BOOKMYSHOW. Avl Bal: Rs 15,420.00.");
+    assert_eq!(union.amount_paise, 85000);
+    assert_eq!(union.merchant, "BOOKMYSHOW");
+    assert_eq!(union.upi_ref.as_deref(), Some("426210928391"));
+    assert_eq!(union.account_mask.as_deref(), Some("9012"));
+    assert_eq!(union.balance_paise, Some(1542000));
+
+    // 19. Contactless Tap & Pay POS
+    let pos = parsed("Contactless transaction of INR 1,450.00 done on ICICI Bank Debit Card XX4019 at CAFE COFFEE DAY on 19-Sep-26. Avl Bal: INR 22,100.00.");
+    assert_eq!(pos.amount_paise, 145000);
+    assert_eq!(pos.merchant, "CAFE COFFEE DAY");
+    assert_eq!(pos.account_mask.as_deref(), Some("4019"));
+    assert_eq!(pos.balance_paise, Some(2210000));
+
+    // 20. Modern Neobank & UPI App Push Notifications
+    let navi = parsed("₹200 sent to Blinkit successfully. UPI Ref: 426190283011");
+    assert_eq!(navi.amount_paise, 20000);
+    assert_eq!(navi.merchant, "Blinkit");
+    assert_eq!(navi.upi_ref.as_deref(), Some("426190283011"));
+
+    let slice = parsed("Paid ₹899 to Myntra using Slice account.");
+    assert_eq!(slice.amount_paise, 89900);
+    assert_eq!(slice.merchant, "Myntra");
+
+    let cred = parsed("Paid ₹1,850 at Blue Tokai using CRED UPI. Ref 426190283910");
+    assert_eq!(cred.amount_paise, 185000);
+    assert_eq!(cred.merchant, "Blue Tokai");
+    assert_eq!(cred.upi_ref.as_deref(), Some("426190283910"));
+}

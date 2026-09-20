@@ -36,13 +36,57 @@ pub struct ParsedTransaction {
 /// callers are guarded too; this is the re-export the FFI surface reads.
 pub const MAX_BODY_BYTES: usize = crate::parser::MAX_INPUT_BYTES;
 
+/// Resolves the issuing bank name from TRAI DLT 6-character sender ID headers
+/// (e.g. "AD-HDFCBK-T" -> "HDFC", "VM-ICICIB" -> "ICICI", "BZ-SBIINB-T" -> "SBI").
+pub fn resolve_bank_from_sender(sender: &str) -> Option<&'static str> {
+    let clean = sender.trim().to_uppercase();
+    // Strip telecom circle prefix if present (e.g. "AD-HDFCBK" -> "HDFCBK")
+    let core = if let Some(idx) = clean.find('-') {
+        let remainder = &clean[idx + 1..];
+        remainder.split('-').next().unwrap_or(remainder)
+    } else {
+        &clean
+    };
+
+    match core {
+        s if s.contains("HDFC") => Some("HDFC"),
+        s if s.contains("SBI") => Some("SBI"),
+        s if s.contains("ICICI") => Some("ICICI"),
+        s if s.contains("AXIS") => Some("Axis"),
+        s if s.contains("KOTAK") || s.contains("KBANK") => Some("Kotak"),
+        s if s.contains("PNB") => Some("PNB"),
+        s if s.contains("BOB") => Some("BOB"),
+        s if s.contains("CANARA") || s.contains("CANBNK") || s.contains("CANRAB") => Some("Canara Bank"),
+        s if s.contains("UNIONB") || s.contains("UBI") => Some("Union Bank"),
+        s if s.contains("IDFC") || s.contains("FIRSTB") => Some("IDFC"),
+        s if s.contains("INDUS") || s.contains("INDSIN") => Some("IndusInd"),
+        s if s.contains("FED") => Some("Federal Bank"),
+        s if s.contains("YESB") => Some("Yes Bank"),
+        s if s.contains("INDBNK") || s.contains("INDIAB") => Some("Indian Bank"),
+        s if s.contains("BOIND") || s.contains("BOITXN") => Some("Bank of India"),
+        s if s.contains("CBI") || s.contains("CENTBK") => Some("Central Bank of India"),
+        s if s.contains("RBL") || s.contains("RATNAK") => Some("RBL"),
+        s if s.contains("ONECRD") || s.contains("FPLONE") => Some("OneCard"),
+        s if s.contains("SCAPIA") => Some("Scapia"),
+        _ => None,
+    }
+}
+
 /// Sender-aware parse. Today every sender routes to the generic backend.
 pub fn parse(sms_body: &str, sender: &str, timestamp_ms: i64) -> Option<ParsedTransaction> {
     if sms_body.len() > MAX_BODY_BYTES {
         return None;
     }
-    let payment = parse_upi_notification(sms_body)?;
+    let mut payment = parse_upi_notification(sms_body)?;
     let sender_norm = sender.trim().to_uppercase();
+
+    // Enrich missing bank_name from DLT sender header if body was anonymous
+    if payment.bank_name.is_none() {
+        if let Some(bank) = resolve_bank_from_sender(&sender_norm) {
+            payment.bank_name = Some(bank.to_string());
+        }
+    }
+
     let content_hash = content_hash(&payment);
     Some(ParsedTransaction { payment, sender: sender_norm, timestamp_ms, content_hash })
 }
