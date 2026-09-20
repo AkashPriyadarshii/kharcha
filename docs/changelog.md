@@ -2,6 +2,18 @@
 
 All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
 
+## [v0.1.2] — 2026-09-20 — Core v0.1.1 sync (push-notification deep parse)
+
+- **kharcha-core v0.1.1 auto-release pipeline live**: version bump on main push now tags + builds the Android `.so` pair + Kotlin bindings + GitHub release in one run.
+- **New parser arms from the 40-row UPI-app notification corpus** (GPay, PhonePe, Paytm, Amazon Pay, BHIM, CRED):
+  - `credited by <name>` income payees ("credited by Kiran" sender path).
+  - Underscore VPA handles: `jio_recharge@ybl` → Jio.
+  - Wallet-brand merchants: "credited to your Paytm wallet" → Paytm.
+  - Refund lookahead extended for "processed/completed" tails.
+- **Cross-channel dedupe contract tests**: push notification + bank SMS, same UPI ref → one record; ref-less redelivery → content-hash gate.
+- 73/73 `kharcha-core` tests (24 unit + 36 parity + 13 notification), zero clippy warnings.
+- **APK rebuilt** with the fresh v0.1.1 `.so` (same arm64-v8a build, versionCode 3).
+
 ## [v0.1.1] — 2026-09-20 — Pan-Indian Parser, P2P Contact Resolution
 
 - **kharcha-core pan-Indian parser upgrade:**
@@ -9,11 +21,11 @@ All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
   - Capitalized direct payee extraction — AMAZON, SWIGGY, ZOMATO, etc. without prepositions.
   - Indian mobile VPA normalization: `+91`/`91` prefixes stripped to canonical 10-digit form.
   - Full regex coverage added: SBI, HDFC, ICICI, Axis, Kotak, PNB, BOB, Canara, Union Bank, IDFC FIRST, IndusInd, Federal, Yes Bank.
-  - UPI app notification formats: PhonePe, GPay, Paytm, CRED, BHIM, Navi, Tata Neu.
+  - UPI app notification formats: PhonePe, GPay, Paytm, Amazon Pay, CRED, BHIM (generic app-push arms cover Navi/Tata Neu templates).
   - Credit card templates: OneCard, Scapia, HDFC CC, ICICI CC, SBI Card.
   - New formats: UPI Lite, Rupay Credit on UPI, NACH / SI mandates, ATM withdrawals, POS/NFC contactless.
   - Non-transaction filter hardened: loan offers, EMI conversion promos, bill generation reminders, pre-approved credit alerts — all rejected before parsing.
-  - 60/60 tests passing (24 unit + 36 parity).
+  - 73/73 tests passing (24 unit + 36 parity + 13 notification corpus).
 - **P2P contact resolution:**
   - `CaptureEngine.resolveMerchantName` resolves phone-number VPAs (e.g. `9876543210@paytm`) to device contact names via `ContactsContract.PhoneLookup` — 100% offline.
   - Fallback: `"UPI User (XXXX)"` when no contact match.

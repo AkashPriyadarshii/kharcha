@@ -4,12 +4,16 @@
 
 ## Current status
 
-**v0.1.1 — Pan-Indian parser + P2P contact resolution. Released 2026-09-20.**
+**v0.1.2 — Core v0.1.1 sync (push-notification deep parse). Released 2026-09-20.**
 
-`kharcha-v0.1.1-arm64-v8a.apk` (33.4 MB, versionCode 2) published to [GitHub Releases](https://github.com/AkashPriyadarshii/kharcha/releases/tag/v0.1.1).
+`kharcha-v0.1.2-arm64-v8a.apk` (~35 MB, versionCode 3) signed release APK built. Publishing to [GitHub Releases](https://github.com/AkashPriyadarshii/kharcha/releases/tag/v0.1.2).
 
-**What shipped in v0.1.1:**
-- `kharcha-core` now covers all major Indian banks (SBI, HDFC, ICICI, Axis, Kotak, PNB, BOB, Canara, Union, IDFC FIRST, IndusInd, Federal, Yes Bank) + all UPI apps (PhonePe, GPay, Paytm, CRED, BHIM, Navi, Tata Neu). ATM withdrawal, UPI Lite, Rupay Credit on UPI, NACH mandate formats added. Non-transaction filter hardened to reject loan offers, EMI promos, bill reminders, pre-approved credit alerts. 60/60 tests passing.
+**What shipped in v0.1.2:**
+- `kharcha-core` v0.1.1 auto-release pipeline live. New parser arms synced: `credited by <name>` income payees, underscore VPA handles (`jio_recharge@ybl`), wallet-brand merchants ("credited to your Paytm wallet"), refund lookahead extended. 73/73 tests (24 unit + 36 parity + 13 notification corpus), zero clippy warnings.
+- Cross-channel dedupe contract tests verified: push notification + bank SMS same UPI ref → one record; ref-less redelivery → content-hash gate.
+
+**What shipped in v0.1.1 (same build cycle, earlier tag):**
+- `kharcha-core` now covers all major Indian banks (SBI, HDFC, ICICI, Axis, Kotak, PNB, BOB, Canara, Union, IDFC FIRST, IndusInd, Federal, Yes Bank) + all UPI apps (PhonePe, GPay, Paytm, Amazon Pay, CRED, BHIM). ATM withdrawal, UPI Lite, Rupay Credit on UPI, NACH mandate formats added. Non-transaction filter hardened to reject loan offers, EMI promos, bill reminders, pre-approved credit alerts. 73/73 tests passing (24 unit + 36 parity + 13 notification corpus).
 - P2P contact resolution: `CaptureEngine.resolveMerchantName` resolves phone-number VPAs to device contact names via `ContactsContract.PhoneLookup`, 100% offline.
 - Onboarding step 1 adds "P2P Contact Names (Optional)" permission card. Settings capture section shows contact resolution status row.
 
