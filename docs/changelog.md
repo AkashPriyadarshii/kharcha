@@ -2,6 +2,29 @@
 
 All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
 
+## [v0.1.1] — 2026-09-20 — Pan-Indian Parser, P2P Contact Resolution
+
+- **kharcha-core pan-Indian parser upgrade:**
+  - ATM cash withdrawal detection (`ATM_WITHDRAWAL_RE`) across all major banks.
+  - Capitalized direct payee extraction — AMAZON, SWIGGY, ZOMATO, etc. without prepositions.
+  - Indian mobile VPA normalization: `+91`/`91` prefixes stripped to canonical 10-digit form.
+  - Full regex coverage added: SBI, HDFC, ICICI, Axis, Kotak, PNB, BOB, Canara, Union Bank, IDFC FIRST, IndusInd, Federal, Yes Bank.
+  - UPI app notification formats: PhonePe, GPay, Paytm, CRED, BHIM, Navi, Tata Neu.
+  - Credit card templates: OneCard, Scapia, HDFC CC, ICICI CC, SBI Card.
+  - New formats: UPI Lite, Rupay Credit on UPI, NACH / SI mandates, ATM withdrawals, POS/NFC contactless.
+  - Non-transaction filter hardened: loan offers, EMI conversion promos, bill generation reminders, pre-approved credit alerts — all rejected before parsing.
+  - 60/60 tests passing (24 unit + 36 parity).
+- **P2P contact resolution:**
+  - `CaptureEngine.resolveMerchantName` resolves phone-number VPAs (e.g. `9876543210@paytm`) to device contact names via `ContactsContract.PhoneLookup` — 100% offline.
+  - Fallback: `"UPI User (XXXX)"` when no contact match.
+  - `READ_CONTACTS` permission added to `AndroidManifest.xml`.
+- **Onboarding v2:**
+  - New "P2P Contact Names (Optional)" permission card in onboarding step 1.
+  - Battery/background keep-alive card renumbered from 3 → 4.
+  - Settings capture section adds "P2P Contact Resolution" action row.
+- **Version bump:** `versionCode 2`, `versionName 0.1.1`.
+- **APK:** `kharcha-v0.1.1-arm64-v8a.apk` (33.4 MB, arm64-v8a) on [GitHub Releases](https://github.com/AkashPriyadarshii/kharcha/releases/tag/v0.1.1).
+
 ## [v0.1.0] — 2026-09-17 — Final v0.1 Release Build & UX Polish
 
 - **Release Status:** Kharcha v0.1.0 completes now with signed arm64 release APK (`kharcha-armv8a-release.apk` & `app-release.apk`) published to GitHub Releases. Remaining edge-case bugs scheduled for wrap-up on September 1 evening at 6:00 PM IST.
