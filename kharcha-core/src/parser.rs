@@ -71,6 +71,14 @@ static_re!(
     r"UPI\/(?:(?:DR|CR|P2A|P2M|P2P|REV)\/)?([0-9]+)\/([A-Za-z0-9][A-Za-z0-9 &\-_]{0,60}?)(?=[ \t\n\x0B\f\r]*\.[ \t\n\x0B\f\r]+|[ \t\n\x0B\f\r]*\.$|[ \t\n\x0B\f\r]+(?:Avl|Available|Bal|Balance|Limit|Ref|UPI)|\/|$)"
 );
 static_re!(
+    INCOME_CREDITED_BY_RE,
+    r"credited[ \t\n\x0B\f\r]+(?:by|with)[ \t\n\x0B\f\r]+(?!(?:rs\.?|inr|₹|you|your|upi|ref|bank)\b)([A-Za-z0-9_][A-Za-z0-9 &.\-_@]{1,60}?)(?=[ \t\n\x0B\f\r]+(?:to|into|in|via|using|on|for)|[ \t\n\x0B\f\r]*\.?$|\(|Ref|UPI|Bal)"
+);
+static_re!(
+    WALLET_MERCHANT_RE,
+    r"(?:to|in|into|in)[ \t\n\x0B\f\r]+(?:your[ \t\n\x0B\f\r]+)?([A-Za-z0-9][A-Za-z0-9 &.\-]{1,30}?)[ \t\n\x0B\f\r]+wallet(?=[ \t\n\x0B\f\r]*\.|$)"
+);
+static_re!(
     GPAY_MERCHANT_RE,
     r"·[ \t\n\x0B\f\r]*([A-Za-z0-9][A-Za-z0-9 &.\-]{1,60}?)(?=[ \t\n\x0B\f\r]*·|[ \t\n\x0B\f\r]+UPI|[ \t\n\x0B\f\r]+Ref|$)"
 );
@@ -83,14 +91,14 @@ static_re!(
     RECIPIENT_MERCHANT_RE,
     concat!(
         r"(?:spent on .*? at|(?:paid|payment|transferred|sent)[ \t\n\x0B\f\r]+(?:(?:₹|rs\.?|inr)[ \t\n\x0B\f\r]*[0-9,.]+[ \t\n\x0B\f\r]+)?(?:to|at|on)|paid to|transferred to|sent to|payment to|sent .{0,12}to|done at|\bto\b|\bat\b)[ \t\n\x0B\f\r]+",
-        r"(?!(?:you|rs\.?|inr|₹)\b)(?![0-9]{1,7}\b|[0-9]{11,}\b(?!@))([+A-Za-z0-9][A-Za-z0-9 &.\-@]{1,60}?)(?=,|\.|$|:|[ \t\n\x0B\f\r]+(?:of[ \t\n\x0B\f\r]*(?:₹|Rs\.?|INR|[0-9])|upi|ref|utr|trans|txn|bal|balance|on[ \t\n\x0B\f\r]+[0-9]|on[ \t\n\x0B\f\r]+[A-Za-z]|at[ \t\n\x0B\f\r]+[0-9]|via|bank|a/c|by|from|using|credited|debited|successful|is[ \t\n\x0B\f\r]+successful|was[ \t\n\x0B\f\r]+successful))",
+        r"(?!(?:you|your|rs\.?|inr|₹)\b)(?![0-9]{1,7}\b|[0-9]{11,}\b(?!@))([+A-Za-z0-9_][A-Za-z0-9 &.\-_@]{1,60}?)(?=,|\.|$|:|[ \t\n\x0B\f\r]+(?:of[ \t\n\x0B\f\r]*(?:₹|Rs\.?|INR|[0-9])|upi|ref|utr|trans|txn|bal|balance|on[ \t\n\x0B\f\r]+[0-9]|on[ \t\n\x0B\f\r]+[A-Za-z]|at[ \t\n\x0B\f\r]+[0-9]|via|bank|a/c|by|from|using|credited|debited|successful|is[ \t\n\x0B\f\r]+successful|was[ \t\n\x0B\f\r]+successful))",
     )
 );
 static_re!(
     FALLBACK_MERCHANT_RE,
     concat!(
         r"(?:from|towards|for|debited (?:at|from))[ \t\n\x0B\f\r]+",
-        r"(?!(?:you|your|a/c|acct|account|rs\.?|inr|₹)\b)(?![0-9]{1,7}\b|[0-9]{11,}\b)([A-Za-z0-9][A-Za-z0-9 &.\-@]{1,60}?)(?=,|\.|$|:|[ \t\n\x0B\f\r]+(?:of[ \t\n\x0B\f\r]*(?:₹|Rs\.?|INR|[0-9])|upi|ref|utr|trans|txn|bal|balance|on[ \t\n\x0B\f\r]+[0-9]|on[ \t\n\x0B\f\r]+[A-Za-z]|at[ \t\n\x0B\f\r]+[0-9]|via|bank|a/c|by|from|using|credited|debited|successful|is[ \t\n\x0B\f\r]+successful|was[ \t\n\x0B\f\r]+successful))",
+        r"(?!(?:you|your|a/c|acct|account|rs\.?|inr|₹)\b)(?![0-9]{1,7}\b|[0-9]{11,}\b)([A-Za-z0-9_][A-Za-z0-9 &.\-_@]{1,60}?)(?=,|\.|$|:|[ \t\n\x0B\f\r]+(?:of[ \t\n\x0B\f\r]*(?:₹|Rs\.?|INR|[0-9])|upi|ref|utr|trans|txn|bal|balance|on[ \t\n\x0B\f\r]+[0-9]|on[ \t\n\x0B\f\r]+[A-Za-z]|at[ \t\n\x0B\f\r]+[0-9]|via|bank|a/c|by|from|using|credited|debited|successful|is[ \t\n\x0B\f\r]+successful|was[ \t\n\x0B\f\r]+successful))",
     )
 );
 static_re!(
@@ -172,7 +180,7 @@ static_re!(
 static_re!(RECEIVED_BY_RE, r"received[ \t\n\x0B\f\r]+(?:by|for|towards|at)\b");
 static_re!(
     REFUND_MERCHANT_RE,
-    r"refund[ \t\n\x0B\f\r]+(?:of[ \t\n\x0B\f\r]+(?:(?:₹|rs\.?|inr)[ \t\n\x0B\f\r]*[0-9,.]+[ \t\n\x0B\f\r]+)?)?from[ \t\n\x0B\f\r]+([A-Za-z0-9][A-Za-z0-9 &.\-@]{1,60}?)(?=,|\.|$|:|[ \t\n\x0B\f\r]+(?:upi|ref|utr|trans|txn|bal|avail|avl))"
+    r"refund[ \t\n\x0B\f\r]+(?:of[ \t\n\x0B\f\r]+(?:(?:₹|rs\.?|inr)[ \t\n\x0B\f\r]*[0-9,.]+[ \t\n\x0B\f\r]+)?)?from[ \t\n\x0B\f\r]+([A-Za-z0-9_][A-Za-z0-9 &.\-_@]{1,60}?)(?=,|\.|$|:|[ \t\n\x0B\f\r]+(?:upi|ref|utr|trans|txn|bal|avail|avl|processed|completed|successful|credited|paid|is|was))"
 );
 static_re!(
     INCOME_SENDER_RE,
@@ -438,6 +446,16 @@ pub fn parse_upi_notification(text: &str) -> Option<ParsedPayment> {
         }
     }
 
+    // Wallet credit: "credited to your Paytm wallet" → the wallet brand, not
+    // the possessive phrase. Only when no real payee resolved yet.
+    if merchant.as_deref().is_none_or(|m: &str| m == "Unknown") {
+        if let Some(cand) = group1(&WALLET_MERCHANT_RE, clean).map(|g| clean_merchant(&g)) {
+            if cand != "Unknown" {
+                merchant = Some(cand);
+            }
+        }
+    }
+
     let mut used_fallback_merchant = false;
     if merchant.as_deref().is_none_or(|m: &str| m == "Unknown") {
         if let Some(cand) = group1(&FALLBACK_MERCHANT_RE, clean).map(|g| clean_merchant(&g)) {
@@ -456,6 +474,14 @@ pub fn parse_upi_notification(text: &str) -> Option<ParsedPayment> {
         }
         if merchant.as_deref().is_none_or(|m: &str| m == "Unknown") {
             if let Some(sender) = group1(&INCOME_SENDER_RE, clean) {
+                let cand = clean_merchant(&sender);
+                if cand.to_lowercase() != "you" && cand.to_lowercase() != "i" {
+                    merchant = Some(cand);
+                }
+            }
+        }
+        if merchant.as_deref().is_none_or(|m: &str| m == "Unknown") {
+            if let Some(sender) = group1(&INCOME_CREDITED_BY_RE, clean) {
                 let cand = clean_merchant(&sender);
                 if cand.to_lowercase() != "you" && cand.to_lowercase() != "i" {
                     merchant = Some(cand);
