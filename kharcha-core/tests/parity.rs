@@ -546,4 +546,23 @@ fn modern_indian_banks_benchmark_corpus() {
     assert_eq!(cred.amount_paise, 185000);
     assert_eq!(cred.merchant, "Blue Tokai");
     assert_eq!(cred.upi_ref.as_deref(), Some("426190283910"));
+
+    // 21. ATM Cash Withdrawal
+    let atm = parsed("A/c XXXXXX5715 debited for Rs 2000; ATM WDL. A/c Bal (sub to chq realisatn) Rs 13,286.23 on 24APR 21:19hr.");
+    assert_eq!(atm.amount_paise, 200000);
+    assert_eq!(atm.merchant, "ATM Cash Withdrawal");
+    assert_eq!(atm.account_mask.as_deref(), Some("5715"));
+    assert_eq!(atm.balance_paise, Some(1328623));
+
+    // 22. Direct Payee Without Prepositions
+    let direct = parsed("Transferred INR 500.00 Ramesh Kumar Ref: 123456789012");
+    assert_eq!(direct.amount_paise, 50000);
+    assert_eq!(direct.merchant, "Ramesh Kumar");
+    assert_eq!(direct.upi_ref.as_deref(), Some("123456789012"));
+
+    // 23. Country-Coded Indian Mobile Number VPA Normalization
+    let p_plus91 = parsed("Paid ₹500 to +919876543210@ybl via UPI. Ref 111122223333");
+    assert_eq!(p_plus91.merchant, "9876543210");
+    let p_91 = parsed("Paid ₹350 to 919876543210@paytm using UPI. Ref 222233334444");
+    assert_eq!(p_91.merchant, "9876543210");
 }
