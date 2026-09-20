@@ -26,21 +26,24 @@ Manual logging is friction; cloud sync is a trust tax. Kharcha kills both:
 - **No doubles.** Triple-signal dedupe: ref + 5-min window + content hash.
 - **Zero AI.** Categorization is a local rule map. Deterministic, auditable.
 - **Offline by design.** No internet permission in the product. No account, no Supabase, no Firebase.
+- **P2P contact resolution** — phone-number VPAs (9876543210@paytm) resolved to your contacts' names, 100% offline.
 
 ## 📲 Download
 
 | | |
 |---|---|
-| **Latest release** | **v0.1.0** |
-| **APK** | [`kharcha-armv8a-release.apk`](https://github.com/AkashPriyadarshii/kharcha/releases/latest/download/kharcha-armv8a-release.apk) (~29 MB) |
-| **Requirements** | Android 12+ (arm64) |
+| **Latest release** | **v0.1.1** |
+| **APK** | [`kharcha-v0.1.1-arm64-v8a.apk`](https://github.com/AkashPriyadarshii/kharcha/releases/latest/download/kharcha-v0.1.1-arm64-v8a.apk) (~33 MB) |
+| **Requirements** | Android 12+ (arm64-v8a) |
 
 **Install:** build or grab the APK → open it → allow "Install unknown apps" → done.
 
 ## ✨ Features
 
 - **Automated UPI & SMS Capture** — notifications + SMS banking alerts, multi-part join, real-time.
-- **Smart Spam Filter** — OTPs, recharge promos, collect requests, failed/pending alerts rejected in Rust before parsing.
+- **Pan-Indian Bank Coverage** — SBI, HDFC, ICICI, Axis, Kotak, PNB, BOB, Canara, Union, IDFC FIRST, IndusInd, Federal, Yes Bank + all major UPI apps.
+- **Smart Spam Filter** — OTPs, recharge promos, collect requests, failed/pending alerts, loan offers, EMI promos rejected in Rust before parsing.
+- **P2P Contact Names** — phone-number VPAs resolved to device contacts offline via ContactsContract.
 - **Auto Wallets** — bank/account masks in messages auto-create wallets; message balance updates them.
 - **Monthly Budgets** — per-category caps with progress bars, over-limit turns red.
 - **Rules Engine (zero AI)** — normalize + longest-pattern match, learned rules beat builtin. Teach a category from any transaction; it remembers the merchant.
@@ -57,10 +60,10 @@ Manual logging is friction; cloud sync is a trust tax. Kharcha kills both:
 
 | Concern | Choice |
 |---|---|
-| Core engine | Rust (`kharcha-core`), UniFFI bindings, 59/59 tests (24 unit + 35 parity) |
+| Core engine | Rust (`kharcha-core`), UniFFI bindings, 60/60 tests (24 unit + 36 parity) |
 | App | Kotlin + Jetpack Compose, Android 12+ (minSdk 32) |
 | Local DB | Room (SQLite) — the only store |
-| Native | JNA, BiometricPrompt, NotificationListenerService |
+| Native | JNA, BiometricPrompt, NotificationListenerService, ContactsContract |
 | Network | none |
 
 ## 🏗 Layout

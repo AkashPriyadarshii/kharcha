@@ -4,10 +4,14 @@
 
 ## Current status
 
-**v0.1.0 — Kotlin + Rust only. Released & Installed on Physical Device (2026-09-17).**
+**v0.1.1 — Pan-Indian parser + P2P contact resolution. Released 2026-09-20.**
 
-Kharcha v0.1.0 completes now with signed arm64 release APK (`kharcha-armv8a-release.apk` & `app-release.apk`) published to GitHub Releases and installed on connected hardware (`T8EUQK7DUKOBXK5L`).
-Remaining edge-case bugs and minor refinements will be resolved on September 1 evening at 6:00 PM IST.
+`kharcha-v0.1.1-arm64-v8a.apk` (33.4 MB, versionCode 2) published to [GitHub Releases](https://github.com/AkashPriyadarshii/kharcha/releases/tag/v0.1.1).
+
+**What shipped in v0.1.1:**
+- `kharcha-core` now covers all major Indian banks (SBI, HDFC, ICICI, Axis, Kotak, PNB, BOB, Canara, Union, IDFC FIRST, IndusInd, Federal, Yes Bank) + all UPI apps (PhonePe, GPay, Paytm, CRED, BHIM, Navi, Tata Neu). ATM withdrawal, UPI Lite, Rupay Credit on UPI, NACH mandate formats added. Non-transaction filter hardened to reject loan offers, EMI promos, bill reminders, pre-approved credit alerts. 60/60 tests passing.
+- P2P contact resolution: `CaptureEngine.resolveMerchantName` resolves phone-number VPAs to device contact names via `ContactsContract.PhoneLookup`, 100% offline.
+- Onboarding step 1 adds "P2P Contact Names (Optional)" permission card. Settings capture section shows contact resolution status row.
 
 Kotlin Compose, Dart, Supabase, and the legacy Kotlin parser are gone from the repo.
 `lib/`, `test/`, `android/` (incl. `parser-core`), `supabase/`, `pubspec.*` deleted.
@@ -118,10 +122,7 @@ notification capture), then Release 1.
 
 ## Next up
 
-1. Device smoke test — sideload `android-app/app/build/outputs/apk/release/kharcha-armv8a-release.apk`,
-   grant SMS + notification access, verify capture/dedupe live, check
-   `filesDir/kharcha.log` for capture errors.
-2. Autopay/recurring engine (Rust-side pattern detect + due roll).
-3. Release 1 — tagged release APK on GitHub.
-4. Banks data-driven: `BankFormat` engine + HDFC/SBI/ICICI; remaining banks only
-   when live captures demand.
+1. Device smoke test — sideload `kharcha-v0.1.1-arm64-v8a.apk`, grant SMS + notification + contacts access, verify P2P name resolution on a real UPI transaction.
+2. Autopay/recurring engine — Rust-side pattern detect + due roll.
+3. Reports upgrade — category trend, income vs spend breakdown.
+4. v0.1.2 — ongoing bank coverage gaps from live captures.
