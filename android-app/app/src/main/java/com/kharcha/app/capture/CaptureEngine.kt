@@ -83,11 +83,12 @@ object CaptureEngine {
             existing = existing,
         )) {
             is CaptureDecision.Insert -> {
-                val categoryId = categorize(payment.merchant, txnDao.allRules())
+                val merchantName = resolveMerchantName(appContext, payment.merchant)
+                val categoryId = categorize(merchantName, txnDao.allRules())
                 val txnId = txnDao.insert(
                     TransactionRow(
                         amountPaise = payment.amountPaise,
-                        merchant = payment.merchant,
+                        merchant = merchantName,
                         categoryId = categoryId,
                         upiRef = payment.upiRef,
                         bankName = payment.bankName,
@@ -110,7 +111,7 @@ object CaptureEngine {
                     payment.balancePaise?.let { txnDao.updateWalletBalance(walletId, it) }
                 }
                 UserPrefs.stampCapture(appContext)
-                if (!quiet) CaptureNotify.inserted(appContext, payment.merchant, payment.amountPaise, null)
+                if (!quiet) CaptureNotify.inserted(appContext, merchantName, payment.amountPaise, null)
                 checkBudgetAlerts(appContext, txnDao, categoryId)
                 Pairing.maybePair(txnDao, txnId, payment.amountPaise, payment.isIncome, parsed.timestampMs)
                 CoroutineScope(Dispatchers.IO).launch {
@@ -129,6 +130,39 @@ object CaptureEngine {
                 }
                 IngestResult.Duplicate(decision.backfillRef)
             }
+        }
+    }
+
+    /** Resolves 10-digit Indian phone numbers against Android ContactsContract if permission is granted. */
+    fun resolveMerchantName(context: android.content.Context, rawMerchant: String): String {
+        if (!rawMerchant.matches(Regex("^[6-9]\\d{9}$"))) return rawMerchant
+        if (androidx.core.content.ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.READ_CONTACTS
+            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            return "UPI User (${rawMerchant.takeLast(4)})"
+        }
+        return try {
+            val uri = android.net.Uri.withAppendedPath(
+                android.provider.ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
+                android.net.Uri.encode(rawMerchant)
+            )
+            context.contentResolver.query(
+                uri,
+                arrayOf(android.provider.ContactsContract.PhoneLookup.DISPLAY_NAME),
+                null,
+                null,
+                null
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    cursor.getString(0)?.takeIf { it.isNotBlank() } ?: "UPI User (${rawMerchant.takeLast(4)})"
+                } else {
+                    "UPI User (${rawMerchant.takeLast(4)})"
+                }
+            } ?: "UPI User (${rawMerchant.takeLast(4)})"
+        } catch (_: Exception) {
+            "UPI User (${rawMerchant.takeLast(4)})"
         }
     }
 
