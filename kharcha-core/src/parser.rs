@@ -83,7 +83,7 @@ static_re!(
     RECIPIENT_MERCHANT_RE,
     concat!(
         r"(?:spent on .*? at|(?:paid|payment|transferred|sent)[ \t\n\x0B\f\r]+(?:(?:₹|rs\.?|inr)[ \t\n\x0B\f\r]*[0-9,.]+[ \t\n\x0B\f\r]+)?(?:to|at|on)|paid to|transferred to|sent to|payment to|sent .{0,12}to|done at|\bto\b|\bat\b)[ \t\n\x0B\f\r]+",
-        r"(?!(?:you|rs\.?|inr|₹)\b)(?![0-9]{1,7}\b|[0-9]{11,}\b)([A-Za-z0-9][A-Za-z0-9 &.\-@]{1,60}?)(?=,|\.|$|:|[ \t\n\x0B\f\r]+(?:of[ \t\n\x0B\f\r]*(?:₹|Rs\.?|INR|[0-9])|upi|ref|utr|trans|txn|bal|balance|on[ \t\n\x0B\f\r]+[0-9]|on[ \t\n\x0B\f\r]+[A-Za-z]|at[ \t\n\x0B\f\r]+[0-9]|via|bank|a/c|by|from|using|credited|debited|successful|is[ \t\n\x0B\f\r]+successful|was[ \t\n\x0B\f\r]+successful))",
+        r"(?!(?:you|rs\.?|inr|₹)\b)(?![0-9]{1,7}\b|[0-9]{11,}\b(?!@))([+A-Za-z0-9][A-Za-z0-9 &.\-@]{1,60}?)(?=,|\.|$|:|[ \t\n\x0B\f\r]+(?:of[ \t\n\x0B\f\r]*(?:₹|Rs\.?|INR|[0-9])|upi|ref|utr|trans|txn|bal|balance|on[ \t\n\x0B\f\r]+[0-9]|on[ \t\n\x0B\f\r]+[A-Za-z]|at[ \t\n\x0B\f\r]+[0-9]|via|bank|a/c|by|from|using|credited|debited|successful|is[ \t\n\x0B\f\r]+successful|was[ \t\n\x0B\f\r]+successful))",
     )
 );
 static_re!(
@@ -96,6 +96,18 @@ static_re!(
 static_re!(
     MANDATE_MERCHANT_RE,
     r"(?:mandate|autopay|standing instruction|nach|si|auto-debit|subscription)[ \t\n\x0B\f\r]+(?:for|towards|to)[ \t\n\x0B\f\r]+([A-Za-z0-9][A-Za-z0-9 &.\-@]{1,60}?)(?=,|\.|$|:|[ \t\n\x0B\f\r]+(?:of[ \t\n\x0B\f\r]*(?:₹|Rs\.?|INR|[0-9])|upi|ref|utr|trans|txn|bal|balance|on|via|using|successful|is|was))"
+);
+static DIRECT_PAYEE_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(concat!(
+        r"(?i:(?:transferred|sent|paid)[ \t\n\x0B\f\r]+(?:(?:₹|rs\.?|inr)[ \t\n\x0B\f\r]*[0-9,.]+[ \t\n\x0B\f\r]+|[0-9,.]+[ \t\n\x0B\f\r]*(?:₹|rs\.?|inr)[ \t\n\x0B\f\r]+))",
+        r"(?!(?i:(?:from|using|via|on|at|to|through|for|is|was|by|your|a/c|acct|account|rs\.?|inr|₹|instantly|successfully))\b)",
+        r"([A-Z][A-Za-z0-9 &.\-@]{1,40}?)",
+        r"(?=[ \t\n\x0B\f\r]+(?i:(?:via|using|on|Ref|UPI|UTR|is|was|successful|successfully))|[ \t\n\x0B\f\r]*[.,:]|$)"
+    )).unwrap()
+});
+static_re!(
+    ATM_WITHDRAWAL_RE,
+    r"\b(?:atm[ \t\n\x0B\f\r]*(?:wdl|withdrawal|cash|txn)|cash[ \t\n\x0B\f\r]*withdrawal|withdrawn[ \t\n\x0B\f\r]*(?:from|at)[ \t\n\x0B\f\r]*atm|cash[ \t\n\x0B\f\r]*dispensed|nfs[ \t\n\x0B\f\r]*(?:\/|atm)|e-atm)\b"
 );
 static_re!(
     UPI_REF_RE,
@@ -204,6 +216,24 @@ fn capitalize_first(lower: &str) -> String {
     }
 }
 
+fn normalize_mobile(s: &str) -> Option<&str> {
+    let stripped = if let Some(rest) = s.strip_prefix("+91") {
+        rest
+    } else if let Some(rest) = s.strip_prefix("91") {
+        rest
+    } else {
+        s
+    };
+    if stripped.len() == 10
+        && stripped.chars().all(|c| c.is_ascii_digit())
+        && stripped.starts_with(['6', '7', '8', '9'])
+    {
+        Some(stripped)
+    } else {
+        None
+    }
+}
+
 fn clean_merchant(raw: &str) -> String {
     let mut name = raw.trim().to_string();
 
@@ -221,6 +251,8 @@ fn clean_merchant(raw: &str) -> String {
             name = "Google Pay Merchant".to_string();
         } else if lower_user.starts_with("phonepe") {
             name = "PhonePe Merchant".to_string();
+        } else if let Some(mobile) = normalize_mobile(&vpa_user) {
+            name = mobile.to_string();
         } else {
             let raw_handle = vpa_user.split(['.', '_', '-']).next().unwrap_or("");
             let cleaned = raw_handle.trim_end_matches(|c: char| c.is_ascii_digit());
@@ -232,6 +264,8 @@ fn clean_merchant(raw: &str) -> String {
                 name = vpa_user;
             }
         }
+    } else if let Some(mobile) = normalize_mobile(&name) {
+        name = mobile.to_string();
     }
 
     // 2. Strip trailing keywords often captured in loose boundary matches.
@@ -395,6 +429,15 @@ pub fn parse_upi_notification(text: &str) -> Option<ParsedPayment> {
         }
     }
 
+    // Direct payee without prepositions: "Transferred INR 500.00 Ramesh Kumar Ref 1234"
+    if merchant.as_deref().is_none_or(|m: &str| m == "Unknown") {
+        if let Some(cand) = group1(&DIRECT_PAYEE_RE, clean).map(|g| clean_merchant(&g)) {
+            if cand != "Unknown" {
+                merchant = Some(cand);
+            }
+        }
+    }
+
     let mut used_fallback_merchant = false;
     if merchant.as_deref().is_none_or(|m: &str| m == "Unknown") {
         if let Some(cand) = group1(&FALLBACK_MERCHANT_RE, clean).map(|g| clean_merchant(&g)) {
@@ -428,7 +471,13 @@ pub fn parse_upi_notification(text: &str) -> Option<ParsedPayment> {
             }
         }
     }
-    let merchant = merchant.unwrap_or_else(|| "Unknown".to_string());
+    let mut merchant = merchant.unwrap_or_else(|| "Unknown".to_string());
+    if !is_income
+        && is_match(&ATM_WITHDRAWAL_RE, clean)
+        && (merchant == "Unknown" || merchant.to_lowercase().contains("atm"))
+    {
+        merchant = "ATM Cash Withdrawal".to_string();
+    }
 
     // 4. UPI Ref / UTR extraction.
     if upi_ref.is_none() {
