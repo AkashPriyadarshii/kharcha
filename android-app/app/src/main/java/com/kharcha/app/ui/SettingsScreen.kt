@@ -83,9 +83,11 @@ fun SettingsScreen(
     categories: List<Category>,
     captureSetup: CaptureSetup,
     batteryIgnored: Boolean = true,
+    contactsGranted: Boolean = false,
     lockEnrollable: Boolean,
     onRequestSms: () -> Unit,
     onRequestNotifications: () -> Unit,
+    onRequestContacts: () -> Unit = {},
     onOpenListenerSettings: () -> Unit,
     onOpenAppSettings: () -> Unit,
     onRequestIgnoreBattery: () -> Unit,
@@ -279,6 +281,14 @@ fun SettingsScreen(
                     isDone = batteryIgnored,
                     actionText = "Exempt",
                     onAction = onRequestIgnoreBattery,
+                )
+                HorizontalDivider(Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                SettingActionRow(
+                    title = "P2P Contact Resolution",
+                    subtitle = if (contactsGranted) "Active · Resolving phone numbers to contacts offline" else "Optional · Phone numbers in UPI shown as raw VPA",
+                    isDone = contactsGranted,
+                    actionText = "Enable",
+                    onAction = onRequestContacts,
                 )
                 HorizontalDivider(Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                 SettingActionRow(
