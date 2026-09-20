@@ -6,6 +6,11 @@
   <a href="https://github.com/AkashPriyadarshii/kharcha/releases/latest"><img src="https://img.shields.io/github/v/release/AkashPriyadarshii/kharcha?style=flat-square&color=0A6B4D" alt="Latest Release"></a>
   <a href="https://github.com/AkashPriyadarshii/kharcha/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-All%20Rights%20Reserved-red?style=flat-square" alt="License"></a>
   <a href="https://AkashPriyadarshii.github.io/kharcha/"><img src="https://img.shields.io/badge/website-kharcha.github.io-0A6B4D?style=flat-square" alt="Website"></a>
+
+  <br /><br />
+  <img src="screenshots/demo-hook.webp" width="340" alt="Kharcha 0.18ms Parse Demo" style="border-radius: 20px;" />
+  <br />
+  <sub>⚡ <em>Incoming UPI alert parsed on-device in 0.18ms via embedded Rust engine</em></sub>
 </div>
 
 ---
