@@ -4,12 +4,27 @@
 
 ## Current status
 
-**v0.1.1 — Pan-Indian parser + P2P contact resolution. Released 2026-09-20.**
+**v0.1.2 — Autopay Mandates, Reports Upgrade, Pan-Indian Core Sync. Released 2026-09-20.**
 
-`kharcha-v0.1.1-arm64-v8a.apk` (33.4 MB, versionCode 2) published to [GitHub Releases](https://github.com/AkashPriyadarshii/kharcha/releases/tag/v0.1.1).
+`kharcha-v0.1.2-arm64-v8a.apk` (~34 MB, versionCode 3) signed release APK built and published to [GitHub Releases](https://github.com/AkashPriyadarshii/kharcha/releases/tag/v0.1.2).
 
-**What shipped in v0.1.1:**
-- `kharcha-core` now covers all major Indian banks (SBI, HDFC, ICICI, Axis, Kotak, PNB, BOB, Canara, Union, IDFC FIRST, IndusInd, Federal, Yes Bank) + all UPI apps (PhonePe, GPay, Paytm, CRED, BHIM, Navi, Tata Neu). ATM withdrawal, UPI Lite, Rupay Credit on UPI, NACH mandate formats added. Non-transaction filter hardened to reject loan offers, EMI promos, bill reminders, pre-approved credit alerts. 60/60 tests passing.
+**What shipped in v0.1.2:**
+- **Autopay & Recurring Subscriptions Engine:**
+  - Autopay and mandate transaction tagging in `CaptureEngine` (auto-debits, standing instructions, NACH, e-mandates).
+  - Room query filtering soft deletes (`isDeleted = 0`), tracking `lastTimestampMs`, and detecting mandate notes.
+  - Subscriptions card on Home: total monthly committed spend (`₹/mo committed`), next due renewal day estimation (`Due ~18th`), and high-contrast `AUTOPAY` badge.
+- **Reports & Analytics Upgrade:**
+  - Cash flow breakdown: real-time visual progress meter comparing Spend vs Savings percentage, with deficit detection.
+  - Month-over-month category trend indicators: instant delta calculation (`+X% vs last mo`, `-X% vs last mo`, `New`) displayed beside each category bar.
+- **`kharcha-core` v0.1.2 sync:**
+  - Expanded bank anchors (AU Small Finance, IDBI, RBL, Bank of India, UCO, Karnataka Bank, DBS).
+  - Mandate debit parsing (`mandate_autopay_debit_is_real_payment`).
+  - Extended balance extraction (`total bal`, `closing bal`, `ledger bal`).
+  - 76/76 tests passing green (24 unit + 39 parity + 13 notification), zero clippy warnings.
+- **Cross-channel dedupe contract tests verified**: push notification + bank SMS same UPI ref → one record; ref-less redelivery → content-hash gate.
+
+**What shipped in v0.1.1 (same build cycle, earlier tag):**
+- `kharcha-core` now covers all major Indian banks (SBI, HDFC, ICICI, Axis, Kotak, PNB, BOB, Canara, Union, IDFC FIRST, IndusInd, Federal, Yes Bank) + all UPI apps (PhonePe, GPay, Paytm, Amazon Pay, CRED, BHIM). ATM withdrawal, UPI Lite, Rupay Credit on UPI, NACH mandate formats added. Non-transaction filter hardened to reject loan offers, EMI promos, bill reminders, pre-approved credit alerts. 73/73 tests passing (24 unit + 36 parity + 13 notification corpus).
 - P2P contact resolution: `CaptureEngine.resolveMerchantName` resolves phone-number VPAs to device contact names via `ContactsContract.PhoneLookup`, 100% offline.
 - Onboarding step 1 adds "P2P Contact Names (Optional)" permission card. Settings capture section shows contact resolution status row.
 
@@ -123,6 +138,6 @@ notification capture), then Release 1.
 ## Next up
 
 1. Device smoke test — sideload `kharcha-v0.1.1-arm64-v8a.apk`, grant SMS + notification + contacts access, verify P2P name resolution on a real UPI transaction.
-2. Autopay/recurring engine — Rust-side pattern detect + due roll.
-3. Reports upgrade — category trend, income vs spend breakdown.
-4. v0.1.2 — ongoing bank coverage gaps from live captures.
+2. [DONE] Autopay/recurring engine — Mandate & Autopay detection in capture engine, due day telemetry (`Due ~18th`), total monthly recurring commitment (`₹/mo committed`), and Room query filtering soft deletes.
+3. [DONE] Reports upgrade — Month-over-month category trend delta indicators (`+12% vs last mo`, `-8% vs last mo`), and Cash Flow income vs spend breakdown / savings rate progress telemetry.
+4. Ongoing bank coverage gaps from live captures.

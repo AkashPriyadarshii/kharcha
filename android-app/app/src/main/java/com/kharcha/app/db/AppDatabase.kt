@@ -130,12 +130,14 @@ interface KharchaDao {
     )
     suspend fun pairCandidate(amountPaise: Long, isIncome: Boolean, excludeId: Long, fromMs: Long, toMs: Long, ts: Long): TransactionRow?
 
-    /** Recurring suspects: same merchant + amount in 2+ distinct months. */
+    /** Recurring suspects: same merchant + amount in 2+ distinct months, or explicit mandate/autopay notes. */
     @Query(
         """SELECT merchant AS merchant, amountPaise AS amountPaise,
-             COUNT(DISTINCT strftime('%Y-%m', datetime(timestampMs / 1000, 'unixepoch'))) AS months
-           FROM transactions WHERE isIncome = 0
-           GROUP BY merchant, amountPaise HAVING months >= 2 ORDER BY amountPaise DESC"""
+             COUNT(DISTINCT strftime('%Y-%m', datetime(timestampMs / 1000, 'unixepoch'))) AS months,
+             MAX(timestampMs) AS lastTimestampMs,
+             MAX(CASE WHEN (note LIKE '%mandate%' OR note LIKE '%autopay%' OR note LIKE '%auto-debit%' OR note LIKE '%nach%' OR note LIKE '%si%') THEN 1 ELSE 0 END) AS isMandate
+           FROM transactions WHERE isIncome = 0 AND isDeleted = 0
+           GROUP BY merchant, amountPaise HAVING months >= 2 OR isMandate = 1 ORDER BY isMandate DESC, amountPaise DESC"""
     )
     fun subscriptions(): Flow<List<SubRow>>
 

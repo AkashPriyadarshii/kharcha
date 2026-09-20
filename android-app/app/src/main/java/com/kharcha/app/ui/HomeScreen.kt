@@ -208,20 +208,67 @@ fun HomeScreen(
                 }
             }
             if (showSubsPref && subs.isNotEmpty()) {
+                val totalCommittedPaise = subs.sumOf { it.amountPaise }
                 item {
                     Column {
-                        Text("Subscriptions", style = MaterialTheme.typography.titleMedium)
-                        Spacer(Modifier.height(4.dp))
-                        // ponytail: suspects only (2+ months, same merchant + amount). Confirm by tapping through.
-                        subs.take(5).forEach { s ->
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text(s.merchant, style = MaterialTheme.typography.bodyLarge)
-                                Text(
-                                    "${formatPaiseCompact(s.amountPaise)} · monthly",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.secondary,
-                                    fontFamily = TabularNumerals,
-                                )
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text("Subscriptions & Autopay", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                "${formatPaiseCompact(totalCommittedPaise)}/mo",
+                                style = TextStyle(fontFamily = TabularNumerals, fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Card(
+                            Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        ) {
+                            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                subs.take(5).forEach { s ->
+                                    val dueDay = if (s.lastTimestampMs > 0) {
+                                        val zdt = java.time.Instant.ofEpochMilli(s.lastTimestampMs).atZone(java.time.ZoneId.systemDefault())
+                                        "Due ~${zdt.dayOfMonth}${when (zdt.dayOfMonth) { 1, 21, 31 -> "st"; 2, 22 -> "nd"; 3, 23 -> "rd"; else -> "th" }}"
+                                    } else "Monthly"
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                            Text(s.merchant, style = MaterialTheme.typography.bodyLarge)
+                                            if (s.isMandate) {
+                                                Spacer(Modifier.width(6.dp))
+                                                Box(
+                                                    Modifier
+                                                        .clip(RoundedCornerShape(4.dp))
+                                                        .background(MaterialTheme.colorScheme.primaryContainer)
+                                                        .padding(horizontal = 5.dp, vertical = 2.dp)
+                                                ) {
+                                                    Text(
+                                                        "AUTOPAY",
+                                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.Bold),
+                                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        Column(horizontalAlignment = Alignment.End) {
+                                            Text(
+                                                formatPaiseCompact(s.amountPaise),
+                                                style = TextStyle(fontFamily = TabularNumerals, fontWeight = FontWeight.Medium),
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                            )
+                                            Text(
+                                                dueDay,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.secondary,
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

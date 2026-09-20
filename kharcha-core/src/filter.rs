@@ -49,16 +49,23 @@ impl TransactionFilter {
         let tokens: Vec<String> = self.query.trim().to_lowercase().split_whitespace().map(str::to_string).collect();
         all.iter()
             .filter(|t| {
+                let do_amount = tokens.iter().any(|tok| tok.chars().next().is_some_and(|c| c.is_ascii_digit() || c == '-'));
+                let (m_lower, n_lower, r_lower) = (
+                    t.merchant.to_lowercase(),
+                    t.note.as_deref().unwrap_or("").to_lowercase(),
+                    t.upi_ref.as_deref().unwrap_or("").to_lowercase(),
+                );
+                let amount_str = if do_amount { Some(dart_amount_string(t.amount_paise)) } else { None };
                 (tokens.is_empty()
                     || tokens.iter().all(|tok| {
-                        t.merchant.to_lowercase().contains(tok)
-                            || t.note.as_deref().unwrap_or("").to_lowercase().contains(tok)
-                            || t.upi_ref.as_deref().unwrap_or("").to_lowercase().contains(tok)
-                            || dart_amount_string(t.amount_paise).contains(tok)
+                        m_lower.contains(tok)
+                            || n_lower.contains(tok)
+                            || r_lower.contains(tok)
+                            || amount_str.as_deref().is_some_and(|s| s.contains(tok))
                     }))
                     && self.category_id.is_none_or(|c| t.category_id == Some(c))
-                    && self.merchant.as_deref().is_none_or(|m: &str| t.merchant == m)
-                    && self.payment_method.as_deref().is_none_or(|p: &str| t.payment_method == p)
+                    && self.merchant.as_deref().is_none_or(|m: &str| t.merchant.eq_ignore_ascii_case(m))
+                    && self.payment_method.as_deref().is_none_or(|p: &str| t.payment_method.eq_ignore_ascii_case(p))
                     && self.is_income.is_none_or(|i| t.is_income == i)
                     && self.from_ms.is_none_or(|f| t.txn_ms >= f)
                     && self.to_ms.is_none_or(|x| t.txn_ms <= x)

@@ -119,7 +119,7 @@ static_re!(
 );
 static_re!(
     UPI_REF_RE,
-    r"(?:upi[ \t\n\x0B\f\r]*ref(?:erence)?(?:[ \t\n\x0B\f\r]*no)?|\bupi\b|utr(?:[ \t\n\x0B\f\r]*no)?|ref(?:erence)?[ \t\n\x0B\f\r]*id|ref[ \t\n\x0B\f\r]*id|ref(?:[ \t\n\x0B\f\r]*no)?|trans(?:action)?[ \t\n\x0B\f\r]*id|txn[ \t\n\x0B\f\r]*id)[ \t\n\x0B\f\r]*[:#-]?[ \t\n\x0B\f\r]*([A-Za-z0-9]{8,})"
+    r"(?:upi[ \t\n\x0B\f\r]*ref(?:erence)?(?:[ \t\n\x0B\f\r]*no)?|\bupi\b|utr(?:[ \t\n\x0B\f\r]*no)?|rrn|ref(?:erence)?[ \t\n\x0B\f\r]*(?:id|no)?|trans(?:action)?[ \t\n\x0B\f\r]*id|txn[ \t\n\x0B\f\r]*id)[ \t\n\x0B\f\r]*[:#-]?[ \t\n\x0B\f\r]*([A-Za-z0-9]{8,22})"
 );
 static_re!(UPI_REF_BARE_RE, r"\b([0-9]{12})\b");
 static_re!(
@@ -141,7 +141,7 @@ static_re!(
 );
 static_re!(
     BANK_NAME_RE,
-    r"\b(SBI|HDFC|ICICI|Axis|Kotak|PNB|BOB|IDFC|IndusInd|Yes Bank|Canara|Union Bank|Indian Bank|State Bank of India|Bank of Baroda|Paytm Payments Bank|Airtel Payments Bank|Jio Payments Bank|Federal Bank|South Indian Bank)\b"
+    r"\b(SBI|HDFC|ICICI|Axis|Kotak|PNB|BOB|IDFC|IndusInd|Yes Bank|Canara|Union Bank|Indian Bank|State Bank of India|Bank of Baroda|Paytm Payments Bank|Airtel Payments Bank|Jio Payments Bank|Federal Bank|South Indian Bank|Bank of India|IDBI|RBL|UCO|Indian Overseas|Karnataka Bank|Karur Vysya|AU Small Finance|Citi|HSBC|Standard Chartered|DBS)\b"
 );
 static_re!(
     BALANCE_PREFIX_RE,
@@ -153,8 +153,7 @@ static_re!(
 );
 static_re!(
     BAL_RE,
-    // Audit: single-space `avl bal` is verbatim from Dart (both miss double-space) — parity, not a fix.
-    r"(?:bal|balance|avl[ \t\n\x0B\f\r]*bal|available[ \t\n\x0B\f\r]*balance|clr[ \t\n\x0B\f\r]*bal|avail[ \t\n\x0B\f\r]*lmt|avl[ \t\n\x0B\f\r]*limit)[^0-9]*?(?:₹|Rs\.?|INR)?[ \t\n\x0B\f\r]*([0-9,]+(?:\.[0-9]{1,2})?)"
+    r"(?:bal|balance|avl[ \t\n\x0B\f\r]*(?:bal|balance|lmt|limit)|available[ \t\n\x0B\f\r]*(?:bal|balance|limit)|curr[ \t\n\x0B\f\r]*bal|ledger[ \t\n\x0B\f\r]*bal|closing[ \t\n\x0B\f\r]*bal|eff[ \t\n\x0B\f\r]*avl[ \t\n\x0B\f\r]*bal|clr[ \t\n\x0B\f\r]*bal|avail[ \t\n\x0B\f\r]*lmt|avl[ \t\n\x0B\f\r]*limit|outstanding|total[ \t\n\x0B\f\r]*bal)[^0-9]*?(?:₹|Rs\.?|INR)?[ \t\n\x0B\f\r]*([0-9,]+(?:\.[0-9]{1,2})?)"
 );
 static_re!(TRAILING_KEYWORD_RE, r"[ \t\n\x0B\f\r]+(?:via|using|on|through|in|UPI|Ref|UTR|Bank|A/c|Account|Pv|Pvt|Ltd|Limited|is|was|successful|successfully)$");
 static_re!(TRAILING_PUNCT_RE, r"[ \t\n\x0B\f\r.,:;/\-]+$");
@@ -225,10 +224,13 @@ fn capitalize_first(lower: &str) -> String {
 }
 
 fn normalize_mobile(s: &str) -> Option<&str> {
-    let stripped = if let Some(rest) = s.strip_prefix("+91") {
-        rest
-    } else if let Some(rest) = s.strip_prefix("91") {
-        rest
+    let stripped = if s.len() == 13 && s.starts_with("+91") {
+        &s[3..]
+    } else if s.len() == 12 && s.starts_with("91") {
+        &s[2..]
+    } else if s.starts_with("+91") || s.starts_with("91") {
+        // 10-digit starting 91 would be mis-stripped; require exact lengths
+        return None;
     } else {
         s
     };
@@ -276,10 +278,14 @@ fn clean_merchant(raw: &str) -> String {
         name = mobile.to_string();
     }
 
-    // 2. Strip trailing keywords often captured in loose boundary matches.
-    name = replace_all(&TRAILING_KEYWORD_RE, &name, "");
-    // Strip trailing punctuation.
-    name = replace_all(&TRAILING_PUNCT_RE, &name, "").trim().to_string();
+    if is_match(&TRAILING_KEYWORD_RE, &name) {
+        name = replace_all(&TRAILING_KEYWORD_RE, &name, "");
+    }
+    if is_match(&TRAILING_PUNCT_RE, &name) {
+        name = replace_all(&TRAILING_PUNCT_RE, &name, "").trim().to_string();
+    } else {
+        name = name.trim().to_string();
+    }
     // Filter generic invalid names.
     if is_match(&GENERIC_NAME_RE, &name) {
         return "Unknown".to_string();
@@ -309,6 +315,7 @@ pub fn parse_upi_notification(text: &str) -> Option<ParsedPayment> {
     if is_non_transaction(clean) {
         return None;
     }
+
 
     // 1. Amount extraction.
     // First non-balance-prefixed amount wins; if every amount looks like a
@@ -467,11 +474,6 @@ pub fn parse_upi_notification(text: &str) -> Option<ParsedPayment> {
     }
 
     if merchant.as_deref().is_none_or(|m: &str| m == "Unknown") && is_income {
-        if let Some(cand) = group1(&REFUND_MERCHANT_RE, clean).map(|g| clean_merchant(&g)) {
-            if cand != "Unknown" {
-                merchant = Some(cand);
-            }
-        }
         if merchant.as_deref().is_none_or(|m: &str| m == "Unknown") {
             if let Some(sender) = group1(&INCOME_SENDER_RE, clean) {
                 let cand = clean_merchant(&sender);
@@ -512,8 +514,13 @@ pub fn parse_upi_notification(text: &str) -> Option<ParsedPayment> {
     if upi_ref.is_none() && (has_spend || has_receive) {
         for m in find_all(&UPI_REF_BARE_RE, clean) {
             let prefix = prefix_of(clean, m.start());
-            // Exclude 12-digit numbers preceded by account/card identifiers.
             if is_match(&ACCOUNT_PREFIX_RE, prefix) {
+                continue;
+            }
+            let window_start = clean.floor_char_boundary(m.start().saturating_sub(30));
+            let window_end = clean.ceil_char_boundary((m.end() + 30).min(clean.len()));
+            let window = span_of(clean, window_start, window_end).to_lowercase();
+            if !window.contains("ref") && !window.contains("utr") && !window.contains("upi") && !window.contains("txn") {
                 continue;
             }
             upi_ref = Some(m.as_str().to_string());

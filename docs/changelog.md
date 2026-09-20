@@ -2,18 +2,33 @@
 
 All notable changes to Kharcha. Format: `[Version] — Date — Summary`.
 
-## [v0.1.1] — 2026-09-20 — Pan-Indian Parser, P2P Contact Resolution
+## [v0.1.2] — 2026-09-20 — Autopay Mandates, Reports Upgrade, Pan-Indian Core Sync
 
+- **Autopay & Recurring Subscriptions Engine (Roadmap Item 2):**
+  - Autopay and mandate transaction tagging in `CaptureEngine`: detects standing instructions, auto-debits, NACH, and e-mandates.
+  - Room DAO `subscriptions()` query updated to filter soft-deleted rows (`isDeleted = 0`), track latest occurrence (`lastTimestampMs`), and detect mandate flags.
+  - Subscriptions section on Home upgraded: shows total monthly committed spend (`₹/mo committed`), next due renewal day estimation (`Due ~18th`), and high-contrast `AUTOPAY` badge.
+- **Reports & Analytics Upgrade (Roadmap Item 3):**
+  - Cash flow breakdown: real-time visual progress meter comparing Spend vs Savings percentage, with deficit detection.
+  - Month-over-month category trend indicators: instant delta calculation (`+X% vs last mo`, `-X% vs last mo`, `New`) displayed beside each category bar.
+- **kharcha-core pan-Indian parser & engine upgrades:**
+  - Expanded bank anchors (AU Small Finance, IDBI, RBL, Bank of India, UCO, Karnataka Bank, DBS, etc.).
+  - Mandate debit parsing (`mandate_autopay_debit_is_real_payment`).
+  - Extended balance extraction (`total bal`, `closing bal`, `ledger bal`, etc.).
+  - 76/76 `kharcha-core` tests passing green (24 unit + 39 parity + 13 notification), zero clippy warnings.
+- **APK rebuilt & published:** `kharcha-v0.1.2-arm64-v8a.apk` (33.7 MB, versionCode 3).
+
+## [v0.1.1] — 2026-09-20 — Pan-Indian Parser, P2P Contact Resolution
 - **kharcha-core pan-Indian parser upgrade:**
   - ATM cash withdrawal detection (`ATM_WITHDRAWAL_RE`) across all major banks.
   - Capitalized direct payee extraction — AMAZON, SWIGGY, ZOMATO, etc. without prepositions.
   - Indian mobile VPA normalization: `+91`/`91` prefixes stripped to canonical 10-digit form.
   - Full regex coverage added: SBI, HDFC, ICICI, Axis, Kotak, PNB, BOB, Canara, Union Bank, IDFC FIRST, IndusInd, Federal, Yes Bank.
-  - UPI app notification formats: PhonePe, GPay, Paytm, CRED, BHIM, Navi, Tata Neu.
+  - UPI app notification formats: PhonePe, GPay, Paytm, Amazon Pay, CRED, BHIM (generic app-push arms cover Navi/Tata Neu templates).
   - Credit card templates: OneCard, Scapia, HDFC CC, ICICI CC, SBI Card.
   - New formats: UPI Lite, Rupay Credit on UPI, NACH / SI mandates, ATM withdrawals, POS/NFC contactless.
   - Non-transaction filter hardened: loan offers, EMI conversion promos, bill generation reminders, pre-approved credit alerts — all rejected before parsing.
-  - 60/60 tests passing (24 unit + 36 parity).
+  - 73/73 tests passing (24 unit + 36 parity + 13 notification corpus).
 - **P2P contact resolution:**
   - `CaptureEngine.resolveMerchantName` resolves phone-number VPAs (e.g. `9876543210@paytm`) to device contact names via `ContactsContract.PhoneLookup` — 100% offline.
   - Fallback: `"UPI User (XXXX)"` when no contact match.

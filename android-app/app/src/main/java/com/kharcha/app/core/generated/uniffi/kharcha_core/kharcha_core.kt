@@ -1327,8 +1327,8 @@ data class ParsedTransaction (
      * (`HDFCBK`) and a push package (`com.gpay`) for one payment would
      * otherwise never hash equal, killing the cross-channel gate. Refs are
      * unique per payment, so same-body collisions across senders need an
-     * identical ref too — except ref-less duplicates far apart in time,
-     * which merge (accepted, documented).
+     * identical ref too. The dedupe hash gate is window-bound (dedupe.rs),
+     * so ref-less duplicates far apart in time survive as real payments.
      */
     var `contentHash`: kotlin.ULong
     

@@ -1,6 +1,6 @@
 [package]
 name = "kharcha-core"
-version = "0.1.0"
+version = "0.1.2"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/AkashPriyadarshii/kharcha-core"
@@ -18,7 +18,10 @@ path = "src/bin/demo.rs"
 
 [dependencies]
 fancy-regex = "0.14"
+regex = "1.10"
 uniffi = "0.32.1"
 
 [profile.release]
 lto = true
+codegen-units = 1
+strip = true

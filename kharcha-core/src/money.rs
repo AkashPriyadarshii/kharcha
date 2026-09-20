@@ -9,17 +9,45 @@
 /// (`parseAmount('NaN')` returns NaN); an integer API cannot represent those,
 /// so they are rejected as None. No corpus row depends on them.
 pub fn parse_amount_paise(text: Option<&str>) -> Option<i64> {
-    let v: f64 = text?.trim().parse().ok()?;
-    if !v.is_finite() || v < 0.0 {
+    let s = text?.trim();
+    if s.is_empty() || s.starts_with('-') {
         return None;
     }
-    let paise = (v * 100.0).round();
-    // Audit: `i64::MAX as f64` rounds UP to 2^63, so `>` lets exactly-2^63
-    // through and `as i64` saturates silently. `>=` rejects it.
-    if !paise.is_finite() || paise >= i64::MAX as f64 {
+    // Reject NaN/Inf explicitly — no f64 parse.
+    let lower = s.to_ascii_lowercase();
+    if lower == "nan" || lower == "inf" || lower == "infinity" || lower == "+inf" || lower == "+infinity" {
         return None;
     }
-    Some(paise as i64)
+    // Exact i64 paise parse: integer.fraction with rounding, no f64.
+    // Keeps Dart parity: "2.345" -> 235 (round half away), "1.999" -> 200.
+    let (int_part, frac_part) = match s.split_once('.') {
+        Some((a, b)) => (a, Some(b)),
+        None => (s, None),
+    };
+    if !int_part.chars().all(|c| c.is_ascii_digit()) {
+        return None;
+    }
+    let int_val: i64 = if int_part.is_empty() {
+        frac_part.as_ref()?;
+        0
+    } else {
+        int_part.parse().ok()?
+    };
+    let (paise_frac, round_up) = match frac_part {
+        None => (0, false),
+        Some("") => (0, false),
+        Some(f) if !f.chars().all(|c| c.is_ascii_digit()) => return None,
+        Some(f) => {
+            let p1 = f.chars().next().map(|c| (c as i64) - ('0' as i64)).unwrap_or(0);
+            let p2 = f.chars().nth(1).map(|c| (c as i64) - ('0' as i64)).unwrap_or(0);
+            let third = f.chars().nth(2).map(|c| (c as i64) - ('0' as i64));
+            let r = third.is_some_and(|d| d >= 5);
+            (p1 * 10 + p2, r)
+        }
+    };
+    let base = int_val.checked_mul(100)?.checked_add(paise_frac)?;
+    let paise = if round_up { base.checked_add(1)? } else { base };
+    Some(paise)
 }
 
 #[cfg(test)]

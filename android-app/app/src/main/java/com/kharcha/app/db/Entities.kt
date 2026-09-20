@@ -68,6 +68,8 @@ data class SubRow(
     val merchant: String,
     val amountPaise: Long,
     val months: Int,
+    val lastTimestampMs: Long = 0L,
+    val isMandate: Boolean = false,
 )
 
 @Entity(tableName = "budgets")

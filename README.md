@@ -32,8 +32,8 @@ Manual logging is friction; cloud sync is a trust tax. Kharcha kills both:
 
 | | |
 |---|---|
-| **Latest release** | **v0.1.1** |
-| **APK** | [`kharcha-v0.1.1-arm64-v8a.apk`](https://github.com/AkashPriyadarshii/kharcha/releases/latest/download/kharcha-v0.1.1-arm64-v8a.apk) (~33 MB) |
+| **Latest release** | **v0.1.2** |
+| **APK** | [`kharcha-v0.1.2-arm64-v8a.apk`](https://github.com/AkashPriyadarshii/kharcha/releases/latest/download/kharcha-v0.1.2-arm64-v8a.apk) (~34 MB) |
 | **Requirements** | Android 12+ (arm64-v8a) |
 
 **Install:** build or grab the APK → open it → allow "Install unknown apps" → done.
