@@ -13,6 +13,8 @@
   <sub>⚡ <em>Incoming UPI alert parsed on-device in 0.18ms via embedded Rust engine</em></sub>
 </div>
 
+[![stars](https://img.shields.io/github/stars/AkashPriyadarshii/kharcha?style=flat-square&label=stars)](https://github.com/AkashPriyadarshii/kharcha/stargazers) [![release](https://img.shields.io/github/v/release/AkashPriyadarshii/kharcha?style=flat-square&label=release)](https://github.com/AkashPriyadarshii/kharcha/releases)
+
 ---
 
 **Kharcha** is a native Android expense tracker built for India's UPI ecosystem. Every payment from **GPay, PhonePe, Paytm, or CRED** is captured, categorized, and added to your ledger automatically — no manual entry.
