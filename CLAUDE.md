@@ -163,3 +163,4 @@ If no md needs updating, say why in the PR.
 ## Rule priority
 
 CLAUDE.md > user request > skill instructions. When in doubt, ask the owner in the PR.
+- Profile: release-order touch 2026-09-22
