@@ -87,6 +87,13 @@ docs/           state, design, plan, handoff, changelog
 - Self-send SIM-to-SIM never broadcasts to third-party apps on ColorOS — live path needs a genuine bank sender.
 - Auto-update: release tag + `kharcha-armv8a-release.apk` asset, version bump gates it.
 
+
+
+<p align="center">
+  <img src="https://api.star-history.com/svg?repos=AkashPriyadarshii/kharcha&type=Date" width="600" alt="star history" />
+</p>
+
+
 ## 📄 License & Legal
 
 Source-available. All rights reserved. Public for viewing only — no use, reproduction, or derivative works permitted. See LICENSE for full terms.
