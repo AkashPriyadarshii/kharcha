@@ -1,4 +1,6 @@
 <div align="center">
+
+**Support:** fuel the next build — [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/AkashPriyadarshi)
   <img src="screenshots/app_icon.png" width="96" height="96" alt="Kharcha" style="border-radius: 22%">
   <h1>Kharcha</h1>
   <p><strong>India's Zero-Friction UPI Expense Tracker for Android.</strong></p>
@@ -11,7 +13,7 @@
   <img src="screenshots/demo-hook.webp" width="340" alt="Kharcha 0.18ms Parse Demo" style="border-radius: 20px;" />
   <br />
   <sub>⚡ <em>Incoming UPI alert parsed on-device in 0.18ms via embedded Rust engine</em></sub>
-*Fuel the next build:* [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/AkashPriyadarshi)
+*Fuel the next build:* 
 
 </div>
 
@@ -89,12 +91,9 @@ docs/           state, design, plan, handoff, changelog
 - Self-send SIM-to-SIM never broadcasts to third-party apps on ColorOS — live path needs a genuine bank sender.
 - Auto-update: release tag + `kharcha-armv8a-release.apk` asset, version bump gates it.
 
-
-
 <p align="center">
   <img src="https://api.star-history.com/svg?repos=AkashPriyadarshii/kharcha&type=Date" width="600" alt="star history" />
 </p>
-
 
 ## 📄 License & Legal
 
