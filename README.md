@@ -11,6 +11,8 @@
   <img src="screenshots/demo-hook.webp" width="340" alt="Kharcha 0.18ms Parse Demo" style="border-radius: 20px;" />
   <br />
   <sub>⚡ <em>Incoming UPI alert parsed on-device in 0.18ms via embedded Rust engine</em></sub>
+*Fuel the next build:* [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/AkashPriyadarshi)
+
 </div>
 
 [![stars](https://img.shields.io/github/stars/AkashPriyadarshii/kharcha?style=flat-square&label=stars)](https://github.com/AkashPriyadarshii/kharcha/stargazers) [![release](https://img.shields.io/github/v/release/AkashPriyadarshii/kharcha?style=flat-square&label=release)](https://github.com/AkashPriyadarshii/kharcha/releases)
